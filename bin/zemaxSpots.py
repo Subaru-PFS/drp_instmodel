@@ -1,0 +1,1 @@
+../python/inst/zemaxSpots.py
