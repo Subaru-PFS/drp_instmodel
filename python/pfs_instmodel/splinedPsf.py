@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 try:
     from IPython.core.debugger import Tracer; debug_here = Tracer()
 except:
@@ -6,23 +8,42 @@ except:
 import pyfits
 import cPickle as pickle
 
-import numpy
+import numpy as np
 import scipy.interpolate as sinterp
 
 import psf
 
 class SplinedPsf(psf.Psf):
-    def __init__(self, filename=None):
+    def __init__(self, psfFilename=None, spotFilename=None):
+        """ Optionally either read in our persisted form, or construct ourself from the zemax spots. """
+        
         self.wave = []
         self.fiber = []
         self.spots = []
         self.imshape = (0,0)
         self.coeffs = []
+
+        if spotFilename and psfFilename:
+            raise RuntimeError("psfFilename and spotFilename cannot both be specified")
         
-        if filename:
-            self.loadFromFile(filename)
+        if spotFilename:
+            self.makeSplinesFromSpotFile(spotFilename)
+        elif psfFilename:
+            self.loadFromFile(psfFilename)
+
+    def __str__(self):
+        nSpots = len(self.spots)
+        if nSpots > 0:
+            return ("%s<%d spots; %d wavelengths (%0.2fAA to %0.2fAA); %d fibers>" %
+                    (self.__class__.__name__, nSpots,
+                     len(np.unique(self.wave)), np.min(self.wave), np.max(self.wave),
+                     len(np.unique(self.fiber))))
+        else:
+            return ("%s<0 spots>" %
+                    (self.__class__.__name__))
 
     def makeSplinesFromSpotFile(self, filename):
+        """ """
         sf = pyfits.open(filename, mode='readonly')
         s = sf[1].data
 
@@ -31,12 +52,13 @@ class SplinedPsf(psf.Psf):
         self.spots = s['spot'].astype('float64')
         self.imshape = self.spots[0].shape
 
-        self.coeffs = numpy.zeros(self.imshape,
-                                  dtype='O')
+        self.coeffs = np.zeros(self.imshape,
+                               dtype='O')
 
-        # Make a spline for each pixel
-        xx = numpy.unique(self.fiber)
-        yy = numpy.unique(self.wave)
+        # Make a spline for each pixel.
+        # XXX - This fiber/wave indexing scheme is not safe in general
+        xx = np.unique(self.fiber)
+        yy = np.unique(self.wave)
         
         for ix in range(self.imshape[0]):
             print "splining col %d" % (ix)
@@ -54,7 +76,7 @@ class SplinedPsf(psf.Psf):
            - a list of the (x,y) positions the images are instantiated at.
         """
         
-        newImages = numpy.zeros(shape=(len(fibers)*len(waves),
+        newImages = np.zeros(shape=(len(fibers)*len(waves),
                                        self.imshape[0],
                                        self.imshape[1]))
 
@@ -97,12 +119,12 @@ class SplinedPsf(psf.Psf):
         self.fiber = d['fiber']
         self.imshape = self.spots[0].shape
 
-        self.coeffs = numpy.zeros(self.imshape,
-                                  dtype='O')
+        self.coeffs = np.zeros(self.imshape,
+                               dtype='O')
 
-        fp = numpy.array(d['fp']).reshape(self.imshape)
-        degrees = numpy.array(d['degrees']).reshape(self.imshape + (-1,))
-        tck = numpy.array(d['tck']).reshape(self.imshape + (-1,))
+        fp = np.array(d['fp']).reshape(self.imshape)
+        degrees = np.array(d['degrees']).reshape(self.imshape + (-1,))
+        tck = np.array(d['tck']).reshape(self.imshape + (-1,))
 
         for ix in range(self.imshape[0]):
             for iy in range(self.imshape[1]):

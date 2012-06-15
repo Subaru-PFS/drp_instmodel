@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import glob
 import os
 import re
@@ -49,11 +51,11 @@ def writeSpotFITS(spotDir, data):
                               array=spots))
     colDefs = pyfits.ColDefs(cols)
     hdu = pyfits.new_table(colDefs)
-    hdu.writeto(os.path.join(spotDir, 'spots.fits.fz'), 
+    hdu.writeto(os.path.join(spotDir, 'spots.fits'), 
                 checksum=True, clobber=True)
     
 def main(argv):
-    """ Convert a directory of zemax spot files into a FITS thing. """
+    """ Convert a directory of zemax spot files into a slightly more convenient FITS table. """
     
     spotDir = argv[0]
 
