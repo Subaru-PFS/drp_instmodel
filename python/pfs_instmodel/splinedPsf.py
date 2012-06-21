@@ -5,6 +5,7 @@ try:
 except:
     pass
 
+import os
 import pyfits
 import cPickle as pickle
 
@@ -14,22 +15,27 @@ import scipy.interpolate as sinterp
 import psf
 
 class SplinedPsf(psf.Psf):
-    def __init__(self, psfFilename=None, spotFilename=None):
-        """ Optionally either read in our persisted form, or construct ourself from the zemax spots. """
-        
+    def __init__(self, band, constructFromSpots=False):
+        """ Read in our persisted form. Optionally that from the zemax spots. """
+
+        self.band = band
         self.wave = []
         self.fiber = []
         self.spots = []
         self.imshape = (0,0)
         self.coeffs = []
 
-        if spotFilename and psfFilename:
-            raise RuntimeError("psfFilename and spotFilename cannot both be specified")
-        
-        if spotFilename:
-            self.makeSplinesFromSpotFile(spotFilename)
-        elif psfFilename:
-            self.loadFromFile(psfFilename)
+        # Map self.band to filenames using some config file. For now, hardcode
+        dataRoot = os.environ.get('PFS_INSTDATA_DIR', '.')
+        psfFilepath = os.path.join(dataRoot, 'data', 'spots', band, 'psf.pck')
+
+        if constructFromSpots:
+            spotFilepath = os.path.join(dataRoot, 'data', 'spots', band, 'spots.fits')
+            self.makeSplinesFromSpotFile(spotFilepath)
+            self._saveToFile(psfFilepath)
+
+        # We don't actually need to do this, but it seems like a good check.
+        self.loadFromFile(psfFilepath)
 
     def __str__(self):
         nSpots = len(self.spots)
@@ -59,23 +65,23 @@ class SplinedPsf(psf.Psf):
         # XXX - This fiber/wave indexing scheme is not safe in general
         xx = np.unique(self.fiber)
         yy = np.unique(self.wave)
-        
+
         for ix in range(self.imshape[0]):
             print "splining col %d" % (ix)
             for iy in range(self.imshape[1]):
-                self.coeffs[iy, ix] = sinterp.RectBivariateSpline(xx, yy, 
+                self.coeffs[iy, ix] = sinterp.RectBivariateSpline(xx, yy,
                                                                   self.spots[:, iy, ix].reshape(len(xx), len(yy)))
     def psfsAt(self, fibers, waves):
         """ Return a stack of PSFs, instantiated on a rectangular grid.
 
         Args:
            fibers, waves - two arrays of positions; we instatiate ourselves at the rectangular grid of these.
-           
+
         Returns:
            - a 3D array of images [len(xs)*len(ys), imshape.x, imshape.y]
            - a list of the (x,y) positions the images are instantiated at.
         """
-        
+
         newImages = np.zeros(shape=(len(fibers)*len(waves),
                                        self.imshape[0],
                                        self.imshape[1]))
@@ -87,9 +93,9 @@ class SplinedPsf(psf.Psf):
                 newImages[:, iy, ix] = self.coeffs[iy, ix](fibers, waves).flat
 
         return newImages, centers
-    
-    def saveToFile(self, filename):
-        """ Saves our state (esp. the splines), currently to a pickle. 
+
+    def _saveToFile(self, filename):
+        """ Saves our state (esp. the splines), currently to a pickle.
 
         Very very very unwarranted chumminess with the spline internals.
         Should implement __reduce__, etc. for pickling, FITS/HDF otherwise.
@@ -109,7 +115,7 @@ class SplinedPsf(psf.Psf):
 
             print "pickling...."
             pickle.dump(d, pfile, protocol=-1)
-        
+
     def loadFromFile(self, filename):
         with open(filename, 'r') as pfile:
             d = pickle.load(pfile)
@@ -133,5 +139,3 @@ class SplinedPsf(psf.Psf):
                 c.degrees = degrees[iy,ix]
                 c.tck = tck[iy,ix]
                 self.coeffs[iy, ix] = c
-
-                
