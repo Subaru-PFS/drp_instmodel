@@ -1,3 +1,4 @@
+
 #!/usr/bin/env python
 
 try:
@@ -10,7 +11,7 @@ import pyfits
 import cPickle as pickle
 
 import numpy as np
-import scipy.interpolate as sinterp
+import scipy.interpolate as spinterp
 
 import psf
 
@@ -69,7 +70,7 @@ class SplinedPsf(psf.Psf):
         for ix in range(self.imshape[0]):
             print "splining col %d" % (ix)
             for iy in range(self.imshape[1]):
-                self.coeffs[iy, ix] = sinterp.RectBivariateSpline(xx, yy,
+                self.coeffs[iy, ix] = spinterp.RectBivariateSpline(xx, yy,
                                                                   self.spots[:, iy, ix].reshape(len(xx), len(yy)))
     def psfsAt(self, fibers, waves):
         """ Return a stack of PSFs, instantiated on a rectangular grid.
@@ -134,7 +135,7 @@ class SplinedPsf(psf.Psf):
 
         for ix in range(self.imshape[0]):
             for iy in range(self.imshape[1]):
-                c = sinterp.RectBivariateSpline.__new__(sinterp.RectBivariateSpline)
+                c = spinterp.RectBivariateSpline.__new__(spinterp.RectBivariateSpline)
                 c.fp = fp[iy,ix]
                 c.degrees = degrees[iy,ix]
                 c.tck = tck[iy,ix]
