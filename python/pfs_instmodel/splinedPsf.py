@@ -122,7 +122,7 @@ class SplinedPsf(psf.Psf):
 
         return waves
     
-    def psfsAt(self, fibers, waves):
+    def psfsAt(self, fibers, waves, usePsfs=None):
         """ Return a stack of PSFs, instantiated on a rectangular grid.
 
         Args:
@@ -134,9 +134,6 @@ class SplinedPsf(psf.Psf):
            - a list of the (x,y) positions the images should be centered on.
         """
 
-        newImages = np.zeros(shape=(len(fibers)*len(waves),
-                                       self.imshape[0],
-                                       self.imshape[1]))
 
         if waves[0] > waves[-1]:
             interpWaves = waves[::-1]
@@ -146,12 +143,18 @@ class SplinedPsf(psf.Psf):
             interpSlice = slice(None)
             
         centers = [(x,y) for x in fibers for y in waves]
-        for ix in range(self.imshape[0]):
-            if ix % 16 == 0:
-                print "fibers %s col %d" % (fibers, ix)
-            for iy in range(self.imshape[1]):
-                newImages[interpSlice, iy, ix] = self.coeffs[iy, ix](fibers, interpWaves).flat
-
+        if usePsfs != None:
+            newImages = usePsfs
+        else:
+            newImages = np.zeros(shape=(len(fibers)*len(waves),
+                                        self.imshape[0],
+                                        self.imshape[1]))
+            for ix in range(self.imshape[0]):
+                if ix % 16 == 0:
+                    print "fibers %s col %d" % (fibers, ix)
+                for iy in range(self.imshape[1]):
+                    newImages[interpSlice, iy, ix] = self.coeffs[iy, ix](fibers, interpWaves).flat
+            
         return newImages, centers, self.traceCenters(fibers, waves)
 
     def makeComb(self, ids, nth=100, hackScale=10000):
@@ -228,8 +231,19 @@ class SplinedPsf(psf.Psf):
             xPixOffset = (xc-outImgOffset[0]) / self.detector.config['pixelScale'] + spotRadius
             yPixOffset = (yc-outImgOffset[1]) / self.detector.config['pixelScale']
 
+            # Keep the shift to the smallest fraction possible, or rather keep the integer steps 
+            # exactly +/- 1.
+            inty = round(yPixOffset)
+            fracy = yPixOffset - inty
+
+            intx = round(xPixOffset)
+            fracx = xPixOffset - intx
+
+            if row % 1000 == 0 or row == len(allWaves)-1:
+                print("%5d yc: %3.48f %d %3.48f" % (row, yPixOffset, inty, fracy))
+        
             # bin psf to ccd pixels, shift by fractional pixel only.
-            psf = self.scalePsf(rawPsf, -self.frac(xPixOffset), -self.frac(yPixOffset))
+            psf = self.scalePsf(rawPsf, -fracx, -fracy)
 
             # Assumed to be a spline on the final resolution.
             flux = spectrum(wave)
@@ -237,7 +251,7 @@ class SplinedPsf(psf.Psf):
             # When do we need to do this before the downsampling?
             spot = psf * flux
 
-            self.placeSubimage(outImg, spot, int(xPixOffset), int(yPixOffset))
+            self.placeSubimage(outImg, spot, intx, inty)
 
         return outImg, minRow, minCol+spotRadius
 
@@ -256,8 +270,6 @@ class SplinedPsf(psf.Psf):
         return psf
 
     def placeSubimage(self, img, subImg, xc, yc):
-        w, h = subImg.shape
-
         parentx, childx = self.trimSpan((0, img.shape[1]-1),
                                         (0, subImg.shape[1]-1),
                                         xc)
@@ -266,6 +278,7 @@ class SplinedPsf(psf.Psf):
                                         (0, subImg.shape[0]-1),
                                         yc)
 
+        # print("  %3.5f  parent %s  child %s" % (yc, parenty, childy))
         img[parenty, parentx] += subImg[childy, childx]
         
     def trimSpan(self, _parent, _child, childOffset=None):
@@ -304,7 +317,8 @@ class SplinedPsf(psf.Psf):
 
     def frac(self, n):
         """ Return the fractional part of a float. """
-        return n-int(n)
+
+        return np.modf(n)[0]
     
     def _sincfunc(self, x, dx):
         dampfac = 3.25
