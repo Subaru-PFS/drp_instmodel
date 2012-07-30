@@ -4,6 +4,8 @@ import os
 import numpy
 import scipy.interpolate
 
+import pydebug
+
 class SkyModel(object):
     """ Encapsulate a generator for sky spectra. We specify the model and the individual multiplicative and additive terms.
 
