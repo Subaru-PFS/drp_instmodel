@@ -103,26 +103,40 @@ class SplinedPsf(psf.Psf):
 
         return x[waveSlice][0], y[waveSlice][0]
     
-    def wavesForRows(self, fibers, rows=None):
-        """ Return our best estimate for the wavelength at the given row centers """
+    def wavesForRows(self, fiber, rows=None, waveRange=None):
+        """ Return a functor/interpolator giving our best estimate for the wavelength at the given row centers """
+
+        if waveRange == None:
+            waveRange = self.wave.min(), self.wave.max()
+
+            # Assume that the full spectrum fits on the detector.
+        minY, maxY = self.ycCoeffs([fiber], waveRange)[0]
+        doReorder = minY > maxY
+        if doReorder:
+            minY, maxY = maxY, minY
+        assert minY > 0 and maxY < self.detector.config['ccdSize'][1]
+        
+        minRow = int(minY/self.detector.config['pixelScale']) + 1
+        maxRow = int(maxY/self.detector.config['pixelScale'])
 
         if rows == None:
-            rows = np.arange(self.detector.config['ccdSize'][1])
+            rows = np.arange(minRow, maxRow+1)
 
-        allWaves = np.linspace(self.wave.min(), self.wave.max(), self.detector.config['ccdSize'][1])
-        allWaveRows = self.ycCoeffs(fibers, allWaves)[0] / self.detector.config['pixelScale']
+        # Invert the spline into a row->wave map. 
+        # Just use a linear interpolation based on the evaluation near the pixels.
+        allWaves = np.linspace(waveRange[0], waveRange[1], maxRow-minRow)
+        allWaveRows = self.ycCoeffs([fiber], allWaves)[0] / self.detector.config['pixelScale']
 
-        doReorder = allWaveRows[0] > allWaveRows[-1]
         if doReorder:
             allWaveRows = allWaveRows[::-1]
             allWaves = allWaves[::-1]
-            
+
         waveFunc = spInterp.interp1d(allWaveRows, allWaves, 'linear', bounds_error=False)
         waves = waveFunc(rows)
 
-        return waves
+        return rows, waves
     
-    def psfsAt(self, fibers, waves, usePsfs=None):
+    def psfsAt(self, fibers, waves, everyNthPsf=1, usePsfs=None):
         """ Return a stack of PSFs, instantiated on a rectangular grid.
 
         Args:
@@ -135,12 +149,9 @@ class SplinedPsf(psf.Psf):
         """
 
 
-        if waves[0] > waves[-1]:
-            interpWaves = waves[::-1]
-            interpSlice = slice(None, None, -1)
-        else:
-            interpWaves = waves
-            interpSlice = slice(None)
+        waveSign = 1 if waves[-1] > waves[0] else -1
+        interpWaves = waves[::waveSign*everyNthPsf]
+        interpSlice = slice(None, None, waveSign*everyNthPsf)
             
         centers = [(x,y) for x in fibers for y in waves]
         if usePsfs != None:
@@ -154,7 +165,22 @@ class SplinedPsf(psf.Psf):
                     print "fibers %s col %d" % (fibers, ix)
                 for iy in range(self.imshape[1]):
                     newImages[interpSlice, iy, ix] = self.coeffs[iy, ix](fibers, interpWaves).flat
-            
+
+        if everyNthPsf > 1:
+            interpSliceLen = newImages[interpSlice,:,:].shape[0]
+            for i in range(1, everyNthPsf):
+                if waves[0] > waves[-1]:
+                    # a[-2::nth] and down
+                    start = waveSign*(i+1)
+                else:
+                    # a[1::nth] and up
+                    start = waveSign*i
+                outSlice = slice(start, None, waveSign*everyNthPsf)
+                if interpSliceLen > newImages[outSlice,:,:].shape[0]:
+                    interpSlice = slice(None, waveSign*(interpSliceLen-1)*everyNthPsf, waveSign*everyNthPsf)
+                
+                newImages[outSlice,:,:] = newImages[interpSlice,:,:]
+                    
         return newImages, centers, self.traceCenters(fibers, waves)
 
     def makeComb(self, ids, nth=100, hackScale=10000):
@@ -169,22 +195,25 @@ class SplinedPsf(psf.Psf):
 
         return Comb(ids, nth=nth)
     
-    def fiberImages(self, fibers, spectra=None, outImg=None):
+    def fiberImages(self, fibers, spectra=None, outImg=None, waveRange=None, everyNthPsf=1):
         if outImg == None:
             outImg = self.detector.simBias().image
 
         if spectra == None:
             spectra = [None] * len(fibers)
         for i, fiber in enumerate(fibers):
-            self.fiberImage(fiber, spectra[i], outImg=outImg)
+            self.fiberImage(fiber, spectra[i], outImg=outImg, 
+                            waveRange=waveRange, everyNthPsf=everyNthPsf)
 
         return outImg
     
-    def fiberImage(self, fiber, spectrum=None, outImg=None):
+    def fiberImage(self, fiber, spectrum=None, outImg=None, waveRange=None, everyNthPsf=1):
         """ Return an interpolated image of a fiber """
 
-        minX, maxX = self.xcCoeffs([fiber], [self.wave.min(), self.wave.max()])[0]
-        minY, maxY = self.ycCoeffs([fiber], [self.wave.min(), self.wave.max()])[0]
+        if waveRange == None:
+            waveRange = self.wave.min(), self.wave.max()
+        minX, maxX = self.xcCoeffs([fiber], waveRange)[0]
+        minY, maxY = self.ycCoeffs([fiber], waveRange)[0]
 
         minRow = minY/self.detector.config['pixelScale']
         maxRow = maxY/self.detector.config['pixelScale']
@@ -194,11 +223,10 @@ class SplinedPsf(psf.Psf):
             minRow, maxRow = maxRow, minRow
             
         # Get the wavelengths for the fiber pixels.
-        allWaves = self.wavesForRows([fiber], np.arange(int(minRow+1), 
-                                                        int(maxRow)))
-
+        allWaveRows, allWaves = self.wavesForRows(fiber, waveRange=waveRange)
+        
         # Get the oversampled PSFs and their locations at the fiber pixels.
-        fiberPsfs, psfIds, centers = self.psfsAt([fiber], allWaves)
+        fiberPsfs, psfIds, centers = self.psfsAt([fiber], allWaves, everyNthPsf=everyNthPsf)
         xCenters, yCenters = centers
 
         # With no input, use a comb spectrum
@@ -213,7 +241,8 @@ class SplinedPsf(psf.Psf):
         spotRadius = (spotWidth+1) / 2
 
         if outImg == None:
-            outExp = self.detector.simBias(shape=(traceHeight, traceWidth + 2*spotWidth))
+            outExp = self.detector.simBias(shape=(traceHeight + spotWidth, 
+                                                  traceWidth + spotWidth))
             outImg = outExp.image
             outImgOffset = (xCenters.min(), yCenters.min())
         else:
@@ -229,7 +258,7 @@ class SplinedPsf(psf.Psf):
 
             # pix offset
             xPixOffset = (xc-outImgOffset[0]) / self.detector.config['pixelScale'] + spotRadius
-            yPixOffset = (yc-outImgOffset[1]) / self.detector.config['pixelScale']
+            yPixOffset = (yc-outImgOffset[1]) / self.detector.config['pixelScale'] + spotRadius
 
             # Keep the shift to the smallest fraction possible, or rather keep the integer steps 
             # exactly +/- 1.
@@ -240,7 +269,7 @@ class SplinedPsf(psf.Psf):
             fracx = xPixOffset - intx
 
             if row % 1000 == 0 or row == len(allWaves)-1:
-                print("%5d yc: %3.48f %d %3.48f" % (row, yPixOffset, inty, fracy))
+                print("%5d %6.1f yc: %3.48f %d %3.48f" % (row, wave, yPixOffset, inty, fracy))
         
             # bin psf to ccd pixels, shift by fractional pixel only.
             psf = self.scalePsf(rawPsf, -fracx, -fracy)
@@ -253,7 +282,7 @@ class SplinedPsf(psf.Psf):
 
             self.placeSubimage(outImg, spot, intx, inty)
 
-        return outImg, minRow, minCol+spotRadius
+        return outImg, minRow, minCol
 
     def scalePsf(self, rawPsf, xc, yc, doRescaleFlux=False):
         """ Given an oversampled image scale it to the detector grid after shifting it. """
