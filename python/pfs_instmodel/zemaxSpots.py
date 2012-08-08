@@ -32,6 +32,8 @@ def readSpotDir(path, verbose=False):
                                                                         len(summary)))
         
     spots = []
+    symSpots = []
+
     for fiberIdx,wavelength,xc,yc in summary:
         # Blue has too many errors, and cannot be read.
         if wavelength == 3945:
@@ -53,7 +55,11 @@ def readSpotDir(path, verbose=False):
         spot = np.genfromtxt(spotfileName, dtype='f4',
                              skip_header=11)
         spots.append((fiberIdx, wavelength, xc, yc, spot))
-    arr = np.array(spots, dtype=spotDtype)
+        #symSpots.append((300-fiberIdx, wavelength, -xc, yc, spot[:,::-1]))
+
+    #symSpots.reverse()
+    allSpots = symSpots + spots
+    arr = np.array(allSpots, dtype=spotDtype)
     
     return arr
 
@@ -93,7 +99,7 @@ def writeSpotFITS(spotDir, data):
 def main(argv):
     """ Convert a directory of zemax spot files into a slightly more convenient FITS table. """
     
-    spotDir = os.path.join(os.environ['PFS_INSTDATA_DIR'], 'data/spots', argv[0])
+    spotDir = os.path.join(os.environ['PFS_INSTDATA_DIR'], 'data/spots/zemax', argv[0])
 
     data = readSpotDir(spotDir)
     writeSpotFITS(spotDir, data)
