@@ -69,6 +69,11 @@ class SkyModel(object):
     def maxWave(self):
         return self.skySpline.get_knots().max()
 
+    @property
+    def waveRange(self):
+        return self.minWave, self.maxWave
+
+
 class StaticSkyModel(SkyModel):
 
     def _makeSkySpline(self):
