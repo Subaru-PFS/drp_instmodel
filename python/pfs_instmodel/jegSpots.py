@@ -17,6 +17,10 @@ OFFSETS :
 
 """
 
+def displaySpot(spot, scale=15.0):
+    import xplot
+
+    
 def makeFiberImage(fiberRadius=28, shape=(64,64), dtype='f4'):
     """ Return the image we convolve the spots with. """
     
@@ -109,9 +113,8 @@ def readSpotDir(path, doConvolve=True):
         if doConvolve:
             spot = convolveWithFiber(data[i,:,:], fiberImage)
         else:
-            spot = fiberImage
+            spot = data[i,:,:]
         spots.append((fiberIdx, wavelength, xc, yc, spot))
-        #symSpots.append((300-fiberIdx, wavelength, -xc, yc, spot[:,::-1]))
         print("fiber  %d (%d, %0.2f) sum=%f" % (i, fiberIdx, wavelength, sum))
 
     symSpots.reverse()
@@ -131,7 +134,12 @@ def readSpotDir(path, doConvolve=True):
     arr = numpy.zeros(shape=tarr.shape, dtype=tarr.dtype)
     for i in range(nlam):
         arr[i::nlam] = tarr[sortfrom[i]::nlam]
-        
+
+    # Now add in the symmetric left/right side...
+    otherside = arr[1::-1]
+    otherside['spot_xc'] *= -1
+    otherside['fiberIdx'] *= -1
+    
     return arr
 
 def writeSpotFITS(spotDir, data):

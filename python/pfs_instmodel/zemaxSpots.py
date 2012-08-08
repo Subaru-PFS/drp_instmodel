@@ -32,8 +32,6 @@ def readSpotDir(path, verbose=False):
                                                                         len(summary)))
         
     spots = []
-    symSpots = []
-
     for fiberIdx,wavelength,xc,yc in summary:
         # Blue has too many errors, and cannot be read.
         if wavelength == 3945:
@@ -55,12 +53,15 @@ def readSpotDir(path, verbose=False):
         spot = np.genfromtxt(spotfileName, dtype='f4',
                              skip_header=11)
         spots.append((fiberIdx, wavelength, xc, yc, spot))
-        #symSpots.append((300-fiberIdx, wavelength, -xc, yc, spot[:,::-1]))
 
-    #symSpots.reverse()
-    allSpots = symSpots + spots
-    arr = np.array(allSpots, dtype=spotDtype)
+    arr = np.array(spots, dtype=spotDtype)
     
+    # Now add in the symmetric left/right side...
+    # For now keep fiber 0 and xc 0.0 at the center.
+    otherside = arr[1::-1]
+    otherside['spot_xc'] *= -1
+    otherside['fiberIdx'] *= -1
+
     return arr
 
 def writeSpotFITS(spotDir, data):
