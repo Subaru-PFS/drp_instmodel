@@ -1,3 +1,4 @@
+import glob
 import os
 import re
 
@@ -36,7 +37,7 @@ def convolveWithFiber(spot, fiberImage=None):
     
     return scipy.ndimage.convolve(spot, fiberImage, mode='constant', cval=0.0)
 
-def readAll(filename):
+def readSpotDir(path, doConvolve=True):
     """ Read slightly cleaned up versions of JEGs spots.
 
     The .imgstk file contains a few 1k-aligned sections:
@@ -49,7 +50,10 @@ def readAll(filename):
         
     """
 
-    with open(filename, 'r') as f:
+    names = glob.glob(os.path.join(path, '*.imgstk'))
+    assert len(names) == 1, "path %s does not have exactly one .imgstk file" % (path)
+        
+    with open(names[0], 'r') as f:
         rawHeader = f.read(2*1024)
         rawDesign = f.read((8-2)*1024)
         rawPositions = f.read((32-8)*1024)
@@ -95,25 +99,33 @@ def readAll(filename):
     fiberImage = makeFiberImage()
 
     spots = []
+    symSpots = []
     for i in range(data.shape[0]):
         fiberIdx = fiberIDs[i / nlam]
         wavelength = wavelengths[i % nlam]
         xc = positions[i,0]
         yc = positions[i,1]
         sum = numpy.sum(data[i,:,:])
-        spot = convolveWithFiber(data[i,:,:], fiberImage)
+        if doConvolve:
+            spot = convolveWithFiber(data[i,:,:], fiberImage)
+        else:
+            spot = fiberImage
         spots.append((fiberIdx, wavelength, xc, yc, spot))
+        #symSpots.append((300-fiberIdx, wavelength, -xc, yc, spot[:,::-1]))
         print("fiber  %d (%d, %0.2f) sum=%f" % (i, fiberIdx, wavelength, sum))
 
-        #spots[i,:,:] = convolveWithFiber(data[i,:,:], fiberImage)
-
+    symSpots.reverse()
+    allSpots = symSpots + spots    
     spotDtype = numpy.dtype([('fiberIdx','i2'),
                              ('wavelength','f4'),
                              ('spot_xc','f4'), ('spot_yc','f4'),
                              ('spot', '(256,256)f4')])
 
-    tarr = numpy.array(spots, dtype=spotDtype)
+    tarr = numpy.array(allSpots, dtype=spotDtype)
 
+    # Normalize
+    tarr['spot'] /= tarr['spot'].max()
+    
     # Now clean up... later steps expect to have wavelengths in order
     sortfrom = numpy.argsort(tarr['wavelength'][:nlam])
     arr = numpy.zeros(shape=tarr.shape, dtype=tarr.dtype)
@@ -155,7 +167,13 @@ def writeSpotFITS(spotDir, data):
     hdulist.writeto(os.path.join(spotDir, 'spots.fits'), 
                     checksum=True, clobber=True)
 
-def saveFITS(filename, positions, data):
-    pass
+def main(argv):
+    """ Convert a directory of zemax spot files into a slightly more convenient FITS table. """
+    
+    spotDir = os.path.join(os.environ['PFS_INSTDATA_DIR'], 'data/spots/jeg', argv[0])
 
-
+    data = readSpotDir(spotDir)
+    writeSpotFITS(spotDir, data)
+    
+if __name__ == "__main__":
+    main(sys.argv[1:])
