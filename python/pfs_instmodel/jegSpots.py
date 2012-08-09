@@ -8,6 +8,8 @@ import scipy.ndimage
 
 import pyfits
 
+import splinedPsf
+import pydebug
 """
 OFFSETS :
     HEADER: 0
@@ -20,7 +22,6 @@ OFFSETS :
 def displaySpot(spot, scale=15.0):
     import xplot
 
-    
 def makeFiberImage(fiberRadius=28, shape=(64,64), dtype='f4'):
     """ Return the image we convolve the spots with. """
     
@@ -41,6 +42,22 @@ def convolveWithFiber(spot, fiberImage=None):
     
     return scipy.ndimage.convolve(spot, fiberImage, mode='constant', cval=0.0)
 
+def getFiberIds(header):
+    """ Given the header, return the fiberIDs. We assume that the spacing is proportional to the SINANGs. """
+
+    nang = int(header['NANG'])
+    angs = []
+    for i in range(nang):
+        ang = float(header['SINANG[%d]' % (i)])
+        angs.append(ang)
+    angs = numpy.array(angs)
+    angs /= angs.max()
+    fibers = (angs * 300).astype('i2')
+
+    print "fiber IDSs: %s" % (fibers)
+    
+    return fibers
+    
 def readSpotDir(path, doConvolve=True):
     """ Read slightly cleaned up versions of JEGs spots.
 
@@ -87,17 +104,7 @@ def readSpotDir(path, doConvolve=True):
         wavelength = float(headerDict[waveKey])
         wavelengths.append(wavelength)
         
-    fiberIDs = []
-    slitRadius = float(headerDict['SLIT RADIUS'])
-    fiberSpacing = 27
-    nang = int(headerDict['NANG'])
-    for i in range(nang):
-        #angKey = "SINANG[%d]" % (i)
-        #sinang = float(headerDict[angKey])
-        #fiberOffset = slitRadius * sinang
-        #print "ang %d: %0.2f" % (i, fiberOffset)
-        #fiberIDs.append(fiberOffset)
-        fiberIDs.append(i * fiberSpacing)
+    fiberIDs = getFiberIds(headerDict)
         
     data = numpy.fromstring(rawData, dtype='(%d,%d)u2' % (xsize,ysize), count=nimage).astype('f4')
     fiberImage = makeFiberImage()
@@ -115,10 +122,12 @@ def readSpotDir(path, doConvolve=True):
         else:
             spot = data[i,:,:]
         spots.append((fiberIdx, wavelength, xc, yc, spot))
-        print("fiber  %d (%d, %0.2f) sum=%f" % (i, fiberIdx, wavelength, sum))
-
+        print("spot  %d (%d, %0.2f) sum=%f" % (i, fiberIdx, wavelength, sum))
+        if fiberIdx != 0:
+            symSpots.append((-fiberIdx, wavelength, -xc, yc, spot))
     symSpots.reverse()
-    allSpots = symSpots + spots    
+
+    allSpots = spots    
     spotDtype = numpy.dtype([('fiberIdx','i2'),
                              ('wavelength','f4'),
                              ('spot_xc','f4'), ('spot_yc','f4'),
@@ -135,11 +144,6 @@ def readSpotDir(path, doConvolve=True):
     for i in range(nlam):
         arr[i::nlam] = tarr[sortfrom[i]::nlam]
 
-    # Now add in the symmetric left/right side...
-    otherside = arr[1::-1]
-    otherside['spot_xc'] *= -1
-    otherside['fiberIdx'] *= -1
-    
     return arr
 
 def writeSpotFITS(spotDir, data):
@@ -175,13 +179,17 @@ def writeSpotFITS(spotDir, data):
     hdulist.writeto(os.path.join(spotDir, 'spots.fits'), 
                     checksum=True, clobber=True)
 
-def main(argv):
-    """ Convert a directory of zemax spot files into a slightly more convenient FITS table. """
     
-    spotDir = os.path.join(os.environ['PFS_INSTDATA_DIR'], 'data/spots/jeg', argv[0])
+def main(band):
+    """ Convert a directory of zemax spot files into a slightly more convenient FITS table. """
+
+    spotDir = os.path.join(os.environ['PFS_INSTDATA_DIR'], 'data/spots/jeg', band)
 
     data = readSpotDir(spotDir)
     writeSpotFITS(spotDir, data)
-    
+
+    print "splining..."
+    splinedPsf.constructSplinesFromSpots(band, spotType='jeg')
+
 if __name__ == "__main__":
-    main(sys.argv[1:])
+    main(sys.argv[1])
