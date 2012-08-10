@@ -83,9 +83,12 @@ class StaticSkyModel(SkyModel):
         dataRoot = os.environ.get('PFS_INSTDATA_DIR', '.')
         filepath = os.path.join(dataRoot, 'data', 'sky', 'sumire%sskyHR.dat' % (self.band.upper()))
 
-        a = numpy.genfromtxt(filepath, skip_footer=20, comments='\\')
-        self.skySpline = scipy.interpolate.InterpolatedUnivariateSpline(a[:,0], a[:,3], k=3)
-
+        self.native = numpy.genfromtxt(filepath, skip_footer=20, comments='\\')
+        self.skySpline = scipy.interpolate.InterpolatedUnivariateSpline(self.getNativeWavelengths(),
+                                                                        self.getNativeFlux(),
+                                                                        k=2)
+        self.spacing = 0.2                # Read from header.... CPL
+        
     def _makeExtinctionSpline(self):
         """ Read in JEG's preliminary extinction model. """
 
@@ -97,6 +100,25 @@ class StaticSkyModel(SkyModel):
         w = numpy.where((a[:,0] >= self.minWave) & (a[:,0] <= self.maxWave))
         self.extinctionSpline = scipy.interpolate.InterpolatedUnivariateSpline(a[w,0], a[w,1], k=3)
 
+
+    def _getWaveSlice(self, waveRange):
+        if waveRange:
+            w = numpy.where((self.native[:,0] >= waveRange[0])
+                            & (self.native[:,0] <= waveRange[1]))
+        else:
+            w = slice(None)
+
+        return w
+    
+    def getNativeWavelengths(self, waveRange=None):
+        return self.native[self._getWaveSlice(waveRange),0]
+    
+    def getNativeFlux(self, waveRange=None):
+        return self.native[self._getWaveSlice(waveRange),2]
+    
+    def getNativeValues(self, waveRange=None):
+        return self.native[self._getWaveSlice(waveRange)][:,[0,2]]
+    
     def getSkyAt(self, **argv):
         """ Return a spline for the sky at the given conditions.
 
