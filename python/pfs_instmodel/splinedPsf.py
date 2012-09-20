@@ -327,10 +327,8 @@ class SplinedPsf(psf.Psf):
             intx = round(xPixOffset)
             fracx = xPixOffset - intx
 
-            doDetails = False
             if i % 1000 in range(2):
                 print("%5d %6.1f yc: %3.4f %3.10f %d %d %3.10f " % (i, specWave, yc, yPixOffset, lasty, inty, fracy))
-                doDetails = True
             lasty = inty
             
             # Assume we are well enough oversampled to ignore fractional pixel shifts.
@@ -346,7 +344,6 @@ class SplinedPsf(psf.Psf):
 
 
         # transfer flux from oversampled fiber image to final resolution output image
-        #print "placing (%0.3f,%0.3f)mm (%d,%d) offset image at (%d, %d)" % ( 
         resampledFiber = self.addOversampledImage(fiberImage, outImg, outImgOffset, outImgSpotPixelScale)
 
         if returnUnbinned:
@@ -363,6 +360,8 @@ class SplinedPsf(psf.Psf):
         return resampled
     
     def rebin(self, a, *args):
+        """ rebin(a, *new_axis_sizes) taken from scip cookbook. """
+        
         shape = a.shape
         lenShape = len(shape)
         factor = np.asarray(shape)/np.asarray(args)
@@ -372,89 +371,6 @@ class SplinedPsf(psf.Psf):
 
         return eval(''.join(evList))
     
-    def fiberImage0(self, fiber, spectrum=None, outImg=None, waveRange=None, everyNthPsf=1):
-        """ Return an interpolated image of a fiber """
-
-        if waveRange == None:
-            waveRange = self.wave.min(), self.wave.max()
-        minX, maxX = self.xcCoeffs([fiber], waveRange)[0]
-        minY, maxY = self.ycCoeffs([fiber], waveRange)[0]
-
-        minRow = minY/self.detector.config['pixelScale']
-        maxRow = maxY/self.detector.config['pixelScale']
-        minCol = minX/self.detector.config['pixelScale']
-
-        # Generalize this... CPL
-        if minRow > maxRow:
-            minRow, maxRow = maxRow, minRow
-            
-        # Get the wavelengths for the fiber pixels.
-        allWaveRows, allWaves = self.wavesForRows([fiber], waveRange=waveRange)
-        allWaves = allWaves[0]
-        
-        # Get the oversampled PSFs and their locations at the fiber pixels.
-        fiberPsfs, psfIds, centers = self.psfsAt([fiber], allWaves, everyNthPsf=everyNthPsf)
-        xCenters, yCenters = [c[0] for c in centers]
-        
-        # With no input, use a comb spectrum
-        if spectrum == None:
-            spectrum = self.makeComb(psfIds, nth=20)
-
-        traceWidth = int((xCenters.max() - xCenters.min())/self.detector.config['pixelScale'] + 0.5)
-        traceHeight = int((yCenters.max() - yCenters.min())/self.detector.config['pixelScale'] + 0.5)
-
-        psfPixelScale = int(self.detector.config['pixelScale'] / self.spotScale + 0.5)
-        spotWidth = fiberPsfs[0].shape[-1] / psfPixelScale
-        spotRadius = (spotWidth+1) / 2
-
-        if outImg == None:
-            outExp = self.detector.simBias(shape=(traceHeight + spotWidth, 
-                                                  traceWidth + spotWidth))
-            outImg = outExp.image
-            outImgOffset = (xCenters.min(), yCenters.min())
-        else:
-            outImgOffset = (0,0)
-            
-        lasty = 0
-        for i, row in enumerate(allWaveRows):
-            rawPsf = fiberPsfs[i]
-            fiberID, wave = psfIds[i]
-
-            # in mm
-            xc = xCenters[i]
-            yc = yCenters[i]
-
-            # pix offset
-            xPixOffset = (xc-outImgOffset[0]) / self.detector.config['pixelScale'] + spotRadius
-            yPixOffset = (yc-outImgOffset[1]) / self.detector.config['pixelScale'] + spotRadius
-
-            # Keep the shift to the smallest fraction possible, or rather keep the integer steps 
-            # exactly +/- 1.
-            inty = round(yPixOffset)
-            fracy = yPixOffset - inty
-
-            intx = round(xPixOffset)
-            fracx = xPixOffset - intx
-
-            doDetails = False
-            if row % 100 == 0:
-                print("%5d %5d %6.1f yc: %3.4f %3.10f %d %d %3.10f " % (i, row, wave, yc, yPixOffset, lasty, inty, fracy)),
-                doDetails = True
-            lasty = inty
-            
-            # bin psf to ccd pixels, shift by fractional pixel only.
-            psf = self.scalePsf(rawPsf, -fracx, -fracy, doDetails=doDetails)
-
-            # Assumed to be a spline on the final resolution.
-            flux = spectrum(wave)
-
-            # When do we need to do this before the downsampling?
-            spot = psf * flux
-
-            self.placeSubimage(outImg, spot, intx, inty)
-
-        return outImg, minRow, minCol
-
     def scalePsf(self, rawPsf, xc, yc, doRescaleFlux=False, doDetails=False):
         """ Given an oversampled image scale it to the detector grid after shifting it. """
 
@@ -486,7 +402,6 @@ class SplinedPsf(psf.Psf):
                                         (0, subImg.shape[0]-1),
                                         yc)
 
-        # print("  %3.5f  parent %s  child %s" % (yc, parenty, childy))
         try:
             img[parenty, parentx] += subImg[childy, childx]
         except ValueError, e:
