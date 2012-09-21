@@ -1,6 +1,7 @@
 import os
 import numpy
 
+import configFile
 import exposure
 
 class Detector(object):
@@ -11,14 +12,7 @@ class Detector(object):
         dataRoot = os.environ.get('PFS_INSTDATA_DIR', '.')
         filepath = os.path.join(dataRoot, 'data', 'detectors', '%s.py' % (detectorName))
         
-        self.config = self._hackConfig(filepath)
-
-    def _hackConfig(self, configFile):
-        gdict = {}
-        ldict = {}
-        
-        execfile(configFile,  gdict, ldict)
-        return ldict
+        self.config = configFile.readfile(filepath)
 
     def makeEmptyExposure(self):
         return exposure.Exposure(self, dtype='u2')
