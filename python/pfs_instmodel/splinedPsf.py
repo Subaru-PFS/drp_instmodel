@@ -15,6 +15,7 @@ import scipy.interpolate as spInterp
 import psf
 
 def constructSplinesFromSpots(band, spotType='zemax'):
+    """ """
     psfFilepath = os.path.join(SplinedPsf.psfFileDir(band, spotType),
                                'psfSplines.pck')
 
@@ -220,6 +221,7 @@ class SplinedPsf(psf.Psf):
         return Comb(waves, nth)
     
     def fiberImages(self, fibers, spectra=None, outImg=None, waveRange=None, everyNthPsf=1):
+        """ Return """
         if outImg == None:
             outImg = self.detector.simBias().image
 
@@ -231,8 +233,11 @@ class SplinedPsf(psf.Psf):
 
         return outImg
     
-    def fiberImage(self, fiber, spectrum=None, outImg=None, waveRange=None, everyNthPsf=1, returnUnbinned=False):
-        """ Return an interpolated image of a fiber """
+    def fiberImage(self, fiber, spectrum=None, outImg=None, waveRange=None, 
+                   everyNthPsf=1, returnUnbinned=False):
+        """ Return an interpolated image of a given spectrum in the given fiber.
+
+        """
 
         # Evaluate at highest resolution
         pixelScale = self.spotScale
@@ -242,7 +247,6 @@ class SplinedPsf(psf.Psf):
         minX, maxX = self.xcCoeffs([fiber], waveRange)[0]
         minY, maxY = self.ycCoeffs([fiber], waveRange)[0]
 
-        pixelScale = self.spotScale
         minRow = minY/pixelScale
         maxRow = maxY/pixelScale
         minCol = minX/pixelScale
@@ -333,7 +337,7 @@ class SplinedPsf(psf.Psf):
             
             # Assume we are well enough oversampled to ignore fractional pixel shifts.
             spot = specFlux * rawPsf
-            # Hack to bring flux below saturation
+            # XXXX Hack to bring flux below saturation
             spot /= 4
             
             self.placeSubimage(fiberImage, spot, intx, inty)
