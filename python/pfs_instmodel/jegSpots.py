@@ -11,6 +11,10 @@ import pyfits
 import splinedPsf
 import pydebug
 """
+Read the raw PSF spot images from JEG's optical design, and convert
+them to some slightly more efficient intermediate FITS file..
+
+The raw file 
 OFFSETS :
     HEADER: 0
     DESIGN FILE: 2K
@@ -76,7 +80,7 @@ def readSpotDir(path, doConvolve=True):
         
     with open(names[0], 'r') as f:
         rawHeader = f.read(2*1024)
-        rawDesign = f.read((8-2)*1024)
+        rawDesign = f.read((8-2)*1024)    # unused, so far.
         rawPositions = f.read((32-8)*1024)
         rawData = f.read()
 
