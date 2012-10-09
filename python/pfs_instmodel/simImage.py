@@ -3,9 +3,6 @@ import numpy
 import pfs_instmodel.detector as pfsDet
 import pfs_instmodel.sky as pfsSky
 import pfs_instmodel.splinedPsf as pfsPsf
-import ds9
-
-disp = ds9.ds9()
 
 """
 Example
