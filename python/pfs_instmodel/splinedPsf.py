@@ -140,6 +140,11 @@ class SplinedPsf(psf.Psf):
            the (fiberId, wavelength) positions the images are instantiated for.
         psfPos : array
            the (x,y) positions the PSF images should be centered on.
+
+        Notes
+        -----
+        The everyNthPsf arg should be waveSpacing (and fiberSpacing) or something.
+        
         """
 
         if waves == None:
