@@ -31,11 +31,6 @@ class SkyModel(object):
                  self.minWave, self.maxWave,
                  self.centerAz, self.centerAlt, self.t0))
 
-    def _makeSkySpline(self):
-        raise NotImplementedError("_makeSkySpline")
-    def _makeExtinctionSpline(self):
-        raise NotImplementedError("_makeExtinctionSpline")
-
     def getSkyAt(self, **argv):
         """ Return a spline for the sky at the given conditions. """
         raise NotImplementedError("getSkyAt")
