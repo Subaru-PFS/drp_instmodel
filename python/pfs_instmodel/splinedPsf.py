@@ -18,7 +18,7 @@ class SplinedPsf(psf.Psf):
     def __init__(self, band, detector, spotType='zemax'):
         """ Read in our persisted form. Optionally that from the zemax spots. """
 
-        psf.PSF.__init__(self, band, detector)
+        psf.Psf.__init__(self, band, detector)
         
         # The locations at which we have PSFs
         self.wave = []
