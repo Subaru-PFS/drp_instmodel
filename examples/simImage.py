@@ -18,7 +18,7 @@ def makeSim(band, fibers=None, everyNthPsf=1):
     sky = pfsSky.StaticSkyModel(band)
 
     if not fibers:
-        # Interesting: I don't know how many fibers there are.
+        # Interesting: At this point I don't know how many fibers there are.
         fibers = numpy.concatenate([numpy.arange(3),
                                     numpy.arange(3) + 100,
                                     300 - numpy.arange(3)])
@@ -27,8 +27,7 @@ def makeSim(band, fibers=None, everyNthPsf=1):
     simage = sim.addFibers(fibers,
                            spectra=spectra,
                            everyNthPsf=everyNthPsf)
-
-    return simage
+    return sim
 
 def expandRangeArg(arg):
     """ Generate an array from a range expression. No error checking. 
@@ -36,7 +35,7 @@ def expandRangeArg(arg):
     Expression: R,R,R
     R: INT or INT-INT
 
-    So 0,1,100-103,300 yields [0,1,100,101,102,300]
+    So 0,1,100-103,300 yields [0,1,100,101,102,103,300]
     """
 
     fullRange = []
@@ -49,7 +48,7 @@ def expandRangeArg(arg):
         if len(parts) == 1:
             fullRange.append(int(parts[0]))
         else:
-            fullRange.extend(range(int(parts[0]),int(parts[1])))
+            fullRange.extend(range(int(parts[0]),int(parts[1])+1))
         # print "after %s, r=%s" % (r, fullRange)
     return fullRange
 
@@ -72,10 +71,10 @@ def main(args):
 
     fibers = expandRangeArg(res.fibers)
 
-    img = makeSim(res.band, fibers=fibers, everyNthPsf=res.everyNth)
+    sim = makeSim(res.band, fibers=fibers, everyNthPsf=res.everyNth)
     if res.ds9:
-        displayImage(img)
-    return img
+        displayImage(sim.image)
+    return sim
 
 if __name__ == "__main__":
     main(sys.argv)
