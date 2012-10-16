@@ -6,6 +6,16 @@ import configFile
 import exposure
 
 class Detector(object):
+    """ Placeholder for _all_ per-camera properties. 'Detector' is abused, since there
+        are camera, instrument, and telescope properties folded into this. So this will be 
+        split and expanded when requirements become clearer.
+
+         * bad columns
+         * vignetting
+         * gain, readnoise (have)
+         * camera throughput (kinda have).
+    """
+
     def __init__(self, detectorName):
         """ Need to work out how to specify & pass in our properties. Use a "struct" for now. """
 
