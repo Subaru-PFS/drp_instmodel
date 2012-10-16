@@ -2,8 +2,7 @@ import numpy
 import scipy
 
 class Psf(object):
-    def __init__(self, band, detector):
-        self.band = band
+    def __init__(self, detector):
         self.detector = detector
     
     def psfAt(self, fiber, wave):
