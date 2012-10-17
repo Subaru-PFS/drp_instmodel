@@ -8,9 +8,8 @@ Welcome to PFS Instrument Model's documentation.
 
 Example:
 
-.. automodule:: examples.simImage
+.. automodule:: pfs_instmodel.examples.simImage
    :members:
-   :undoc-members:
 
 Contents:
 
@@ -19,15 +18,12 @@ Contents:
 
 .. automodule:: pfs_instmodel.sky
    :members:
-   :undoc-members:
 
 .. automodule:: pfs_instmodel.detector
    :members:
-   :undoc-members:
 
 .. automodule:: pfs_instmodel.psf
    :members:
-   :undoc-members:
 
 Indices and tables
 ==================
