@@ -18,12 +18,9 @@ _______
 
 class SimImage(object):
     def __init__(self, band, sky=None, psf=None):
-        self.band = band
         self.detector = pfsDet.Detector(band)
         self.sky = sky if sky else pfsSky.StaticSkyModel(band)
-        self.psf = psf if psf else pfsPsf.SplinedPsf(band, 
-                                                     self.detector, 
-                                                     spotType='jeg')
+        self.psf = psf if psf else pfsPsf.SplinedPsf(self.detector)
         self.image = None
         
     def addFibers(self, fibers, spectra=None, waveRange=None, everyNthPsf=1):
