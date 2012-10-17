@@ -2,11 +2,13 @@ import numpy
 
 class Exposure(object):
     def __init__(self, detector, doNew=False, dtype='u2'):
+        """ """
+        
         self.detector = detector
 
         if doNew:
             self._image = numpy.zeros(self.detector.config['ccdSize'], dtype=dtype)
-            #self._mask = numpy.zeros(self.detector.config['ccdSize'], dtype='u4')
+            self._mask = numpy.zeros(self.detector.config['ccdSize'], dtype='u4')
             self._ivar = numpy.zeros(self.detector.config['ccdSize'], dtype='f4')
 
     def __str__(self):

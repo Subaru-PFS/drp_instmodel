@@ -16,8 +16,6 @@ class SkyModel(object):
 
     def __init__(self, band, centerAlt=None, centerAz=None, t0=None):
         """ Create a generative model of the sky.
-
-
         """
         self.band = band
         self.centerAlt = centerAlt
@@ -32,11 +30,6 @@ class SkyModel(object):
                 (self.__class__.__name__, self.band,
                  self.minWave, self.maxWave,
                  self.centerAz, self.centerAlt, self.t0))
-
-    def _makeSkySpline(self):
-        raise NotImplementedError("_makeSkySpline")
-    def _makeExtinctionSpline(self):
-        raise NotImplementedError("_makeExtinctionSpline")
 
     def getSkyAt(self, **argv):
         """ Return a spline for the sky at the given conditions. """
@@ -99,7 +92,6 @@ class StaticSkyModel(SkyModel):
         a = numpy.genfromtxt(filepath, comments='\\')
         w = numpy.where((a[:,0] >= self.minWave) & (a[:,0] <= self.maxWave))
         self.extinctionSpline = scipy.interpolate.InterpolatedUnivariateSpline(a[w,0], a[w,1], k=3)
-
 
     def _getWaveSlice(self, waveRange):
         if waveRange:

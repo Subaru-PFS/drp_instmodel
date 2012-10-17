@@ -14,60 +14,29 @@ import scipy.interpolate as spInterp
 
 import psf
 
-def constructSplinesFromSpots(band, spotType='zemax'):
-    """ """
-    psfFilepath = os.path.join(SplinedPsf.psfFileDir(band, spotType),
-                               'psfSplines.pck')
-
-    spotsFilepath = os.path.join(SplinedPsf.psfFileDir(band, spotType),
-                                 'spots.fits')
-    
-    sf = pyfits.open(spotsFilepath, mode='readonly')
-    s = sf[1].data
-    
-    outputDict = {}
-    outputDict['wave'] = s['wavelength']
-    outputDict['fiber'] = s['fiberIdx']
-    outputDict['spotScale'] = sf[0].header['pixscale']
-    outputDict['xc'] = s['spot_xc']
-    outputDict['yc'] = s['spot_yc']
-
-    spots = s['spot'].astype('float64')
-    outputDict['spots'] = spots
-
-    imshape = spots.shape[1:]
-
-    # Make a spline for each pixel. The spots are centered on the output grid,
-    # and we track the xc,yc offset separately.
-
-    # XXX - This fiber/wave indexing scheme is not safe in general
-    xx = np.unique(outputDict['fiber'])
-    yy = np.unique(outputDict['wave'])
-
-    coeffs = np.zeros(imshape, dtype='O')
-    for ix in range(imshape[0]):
-        print "splining col %d" % (ix)
-        for iy in range(imshape[1]):
-            coeffs[iy, ix] = spInterp.RectBivariateSpline(xx, yy,
-                                                          spots[:, iy, ix].reshape(len(xx), len(yy)))
-    outputDict['coeffs'] = coeffs
-    
-    with open(psfFilepath, 'w+') as pfile:
-        print "pickling...."
-        pickle.dump(outputDict, pfile, protocol=-1)
-
 class SplinedPsf(psf.Psf):
-    def __init__(self, band, detector, spotType='zemax'):
-        """ Read in our persisted form. Optionally that from the zemax spots. """
+    def __init__(self, detector, spotType='jeg'):
+        """ Create or read in our persisted form. By default use JEG's models. 
 
-        self.band = band
+        Parameters
+        ----------
+
+        detector : a Detector object
+           carries the properties of the detector (and camera).
+        spot_type : str, optional
+           Whether to load 'jeg' or 'zemax' spot images.
+        """
+
+        psf.Psf.__init__(self, detector)
+        
+        # The locations at which we have PSFs
         self.wave = []
         self.fiber = []
         self.spots = []
+
         self.coeffs = []
         self.xcCoeffs = []
         self.ycCoeffs = []
-        self.detector = detector
 
         self.loadFromFile(spotType)
 
@@ -87,10 +56,14 @@ class SplinedPsf(psf.Psf):
         dataRoot = os.environ.get('PFS_INSTDATA_DIR', '.')
         return os.path.join(dataRoot, 'data', 'spots', spotType, band)
         
+    @staticmethod
+    def psfSpotFile(band, spotType):
+        return os.path.join(SplinedPsf.psfFileDir(band, spotType),
+                            'psfSplines.pck')
+        
     @property 
     def imshape(self):
         return self.spots[0].shape
-    
 
     def traceCenters(self, fibers, waves):
         """ Return the pixel centers for the given fibers and wavelengths """
@@ -162,13 +135,30 @@ class SplinedPsf(psf.Psf):
     def psfsAt(self, fibers, waves=None, everyNthPsf=1, usePsfs=None):
         """ Return a stack of PSFs, instantiated on a rectangular grid.
 
-        Args:
-           fibers, waves - two arrays of positions; we instatiate ourselves at the rectangular grid of these.
+        Paramaters
+        ----------
+        fibers : array_like, int
+           the fiber IDs we want PSFs for
+        waves : array_like, AA, optional
+           the wavelengths we want PSFs as. If not set, uses the native wavelength grid.
+        everyNthPsf : bool, optional
+           how many wavelengths get the same PSF -- this is a performance optimization.  The
+           default is for each wavelength to get its own PSF.
+        usePsfs : array_like , optional
+           
+        Returns
+        -------
+        psfImages : array
+           a 3D array of images [len(fibers)*len(waves), imshape.x, imshape.y]
+        psfIds : array
+           the (fiberId, wavelength) positions the images are instantiated for.
+        psfPos : array
+           the (x,y) positions the PSF images should be centered on.
 
-        Returns:
-           - a 3D array of images [len(xs)*len(ys), imshape.x, imshape.y]
-           - a list of the (fiberId, wavelength) positions the images are instantiated for.
-           - a list of the (x,y) positions the images should be centered on.
+        Notes
+        -----
+        The everyNthPsf arg should be waveSpacing (and fiberSpacing) or something.
+        
         """
 
         if waves == None:
@@ -185,11 +175,10 @@ class SplinedPsf(psf.Psf):
                                         self.imshape[0],
                                         self.imshape[1]))
             for ix in range(self.imshape[0]):
-                if ix == 0:
-                    print "fibers %s col %d" % (fibers, ix)
                 for iy in range(self.imshape[1]):
                     newImages[:, iy, ix] = self.coeffs[iy, ix](fibers, interpWaves).flat
 
+        # OK, optionally replicate the sparsely sampled PSF grid into the full one.
         if everyNthPsf > 1:
             newImageList = []
             for w_i in range(len(interpWaves)):
@@ -220,24 +209,8 @@ class SplinedPsf(psf.Psf):
             
         return Comb(waves, nth)
     
-    def fiberImages(self, fibers, spectra=None, outImg=None, waveRange=None, everyNthPsf=1):
-        """ Return """
-        if outImg == None:
-            outImg = self.detector.simBias().image
-
-        if spectra == None:
-            spectra = [None] * len(fibers)
-        for i, fiber in enumerate(fibers):
-            self.fiberImage(fiber, spectra[i], outImg=outImg, 
-                            waveRange=waveRange, everyNthPsf=everyNthPsf)
-
-        return outImg
-    
-    def fiberImage(self, fiber, spectrum=None, outImg=None, waveRange=None, 
-                   everyNthPsf=1, returnUnbinned=False):
-        """ Return an interpolated image of a given spectrum in the given fiber.
-
-        """
+    def fiberImage(self, fiber, spectrum=None, outImg=None, waveRange=None, everyNthPsf=1, returnUnbinned=False):
+        """ Return an interpolated image of a fiber """
 
         # Evaluate at highest resolution
         pixelScale = self.spotScale
@@ -332,7 +305,7 @@ class SplinedPsf(psf.Psf):
             fracx = xPixOffset - intx
 
             if i % 1000 in range(2):
-                print("%5d %6.1f yc: %3.4f %3.10f %d %d %3.10f " % (i, specWave, yc, yPixOffset, lasty, inty, fracy))
+                print("%5d %6.1f xc: %3.4f yc: %3.4f %3.10f %d %d %3.10f " % (i, specWave, xc, yc, yPixOffset, lasty, inty, fracy))
             lasty = inty
             
             # Assume we are well enough oversampled to ignore fractional pixel shifts.
@@ -375,28 +348,6 @@ class SplinedPsf(psf.Psf):
 
         return eval(''.join(evList))
     
-    def scalePsf(self, rawPsf, xc, yc, doRescaleFlux=False, doDetails=False):
-        """ Given an oversampled image scale it to the detector grid after shifting it. """
-
-        psfPixelScale = self.detector.config['pixelScale'] / self.spotScale
-            
-        psf = scipy.ndimage.affine_transform(rawPsf, 
-                                             [psfPixelScale, psfPixelScale],
-                                             (yc, xc),
-                                             output_shape=np.array(rawPsf.shape)/psfPixelScale,
-                                             order=1)
-
-        if doDetails:
-            print ("           shift=%d/%0.3f, %d/%0.3f flux=%0.2f,%0.2f" % 
-                   (round(xc*psfPixelScale), xc, 
-                    round(yc*psfPixelScale), yc,
-                    np.sum(rawPsf), np.sum(psf) * (psfPixelScale * psfPixelScale)))
-
-        if doRescaleFlux:
-            psf *= (psfPixelScale*psfPixelScale)
-
-        return psf
-
     def placeSubimage(self, img, subImg, xc, yc):
         parentx, childx = self.trimSpan((0, img.shape[1]-1),
                                         (0, subImg.shape[1]-1),
@@ -445,7 +396,7 @@ class SplinedPsf(psf.Psf):
         return (slice(parent[0], parent[1]+1),
                 slice(child[0], child[1]+1))
 
-    def frac(self, n):
+    def _frac(self, n):
         """ Return the fractional part of a float. """
 
         return np.modf(n)[0]
@@ -460,6 +411,8 @@ class SplinedPsf(psf.Psf):
             return xx
 
     def _sincshift(self, image, dx, dy):
+        """ UNUSED & UNTESTED from boss -- for comparison only, etc. etc. """
+        
         sincrad = 10
         s = np.arange(-sincrad, sincrad+1)
         sincx = self._sincfunc(s, dx)
@@ -477,8 +430,7 @@ class SplinedPsf(psf.Psf):
 
     def loadFromFile(self, spotType, filename=None):
         if not filename:
-            filename = os.path.join(SplinedPsf.psfFileDir(self.band, spotType),
-                                    'psfSplines.pck')
+            filename = SplinedPsf.psfSpotFile(self.detector.band, spotType)
 
         with open(filename, 'r') as pfile:
             d = pickle.load(pfile)
@@ -489,7 +441,7 @@ class SplinedPsf(psf.Psf):
         self.coeffs = d['coeffs']
         self.spotScale = d['spotScale']
 
-        # Make fiber -> (x,y) and wave->(x,y) splines. We have to do this here, because
+        # Make fiber -> (xc,yc) and wave->(xc,yc) splines. We have to do this here, because
         # the detector geometry matters.
         
         # Shift offsets to origin.
@@ -503,10 +455,53 @@ class SplinedPsf(psf.Psf):
         xcCoeffs = spInterp.RectBivariateSpline(xx, yy, xc.reshape(len(xx), len(yy)))
         ycCoeffs = spInterp.RectBivariateSpline(xx, yy, yc.reshape(len(xx), len(yy)))
 
-        print "NOTE:  spotScale=%0.5f" % (self.spotScale)
-                
-        print "WARNING: swapping x and y centers, spectra actually disperse along columns"
+        print "WARNING, swapping x and y centers: spectra disperse along columns, but the optomechanical view is that dispersion is along X"
         self.xc = d['yc']
         self.yc = d['xc']
         self.xcCoeffs = ycCoeffs
         self.ycCoeffs = xcCoeffs
+
+def constructSplinesFromSpots(band, spotType='zemax'):
+    """ NASTY function to construct a pickle file holding the per-pixel spot splines. These should probably be 
+    in the FITS file, but I haven't worked out how to do that (.knots -> binary table?)
+    """
+    
+    psfFilepath = SplinedPsf.psfSpotFile(band, spotType)
+
+    spotsFilepath = os.path.join(SplinedPsf.psfFileDir(band, spotType),
+                                 'spots.fits')
+    
+    sf = pyfits.open(spotsFilepath, mode='readonly')
+    s = sf[1].data
+    
+    outputDict = {}
+    outputDict['wave'] = s['wavelength']
+    outputDict['fiber'] = s['fiberIdx']
+    outputDict['spotScale'] = sf[0].header['pixscale']
+    outputDict['xc'] = s['spot_xc']
+    outputDict['yc'] = s['spot_yc']
+
+    spots = s['spot'].astype('float64')
+    outputDict['spots'] = spots
+
+    imshape = spots.shape[1:]
+
+    # Make a spline for each pixel. The spots are centered on the output grid,
+    # and we track the xc,yc offset separately.
+
+    # XXX - This fiber/wave indexing scheme is not safe in general
+    xx = np.unique(outputDict['fiber'])
+    yy = np.unique(outputDict['wave'])
+
+    coeffs = np.zeros(imshape, dtype='O')
+    for ix in range(imshape[0]):
+        print "splining col %d" % (ix)
+        for iy in range(imshape[1]):
+            coeffs[iy, ix] = spInterp.RectBivariateSpline(xx, yy,
+                                                          spots[:, iy, ix].reshape(len(xx), len(yy)))
+    outputDict['coeffs'] = coeffs
+    
+    with open(psfFilepath, 'w+') as pfile:
+        print "pickling...."
+        pickle.dump(outputDict, pfile, protocol=-1)
+

@@ -1,4 +1,4 @@
-setupOptional(astroUtils)
+setupRequired(pfs_tools)
 setupOptional(pfs_instdata)
 
 pathPrepend(PYTHONPATH, ${PRODUCT_DIR}/python)

@@ -1,3 +1,6 @@
+"""
+Hide whether we are using python or ipython
+"""
 
 try:
     set_trace

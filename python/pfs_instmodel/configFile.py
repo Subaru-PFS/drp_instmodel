@@ -1,5 +1,5 @@
 
-def readfile(self, configFile, outDict=None):
+def readfile(configFile, outDict=None):
     """ execute a python file, and return the final environment. """
     
     gdict = {}
