@@ -8,19 +8,33 @@ import pfs_tools.par
 import pfs_instmodel.simImage as simImage
 import pfs_instmodel.sky as pfsSky
 
-def displayImage(img):
-    import ds9
-    disp = ds9.ds9()
-    disp.set_np2arr(img)
-    
-def loadField(fieldName):
-    """ load the given field definition. Currently just looks in a static file (examples/sampleField.py).  """
-    
-    # Decide on where to save field definitions, and add the usual path crap
-    fields = pfs_tools.par.loadParFile(os.path.join(os.environ["PFS_INSTMODEL_DIR"], "examples", "sampleField.py"))
-    return fields[fieldName]
-    
 def makeSim(band, fieldName=None, fibers=None, everyNthPsf=50):
+    """ Construct a simulated image. 
+
+    Parameters
+    ----------
+    band : str
+       The name of the wavelength band (for PFS: IR, Red, Blue)
+    fieldName : str, optional
+       The name of the field definition with the fiber locations and targeting.
+    fibers : list of integers, optional
+       [REMOVE now that we have field defs. ]
+    everyNthPsf : int, optional
+       How many (sub-)pixels we can use the same PSF on.
+
+    Returns
+    -------
+
+    sim : a SimImage object. Notable member is .image
+
+    Notes
+    -----
+
+    We don't know how to generate anything other than sky spectra yet.
+
+    The fieldName is now just an entry in a fixed file in $PFS_INSTMODEL/examples
+    """
+    
     sim = simImage.SimImage(band)
     sky = pfsSky.StaticSkyModel(band) # plus field info....
 
@@ -50,6 +64,18 @@ def makeSim(band, fieldName=None, fibers=None, everyNthPsf=50):
                   everyNthPsf=everyNthPsf)
     return sim
 
+def displayImage(img):
+    import ds9
+    disp = ds9.ds9()
+    disp.set_np2arr(img)
+    
+def loadField(fieldName):
+    """ load the given field definition. Currently just looks in a static file (examples/sampleField.py).  """
+    
+    # Decide on where to save field definitions, and add the usual path crap
+    fields = pfs_tools.par.loadParFile(os.path.join(os.environ["PFS_INSTMODEL_DIR"], "examples", "sampleField.py"))
+    return fields[fieldName]
+    
 def expandRangeArg(arg):
     """ Generate an array from a range expression. No error checking. 
 

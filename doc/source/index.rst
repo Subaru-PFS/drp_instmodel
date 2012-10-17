@@ -6,6 +6,12 @@
 Welcome to PFS Instrument Model's documentation.
 ================================================
 
+Example:
+
+.. automodule:: examples.simImage
+   :members:
+   :undoc-members:
+
 Contents:
 
 .. toctree::
