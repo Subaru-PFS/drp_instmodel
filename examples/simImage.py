@@ -13,7 +13,7 @@ def displayImage(img):
     disp = ds9.ds9()
     disp.set_np2arr(img)
     
-def makeSim(band, fibers=None, everyNthPsf=1):
+def makeSim(band, field=None, fibers=None, everyNthPsf=1):
     sim = simImage.SimImage(band)
     sky = pfsSky.StaticSkyModel(band)
 
@@ -55,11 +55,27 @@ def expandRangeArg(arg):
 def getField(fieldName):
     pass
 
-def main(args):
+def saveSim(sim, outputFile):
+    import pyfits
+
+    pyfits.writeto(outputFile, sim.image, checksum=True)
+    
+def main(args=None):
     if isinstance(args, basestring):
         args = args.split()
+
+    helpDoc = \
+"""
+Examples
+--------
+
+Generate an image of two 3-fiber groups of sky specta:
+   -b IR -o irsim.fits -f 0-2,290-292
+"""
         
-    parser = argparse.ArgumentParser(description="generate a simulated image")
+    parser = argparse.ArgumentParser(description="generate a simulated image", 
+                                     formatter_class=argparse.RawDescriptionHelpFormatter,
+                                     epilog=helpDoc)
     parser.add_argument('-b', '--band', action='store', required=True)
     parser.add_argument('-o', '--output', action='store', default=None)
     parser.add_argument('-f', '--fibers', action='store', default=None)
@@ -67,17 +83,17 @@ def main(args):
     parser.add_argument('--everyNth', action='store', type=int, default=50)
     parser.add_argument('-d', '--ds9', action='store_true', default=False)
 
-    res = parser.parse_args(args)
+    args = parser.parse_args(args)
 
-    fibers = expandRangeArg(res.fibers)
+    fibers = expandRangeArg(args.fibers)
 
-    sim = makeSim(res.band, fibers=fibers, everyNthPsf=res.everyNth)
-    if res.ds9:
+    sim = makeSim(args.band, field=args.field, 
+                  fibers=fibers, everyNthPsf=args.everyNth)
+    if args.output:
+        saveSim(sim, args.output)
+    if args.ds9:
         displayImage(sim.image)
     return sim
 
 if __name__ == "__main__":
-    main(sys.argv)
-    
-
-
+    main()
