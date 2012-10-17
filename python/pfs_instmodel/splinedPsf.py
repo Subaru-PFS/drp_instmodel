@@ -15,10 +15,19 @@ import scipy.interpolate as spInterp
 import psf
 
 class SplinedPsf(psf.Psf):
-    def __init__(self, band, detector, spotType='zemax'):
-        """ Read in our persisted form. Optionally that from the zemax spots. """
+    def __init__(self, detector, spotType='jeg'):
+        """ Create or read in our persisted form. By default use JEG's models. 
 
-        psf.Psf.__init__(self, band, detector)
+        Parameters
+        ----------
+
+        detector : a Detector object
+           carries the properties of the detector (and camera).
+        spot_type : str, optional
+           Whether to load 'jeg' or 'zemax' spot images.
+        """
+
+        psf.Psf.__init__(self, detector)
         
         # The locations at which we have PSFs
         self.wave = []
@@ -46,6 +55,11 @@ class SplinedPsf(psf.Psf):
     def psfFileDir(band, spotType):
         dataRoot = os.environ.get('PFS_INSTDATA_DIR', '.')
         return os.path.join(dataRoot, 'data', 'spots', spotType, band)
+        
+    @staticmethod
+    def psfSpotFile(band, spotType):
+        return os.path.join(SplinedPsf.psfFileDir(band, spotType),
+                            'psfSplines.pck')
         
     @property 
     def imshape(self):
@@ -292,7 +306,7 @@ class SplinedPsf(psf.Psf):
             fracx = xPixOffset - intx
 
             if i % 1000 in range(2):
-                print("%5d %6.1f yc: %3.4f %3.10f %d %d %3.10f " % (i, specWave, yc, yPixOffset, lasty, inty, fracy))
+                print("%5d %6.1f xc: %3.4f yc: %3.4f %3.10f %d %d %3.10f " % (i, specWave, xc, yc, yPixOffset, lasty, inty, fracy))
             lasty = inty
             
             # Assume we are well enough oversampled to ignore fractional pixel shifts.
@@ -417,8 +431,7 @@ class SplinedPsf(psf.Psf):
 
     def loadFromFile(self, spotType, filename=None):
         if not filename:
-            filename = os.path.join(SplinedPsf.psfFileDir(self.band, spotType),
-                                    'psfSplines.pck')
+            filename = SplinedPsf.psfSpotFile(self.detector.band, spotType)
 
         with open(filename, 'r') as pfile:
             d = pickle.load(pfile)
@@ -454,8 +467,7 @@ def constructSplinesFromSpots(band, spotType='zemax'):
     in the FITS file, but I haven't worked out how to do that (.knots -> binary table?)
     """
     
-    psfFilepath = os.path.join(SplinedPsf.psfFileDir(band, spotType),
-                               'psfSplines.pck')
+    psfFilepath = SplinedPsf.psfSpotFile(band, spotType)
 
     spotsFilepath = os.path.join(SplinedPsf.psfFileDir(band, spotType),
                                  'spots.fits')
