@@ -1,3 +1,4 @@
+doc/build
 *.fits
 *.gz
 *.fz
