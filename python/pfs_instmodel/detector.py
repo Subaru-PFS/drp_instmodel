@@ -2,7 +2,7 @@ import os
 import numpy
 import scipy
 
-import configFile
+import pfs_tools.configFile
 import exposure
 
 class Detector(object):
@@ -24,7 +24,7 @@ class Detector(object):
         filepath = os.path.join(dataRoot, 'data', 'detectors', '%s.py' % (detectorName))
         
         self.band = detectorName
-        self.config = configFile.readfile(filepath)
+        self.config = pfs_tools.configFile.readfile(filepath)
 
     def makeEmptyExposure(self):
         return exposure.Exposure(self, dtype='u2')
