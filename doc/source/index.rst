@@ -9,21 +9,12 @@ Welcome to PFS Instrument Model's documentation.
 Example:
 
 .. automodule:: pfs_instmodel.examples.simImage
-   :members:
+   :members: makeSim, main
 
 Contents:
 
 .. toctree::
    :maxdepth: 2
-
-.. automodule:: pfs_instmodel.sky
-   :members:
-
-.. automodule:: pfs_instmodel.detector
-   :members:
-
-.. automodule:: pfs_instmodel.psf
-   :members:
 
 Indices and tables
 ==================

@@ -13,6 +13,7 @@ def makeSim(band, fieldName=None, fibers=None, everyNthPsf=50):
 
     Parameters
     ----------
+
     band : str
        The name of the wavelength band (for PFS: IR, Red, Blue)
     fieldName : str, optional
@@ -32,7 +33,8 @@ def makeSim(band, fieldName=None, fibers=None, everyNthPsf=50):
 
     We don't know how to generate anything other than sky spectra yet.
 
-    The fieldName is now just an entry in a fixed file in $PFS_INSTMODEL/examples
+    The fieldName is currently just an entry in the fixed file 
+    :download:`examples/sampleField.py <../../examples/sampleField.py>`
     """
     
     sim = simImage.SimImage(band)
@@ -70,7 +72,11 @@ def displayImage(img):
     disp.set_np2arr(img)
     
 def loadField(fieldName):
-    """ load the given field definition. Currently just looks in a static file (examples/sampleField.py).  """
+    """ Load the given field definition. 
+
+    Currently just looks in a static file (examples/sampleField.py).  
+
+    """
     
     # Decide on where to save field definitions, and add the usual path crap
     fields = pfs_tools.par.loadParFile(os.path.join(os.environ["PFS_INSTMODEL_DIR"], "examples", "sampleField.py"))
@@ -105,18 +111,30 @@ def saveSim(sim, outputFile):
     pyfits.writeto(outputFile, sim.image, checksum=True, clobber=True)
     
 def main(args=None):
+    """ called by __main__, or pass in a string as if it were a command line. 
+
+    Get arg help from the command line.
+    
+    Returns
+    -------
+
+    sim : the SimInage object
+    
+    """
     if isinstance(args, basestring):
         args = args.split()
 
     helpDoc = \
-"""
+""" 
 Examples
 --------
 
-Generate an image of two 3-fiber groups of sky specta:
-   -b IR -o irsim.fits -f 0-2,290-292
+Generate an image file of two 3-fiber groups of sky spectra,
+currently as defined in :download:`examples/sampleField/py <../../examples/sampleField.py>`
+    
+   --band=IR --output=irsim.fits --field=field1
 """
-        
+    
     parser = argparse.ArgumentParser(description="generate a simulated image", 
                                      formatter_class=argparse.RawDescriptionHelpFormatter,
                                      epilog=helpDoc)
