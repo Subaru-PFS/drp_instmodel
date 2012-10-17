@@ -1,10 +1,10 @@
 
-
 import argparse
 import numpy
+import os
 import re
-import sys
 
+import pfs_tools.par
 import pfs_instmodel.simImage as simImage
 import pfs_instmodel.sky as pfsSky
 
@@ -13,20 +13,41 @@ def displayImage(img):
     disp = ds9.ds9()
     disp.set_np2arr(img)
     
-def makeSim(band, field=None, fibers=None, everyNthPsf=1):
+def loadField(fieldName):
+    """ load the given field definition. Currently just looks in a static file (examples/sampleField.py).  """
+    
+    # Decide on where to save field definitions, and add the usual path crap
+    fields = pfs_tools.par.loadParFile(os.path.join(os.environ["PFS_INSTMODEL_DIR"], "examples", "sampleField.py"))
+    return fields[fieldName]
+    
+def makeSim(band, fieldName=None, fibers=None, everyNthPsf=50):
     sim = simImage.SimImage(band)
-    sky = pfsSky.StaticSkyModel(band)
+    sky = pfsSky.StaticSkyModel(band) # plus field info....
 
-    if not fibers:
-        # Interesting: At this point I don't know how many fibers there are.
-        fibers = numpy.concatenate([numpy.arange(3),
-                                    numpy.arange(3) + 100,
-                                    300 - numpy.arange(3)])
-    spectra = [sky]*len(fibers)
+    if fieldName:
+        field = loadField(fieldName)
+
+        fibers = []
+        spectra = []
+        for f in field:
+            if f.type == 'UNPLUGGED':
+                continue
+            if f.type == 'SKY':
+                fibers.append(f.fiberId)
+                spectra.append(sky)
+            else:
+                raise RuntimeError("sorry, we don't do %s spectra yet" % f.type)
+    else:
+        if not fibers:
+            # Interesting: At this point I don't know how many fibers there are.
+            fibers = numpy.concatenate([numpy.arange(3),
+                                        numpy.arange(3) + 100,
+                                        300 - numpy.arange(3)])
+        spectra = [sky]*len(fibers)
         
-    simage = sim.addFibers(fibers,
-                           spectra=spectra,
-                           everyNthPsf=everyNthPsf)
+    sim.addFibers(fibers,
+                  spectra=spectra,
+                  everyNthPsf=everyNthPsf)
     return sim
 
 def expandRangeArg(arg):
@@ -52,13 +73,10 @@ def expandRangeArg(arg):
         # print "after %s, r=%s" % (r, fullRange)
     return fullRange
 
-def getField(fieldName):
-    pass
-
 def saveSim(sim, outputFile):
     import pyfits
 
-    pyfits.writeto(outputFile, sim.image, checksum=True)
+    pyfits.writeto(outputFile, sim.image, checksum=True, clobber=True)
     
 def main(args=None):
     if isinstance(args, basestring):
@@ -87,7 +105,7 @@ Generate an image of two 3-fiber groups of sky specta:
 
     fibers = expandRangeArg(args.fibers)
 
-    sim = makeSim(args.band, field=args.field, 
+    sim = makeSim(args.band, fieldName=args.field, 
                   fibers=fibers, everyNthPsf=args.everyNth)
     if args.output:
         saveSim(sim, args.output)

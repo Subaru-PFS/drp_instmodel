@@ -1,12 +1,4 @@
-import pfs_tools.par
-
-PROBETYPE = frozenset(('SKY', 'DUMMYFLAT', 'UNPLUGGED',))
-PROBE = pfs_tools.par.makeParClass(('fiberId', int),
-                         ('ra', float),
-                         ('dec', float),
-                         ('x', float),
-                         ('y', float),
-                         ('type', PROBETYPE))
+from pfs_instmodel.schema.probes import PROBE
     
 field0 = (
     PROBE(0, 0.0, 1.0, 100.0, 200.0, 'SKY'),
@@ -16,4 +8,6 @@ field0 = (
     PROBE(4, 0.0, 1.0, 100.0, 200.0, 'SKY'),
 )
 
-field1 = [PROBE(i,0.0,1.0,100.0,200.0,'SKY') for i in range(300)]
+field1 = ([PROBE(i,0.0,1.0,100.0,200.0,'SKY') for i in range(0,2)] +
+          [PROBE(i,0.0,1.0,100.0,200.0,'UNPLUGGED') for i in range(2,298)] +
+          [PROBE(i,0.0,1.0,100.0,200.0,'SKY') for i in range(299,301)])
