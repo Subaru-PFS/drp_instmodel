@@ -44,7 +44,13 @@ class SimImage(object):
         Notes
         -----
         The fiber images are added to our internal image, so multiple calls should just add flux.
+
+        The spectra arg is currently something which has a Spectrum signature (flux =  __call__(wave)),
+        but should hoisted up to have the full probe schema.
         
+        I believe that sky spectra could be added entirely differently from object spectra. So for
+        the following 
+          * 
         """
         if self.image == None:
             self.image = self.detector.simBias().image
