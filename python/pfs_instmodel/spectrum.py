@@ -1,7 +1,7 @@
 import numpy
 import scipy
 
-import pfs_tools.blackbody
+import pfs_tools
 
 class Spectrum(object):
 
@@ -68,6 +68,6 @@ class FlatSpectrum(Spectrum):
         We require wavelengths to evaluate at, and not just a range or a "full spectrum".
         """
         # Work out the fing scaling, CPL
-        return wave, pfs_tools.blackbody.blackbody(wave, 3800.0) * 1e12
+        return wave, pfs_tools.blackbody(wave, 3800.0) * 1e12
     
 
