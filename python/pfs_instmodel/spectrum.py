@@ -28,29 +28,44 @@ class Spectrum(object):
                                                                           self._flux[w_i], k=3)
         return self._interp
 
-    def flux(self, wave=None, waverange=None):
+    def flux(self, wave=None, waveRange=None):
         """ Return the flux at the given wavelengths, or all the raw values. 
 
-        Returns:
-          wave    - the raw wavelengths if the wave argument was None, else the wave argument
-          flux    - the corresponding flux 
+        Parameters
+        ----------
+        wave : array_like, optional
+           The wavelengths to evaluate the flux at. If not passed in, use all the native 
+           or sampled wavelengths.
+        waveRange : (low, high), optional
+           Clip the above wavelength vector to the samples between or including low & high.
+           
+        Returns
+        -------
+        wave :  the raw wavelengths if the wave argument was None, else the wave argument
+        flux :  the corresponding flux 
         """
 
+        assert waveRange is None or waveRange[0] <= waveRange[1]
+        
         if wave == None:
-            if waverange:
-                w = numpy.where((self._wave >= waverange[0]) & (self._wave <= waverange[1]))
+            # No need to interpolate
+            if waveRange:
+                w = numpy.where((self._wave >= waveRange[0]) & (self._wave <= waveRange[1]))
                 return self._wave[w], self._flux[w]
             else:
                 return self._wave, self._flux
 
-        if waverange:
-            w = numpy.where((wave >= waverange[0]) & (wave <= waverange[1]))
+        if waveRange:
+            w = numpy.where((wave >= waveRange[0]) & (wave <= waveRange[1]))
             wwave = wave[w]
             return wwave, self.interp(wwave)
         else:
             return wave, self.interp(wave)
         
     def __call__(self, wave):
+        """ Shorthand to fetch the fluxes corresponding to one or more wavelengths. This is the 
+        primary method to get fluxes. Subclasses only need to implement .flux(wave) """
+        
         return self.flux(wave)[1]
     
 class FlatSpectrum(Spectrum):
@@ -73,7 +88,11 @@ class FlatSpectrum(Spectrum):
 
 class CombSpectrum(Spectrum):
     def __init__(self, spacing=50, gain=10000.0):
-        """ Create a spectrum which will return a flux of gain at every ~spacing AA, 0 elsewhere. """
+        """ Create a spectrum which will return a flux of gain at every ~spacing AA, 0 elsewhere. 
+
+        Actually, return a comb spectrum with non-zero values at the full range endpoints and at as
+        many points as can be placed between them no closer than the given spacing.
+        """
         self.spacing = spacing
         self.gain = gain
 
