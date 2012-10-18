@@ -123,24 +123,26 @@ def readSpotDir(path, doConvolve=True):
         wavelength = wavelengths[i % nlam]
         xc = positions[i,0]
         yc = positions[i,1]
-        sum = numpy.sum(data[i,:,:])
         if doConvolve:
             spot = convolveWithFiber(data[i,:,:], fiberImage)
         else:
             spot = data[i,:,:]
 
+        # bin from 256x256 1um pixels to 85x85 3um pixels.
+        # Still oversampled by 5.
         spot = spot[:-1,:-1]
         spot = pfs_tools.rebin(spot, 85,85)
+
         # Require total flux to be 1.0
         spot /= spot.sum()
         
         spots.append((fiberIdx, wavelength, xc, yc, spot))
-        print("spot  %d (%d, %0.2f) sum=%f" % (i, fiberIdx, wavelength, sum))
+        print("spot  %d (%d, %0.2f) at (%0.1f %0.1f)" % (i, fiberIdx, wavelength, xc, yc))
         if fiberIdx != 0:
-            symSpots.append((-fiberIdx, wavelength, -xc, yc, spot))
+            symSpots.append((-fiberIdx, wavelength, -xc, yc, spot[:,::-1]))
     symSpots.reverse()
 
-    allSpots = spots    
+    allSpots = symSpots + spots    
     spotw = spots[0][-1].shape[0]
     spotDtype = numpy.dtype([('fiberIdx','i2'),
                              ('wavelength','f4'),
