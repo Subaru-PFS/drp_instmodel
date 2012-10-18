@@ -13,6 +13,14 @@ field1 = ([PROBE(i,0.0,1.0,100.0,200.0,'SKY') for i in range(0,5)] +
           [PROBE(i,0.0,1.0,100.0,200.0,'SIMCOMB') for i in range(50,55)] +
           [PROBE(i,0.0,1.0,100.0,200.0,'UNPLUGGED') for i in range(55,100)] +
           [PROBE(i,0.0,1.0,100.0,200.0,'SIMFLAT') for i in range(100,105)] +
-          [PROBE(i,0.0,1.0,100.0,200.0,'UNPLUGGED') for i in range(105,290)] +
-          [PROBE(i,0.0,1.0,100.0,200.0,'SKY') for i in range(290,301)])
+          [PROBE(i,0.0,1.0,100.0,200.0,'UNPLUGGED') for i in range(105,295)] +
+          [PROBE(i,0.0,1.0,100.0,200.0,'SKY') for i in range(295,301)])
 
+field2 = ([PROBE(i,0.0,1.0,100.0,200.0,'SIMCOMB') for i in range(0,5)])
+
+combField = [PROBE(i,0.0,1.0,100.0,200.0,'SIMCOMB') for i in range(0,301)]
+flatField = [PROBE(i,0.0,1.0,100.0,200.0,'SIMFLAT') for i in range(0,301)]
+skyField = [PROBE(i,0.0,1.0,100.0,200.0,'SKY') for i in range(0,301)]
+
+sparseCombField = [PROBE(i,0.0,1.0,100.0,200.0,('SIMCOMB' if i%10 == 0 else 'UNPLUGGED')) for i in range(0,301)]
+sparseFlatField = [PROBE(i,0.0,1.0,100.0,200.0,('SIMFLAT' if i%10 == 0 else 'UNPLUGGED')) for i in range(0,301)]
