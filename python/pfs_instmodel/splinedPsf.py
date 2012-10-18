@@ -193,22 +193,6 @@ class SplinedPsf(psf.Psf):
                                                                                   len(interpWaves))
         return finalImages, centers, self.traceCenters(fibers, waves)
 
-    def makeComb(self, waves, nth=1, hackScale=1000):
-        """ Return a functor which returns True for every nth item in the initialization list. """
-        class Comb(object):
-            def __init__(self, waves, nth):
-                self.waves = np.asarray(waves)
-
-            def __call__(self, x):
-                return hackScale * (x in self.waves)
-
-            def getNativeValues(self):
-                return np.asarray((self.waves, 
-                                   hackScale * np.ones(len(self.waves))),
-                                   dtype='f4').T
-            
-        return Comb(waves, nth)
-    
     def fiberImage(self, fiber, spectrum, outImg=None, waveRange=None, everyNthPsf=1, returnUnbinned=False):
         """ Return an interpolated image of a fiber """
 
