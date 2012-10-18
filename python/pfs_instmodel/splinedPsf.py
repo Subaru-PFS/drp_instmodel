@@ -438,14 +438,16 @@ class SplinedPsf(psf.Psf):
         xx = np.unique(self.fiber)
         yy = np.unique(self.wave)
 
-        xcCoeffs = spInterp.RectBivariateSpline(xx, yy, xc.reshape(len(xx), len(yy)))
-        ycCoeffs = spInterp.RectBivariateSpline(xx, yy, yc.reshape(len(xx), len(yy)))
-
-        print "WARNING, swapping x and y centers: spectra disperse along columns, but the optomechanical view is that dispersion is along X"
-        self.xc = d['yc']
-        self.yc = d['xc']
-        self.xcCoeffs = ycCoeffs
-        self.ycCoeffs = xcCoeffs
+        self.xcCoeffs = spInterp.RectBivariateSpline(xx, yy, xc.reshape(len(xx), len(yy)))
+        self.ycCoeffs = spInterp.RectBivariateSpline(xx, yy, yc.reshape(len(xx), len(yy)))
+        self.xc = xc
+        self.yc = yc
+        
+        #print "WARNING, swapping x and y centers: spectra disperse along columns, but the optomechanical view is that dispersion is along X"
+        #self.xc = d['yc']
+        #self.yc = d['xc']
+        #self.xcCoeffs = ycCoeffs
+        #self.ycCoeffs = xcCoeffs
 
 def constructSplinesFromSpots(band, spotType='zemax'):
     """ NASTY function to construct a pickle file holding the per-pixel spot splines. These should probably be 
