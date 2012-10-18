@@ -12,7 +12,7 @@ import pyfits
 import splinedPsf
 import pfs_tools
 
-import pydebug
+from pfs_tools import pydebug
 """
 Read the raw PSF spot images from JEG's optical design, and convert
 them to some slightly more efficient intermediate FITS file..
@@ -136,6 +136,9 @@ def readSpotDir(path, doConvolve=True):
         # Require total flux to be 1.0
         spot /= spot.sum()
         
+        # Rotate x-up mechanical view to y-up detector view (dispersing along columns)
+        spot = numpy.swapaxes(spot,0,1)
+        xc, yc = yc, xc
         spots.append((fiberIdx, wavelength, xc, yc, spot))
         print("spot  %d (%d, %0.2f) at (%0.1f %0.1f)" % (i, fiberIdx, wavelength, xc, yc))
         if fiberIdx != 0:
@@ -202,9 +205,5 @@ def main(band):
     data = readSpotDir(spotDir)
     writeSpotFITS(spotDir, data)
 
-    print "splining..."
-    splinedPsf.constructSplinesFromSpots(band, spotType='jeg')
-
-    
 if __name__ == "__main__":
     main(sys.argv[1])

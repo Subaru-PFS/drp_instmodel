@@ -23,7 +23,7 @@ class SplinedPsf(psf.Psf):
 
         detector : a Detector object
            carries the properties of the detector (and camera).
-        spot_type : str, optional
+        spotType : str, optional
            Whether to load 'jeg' or 'zemax' spot images.
         """
 
@@ -408,13 +408,14 @@ class SplinedPsf(psf.Psf):
         newimage = scipy.signal.convolve2d(image, kernel, mode='same')
         return newimage
 
-    def loadFromSpots(self, spotType):
-        """ Generate ourself from a semi-digested pfs_instdata spot file. """
+    def loadFromSpots(self, spotType='jeg'):
+        """ Generate ourself from a semi-digested pfs_instdata spot file. 
+
+        """
         
         print "reading and interpolating PSF spots..."
         
-        spotsFilepath = SplinedPsf.psfSpotsFile(self.detector.band, 
-                                                spotType)
+        spotsFilepath = SplinedPsf.psfSpotsFile(self.detector.band, spotType)
         sf = pyfits.open(spotsFilepath, mode='readonly')
         s = sf[1].data
 
@@ -440,17 +441,11 @@ class SplinedPsf(psf.Psf):
         self.coeffs = coeffs
 
         # Shift offsets to origin.
-        xc = s['spot_xc'] + self.detector.config['ccdSize'][1] * self.detector.config['pixelScale'] / 2
-        yc = s['spot_yc'] + self.detector.config['ccdSize'][0] * self.detector.config['pixelScale'] / 2
+        self.xc = s['spot_xc'] + self.detector.config['ccdSize'][1] * self.detector.config['pixelScale'] / 2
+        self.yc = s['spot_yc'] + self.detector.config['ccdSize'][0] * self.detector.config['pixelScale'] / 2
 
-        xcCoeffs = spInterp.RectBivariateSpline(xx, yy, xc.reshape(len(xx), len(yy)))
-        ycCoeffs = spInterp.RectBivariateSpline(xx, yy, yc.reshape(len(xx), len(yy)))
-        
-        print "WARNING, swapping x and y centers: spectra disperse along columns, but the optomechanical view is that dispersion is along X"
-        self.xc = yc
-        self.yc = xc
-        self.xcCoeffs = ycCoeffs
-        self.ycCoeffs = xcCoeffs
+        self.xcCoeffs = spInterp.RectBivariateSpline(xx, yy, self.xc.reshape(len(xx), len(yy)))
+        self.ycCoeffs = spInterp.RectBivariateSpline(xx, yy, self.yc.reshape(len(xx), len(yy)))
         
     def loadFromFile(self, spotType, filename=None):
         """ Deprecated -- assuming we can load and spline the spots fast enough.  """
@@ -488,7 +483,7 @@ class SplinedPsf(psf.Psf):
         self.ycCoeffs = xcCoeffs
 
 def constructSplinesFromSpots(band, spotType='jeg'):
-    """ NASTY function to construct a pickle file holding the per-pixel spot splines. These should probably be 
+    """ NASTY and deprecated function to construct a pickle file holding the per-pixel spot splines. These should probably be 
     in the FITS file, but I haven't worked out how to do that (.knots -> binary table?)
     """
     
