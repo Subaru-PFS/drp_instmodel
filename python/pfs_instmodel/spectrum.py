@@ -50,7 +50,7 @@ class Spectrum(object):
             return wave, self.interp(wave)
         
     def __call__(self, wave):
-        return self.flux(wave)
+        return self.flux(wave)[1]
     
 class FlatSpectrum(Spectrum):
     def __init__(self, detector):
@@ -67,6 +67,7 @@ class FlatSpectrum(Spectrum):
 
         We require wavelengths to evaluate at, and not just a range or a "full spectrum".
         """
-        return wave, pfs_tools.blackbody(wave)
+        # Work out the fing scaling, CPL
+        return wave, pfs_tools.blackbody.blackbody(wave, 3800.0) * 1e12
     
 

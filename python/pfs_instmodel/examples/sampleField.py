@@ -9,6 +9,8 @@ field0 = (
 )
 
 field1 = ([PROBE(i,0.0,1.0,100.0,200.0,'SKY') for i in range(0,2)] +
-          [PROBE(i,0.0,1.0,100.0,200.0,'UNPLUGGED') for i in range(2,298)] +
-          [PROBE(i,0.0,1.0,100.0,200.0,'SKY') for i in range(299,301)])
+          [PROBE(i,0.0,1.0,100.0,200.0,'UNPLUGGED') for i in range(2,100)] +
+          [PROBE(i,0.0,1.0,100.0,200.0,'SIMFLAT') for i in range(100,102)] +
+          [PROBE(i,0.0,1.0,100.0,200.0,'UNPLUGGED') for i in range(102,298)] +
+          [PROBE(i,0.0,1.0,100.0,200.0,'SKY') for i in range(298,300)])
 
