@@ -69,5 +69,23 @@ class FlatSpectrum(Spectrum):
         """
         # Work out the fing scaling, CPL
         return wave, pfs_tools.blackbody(wave, 3800.0) * 1e12
-    
+
+class CombSpectrum(Spectrum):
+    def __init__(self, spacing=100, gain=1000.0):
+        """ Create a spectrum which will return a flux of gain at every ~spacing AA, 0 elsewhere. """
+        self.spacing = spacing
+
+
+    def flux(self, wave):
+        minWave = wave.min()
+        maxWave = wave.max()
+        nWaves = len(wave)
+
+        dw = maxWave-minWave
+
+        idx = numpy.linspace(0, nWaves-1, dw/self.spacing + 1).astype('i4')
+        flux = wave*0
+        flux[idx] = 1
+        
+        return wave, flux
 

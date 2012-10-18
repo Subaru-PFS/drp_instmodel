@@ -41,6 +41,8 @@ def makeSim(band, fieldName=None, fibers=None, everyNthPsf=50):
     sim = simImage.SimImage(band)
     skyModel = pfsSky.StaticSkyModel(band) # plus field info....
     flatSpectrum = pfsSpectrum.FlatSpectrum(sim.detector)
+    combSpectrum = pfsSpectrum.CombSpectrum(spacing=100)
+    
     if fieldName:
         field = loadField(fieldName)
 
@@ -55,6 +57,9 @@ def makeSim(band, fieldName=None, fibers=None, everyNthPsf=50):
             elif f.type == 'SIMFLAT':
                 fibers.append(f.fiberId)
                 spectra.append(flatSpectrum)
+            elif f.type == 'SIMCOMB':
+                fibers.append(f.fiberId)
+                spectra.append(combSpectrum)
             else:
                 raise RuntimeError("sorry, we don't do %s spectra yet" % f.type)
     else:
