@@ -16,7 +16,9 @@ field1 = ([PROBE(i,0.0,1.0,100.0,200.0,'SKY') for i in range(0,5)] +
           [PROBE(i,0.0,1.0,100.0,200.0,'UNPLUGGED') for i in range(105,295)] +
           [PROBE(i,0.0,1.0,100.0,200.0,'SKY') for i in range(295,301)])
 
-field2 = ([PROBE(i,0.0,1.0,100.0,200.0,'SIMCOMB') for i in range(0,5)])
+quickfield = ([PROBE(i,0.0,1.0,100.0,200.0,'SIMCOMB') for i in range(0,2)] +
+              [PROBE(i,0.0,1.0,100.0,200.0,'UNPLUGGED') for i in range(2,10)] +
+              [PROBE(i,0.0,1.0,100.0,200.0,'SKY') for i in range(10,12)])
 
 combField = [PROBE(i,0.0,1.0,100.0,200.0,'SIMCOMB') for i in range(0,301)]
 flatField = [PROBE(i,0.0,1.0,100.0,200.0,'SIMFLAT') for i in range(0,301)]
