@@ -16,9 +16,14 @@ field1 = ([PROBE(i,0.0,1.0,100.0,200.0,'SKY') for i in range(0,5)] +
           [PROBE(i,0.0,1.0,100.0,200.0,'UNPLUGGED') for i in range(105,295)] +
           [PROBE(i,0.0,1.0,100.0,200.0,'SKY') for i in range(295,301)])
 
+# Minimal sanity test field.
 quickfield = ([PROBE(i,0.0,1.0,100.0,200.0,'SIMCOMB') for i in range(0,2)] +
               [PROBE(i,0.0,1.0,100.0,200.0,'UNPLUGGED') for i in range(2,10)] +
-              [PROBE(i,0.0,1.0,100.0,200.0,'SKY') for i in range(10,12)])
+              [PROBE(i,0.0,1.0,100.0,200.0,'SKY') for i in range(10,12)] +
+              [PROBE(i,0.0,1.0,100.0,200.0,'UNPLUGGED') for i in range(12,20)] +
+              [PROBE(i,0.0,1.0,100.0,200.0,'SIMFLAT') for i in range(20,22)] +
+              [PROBE(i,0.0,1.0,100.0,200.0,'UNPLUGGED') for i in range(22,299)] +
+              [PROBE(i,0.0,1.0,100.0,200.0,'SIMCOMB') for i in range(299,301)])
 
 combField = [PROBE(i,0.0,1.0,100.0,200.0,'SIMCOMB') for i in range(0,301)]
 flatField = [PROBE(i,0.0,1.0,100.0,200.0,'SIMFLAT') for i in range(0,301)]

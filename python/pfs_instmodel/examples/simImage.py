@@ -41,7 +41,7 @@ def makeSim(band, fieldName=None, fibers=None, everyNthPsf=50):
     sim = simImage.SimImage(band)
     skyModel = pfsSky.StaticSkyModel(band) # plus field info....
     flatSpectrum = pfsSpectrum.FlatSpectrum(sim.detector)
-    combSpectrum = pfsSpectrum.CombSpectrum(spacing=100)
+    combSpectrum = pfsSpectrum.CombSpectrum(spacing=50)
     
     if fieldName:
         field = loadField(fieldName)

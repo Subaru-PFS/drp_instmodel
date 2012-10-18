@@ -299,6 +299,9 @@ class SplinedPsf(psf.Psf):
             if i % 1000 in range(2) or i > len(pixelWaves)-2:
                 print("%5d %6.1f (%3.3f, %3.3f) %0.1f" % (i, specWave, xc, yc, specFlux))
             lasty = inty
+
+            if specFlux < 1e-2:
+                continue
             
             # Assume we are well enough oversampled to ignore fractional pixel shifts.
             spot = specFlux * rawPsf
