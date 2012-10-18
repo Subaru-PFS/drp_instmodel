@@ -1,6 +1,8 @@
 import numpy
 import scipy
 
+import pfs_tools.blackbody
+
 class Spectrum(object):
 
     def __init__(self, wave, flux):
@@ -25,7 +27,7 @@ class Spectrum(object):
                                                                           self._flux[w_i], k=3)
         return self._interp
 
-    def flux(self, wave=None):
+    def flux(self, wave=None, waverange=None):
         """ Return the flux at the given wavelengths, or all the raw values. 
 
         Returns:
@@ -34,7 +36,37 @@ class Spectrum(object):
         """
 
         if wave == None:
-            wave = self._wave
+            if waverange:
+                w = numpy.where((self._wave >= waverange[0]) & (self._wave <= waverange[1]))
+                return self._wave[w], self._flux[w]
+            else:
+                return self._wave, self._flux
 
-        return wave, self.interp(wave)
+        if waverange:
+            w = numpy.where((wave >= waverange[0]) & (wave <= waverange[1]))
+            wwave = wave[w]
+            return wwave, self.interp(wwave)
+        else:
+            return wave, self.interp(wave)
         
+    def __call__(self, wave):
+        return self.flux(wave)
+    
+class FlatSpectrum(Spectrum):
+    def __init__(self, detector):
+        self.detector = detector
+
+    def flux(self, wave):
+        """ return a quartz lamp spectrum, as seen by our detector. 
+
+        Notes
+        -----
+
+        We need to apply the instrument response, but that is not available for the new
+        optics design. So we just return the full blackbody.
+
+        We require wavelengths to evaluate at, and not just a range or a "full spectrum".
+        """
+        return wave, pfs_tools.blackbody(wave)
+    
+

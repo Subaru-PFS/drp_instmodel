@@ -7,6 +7,7 @@ import re
 import pfs_tools.par
 import pfs_instmodel.simImage as simImage
 import pfs_instmodel.sky as pfsSky
+import pfs_instmodel.spectrum as pfsSpectrum
 
 def makeSim(band, fieldName=None, fibers=None, everyNthPsf=50):
     """ Construct a simulated image. 
@@ -38,8 +39,8 @@ def makeSim(band, fieldName=None, fibers=None, everyNthPsf=50):
     """
     
     sim = simImage.SimImage(band)
-    sky = pfsSky.StaticSkyModel(band) # plus field info....
-
+    skyModel = pfsSky.StaticSkyModel(band) # plus field info....
+    flatSpectrum = pfsSpectrum.FlatSpectrum(sim.detector)
     if fieldName:
         field = loadField(fieldName)
 
@@ -50,7 +51,10 @@ def makeSim(band, fieldName=None, fibers=None, everyNthPsf=50):
                 continue
             if f.type == 'SKY':
                 fibers.append(f.fiberId)
-                spectra.append(sky)
+                spectra.append(skyModel.getSkyAt(ra=f.ra, dec=f.dec))
+            elif f.type == 'SIMFLAT':
+                fibers.append(f.fiberId)
+                spectra.append(flatSpectrum)
             else:
                 raise RuntimeError("sorry, we don't do %s spectra yet" % f.type)
     else:
@@ -59,7 +63,7 @@ def makeSim(band, fieldName=None, fibers=None, everyNthPsf=50):
             fibers = numpy.concatenate([numpy.arange(3),
                                         numpy.arange(3) + 100,
                                         300 - numpy.arange(3)])
-        spectra = [sky]*len(fibers)
+        spectra = [skyModel.getSkyAt() for f in fibers]
         
     sim.addFibers(fibers,
                   spectra=spectra,

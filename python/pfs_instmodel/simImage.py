@@ -23,15 +23,15 @@ class SimImage(object):
         self.psf = psf if psf else pfsPsf.SplinedPsf(self.detector)
         self.image = None
         
-    def addFibers(self, fibers, spectra=None, waveRange=None, everyNthPsf=1):
+    def addFibers(self, fibers, spectra, waveRange=None, everyNthPsf=1):
         """ Add images of the given fibers. 
 
         Parameters
         ----------
         fibers : array_like
             the fiber IDs to add images of
-        spectra : array_like, optional
-            the spectra for the given fibers. If not specified, just uses the sky.
+        spectra : array_like
+            the spectra for the given fibers.
         waveRange : (minWave, maxWave), optional
             limit the spectra to the given inclusive wavelength range.
         everyNthPsf : int, optional
@@ -49,8 +49,6 @@ class SimImage(object):
         if self.image == None:
             self.image = self.detector.simBias().image
 
-        if spectra == None:
-            spectra = [self.sky] * len(fibers)
         for i, fiber in enumerate(fibers):
             self.psf.fiberImage(fiber, spectra[i], outImg=self.image,
                                 waveRange=waveRange, everyNthPsf=everyNthPsf)

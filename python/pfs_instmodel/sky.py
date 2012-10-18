@@ -4,8 +4,6 @@ import os
 import numpy
 import scipy.interpolate
 
-import pydebug
-
 class SkyModel(object):
     """ Encapsulate a generator for sky spectra. We specify the model and the individual multiplicative and additive terms.
 
@@ -113,7 +111,7 @@ class StaticSkyModel(SkyModel):
     
     def getSkyAt(self, **argv):
         """ Return a spline for the sky at the given conditions.
-
-        Just for giggles, scale
         """
         return self.skySpline
+
+    

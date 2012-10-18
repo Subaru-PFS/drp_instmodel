@@ -127,7 +127,7 @@ class SplinedPsf(psf.Psf):
                 allWaves0 = allWaves
                 
             waveFunc = spInterp.interp1d(allWaveRows0, allWaves0, 'linear', bounds_error=False)
-            fiberWaves = waveFunc(rows)
+            fiberWaves = waveFunc(rows[1:])
             waves.append(fiberWaves)
 
         return rows, waves
@@ -209,11 +209,12 @@ class SplinedPsf(psf.Psf):
             
         return Comb(waves, nth)
     
-    def fiberImage(self, fiber, spectrum=None, outImg=None, waveRange=None, everyNthPsf=1, returnUnbinned=False):
+    def fiberImage(self, fiber, spectrum, outImg=None, waveRange=None, everyNthPsf=1, returnUnbinned=False):
         """ Return an interpolated image of a fiber """
 
         # Evaluate at highest resolution
         pixelScale = self.spotScale
+        everyNthPsf *= self.detector.config['pixelScale'] / self.spotScale
         
         if waveRange == None:
             waveRange = self.wave.min(), self.wave.max()
@@ -228,24 +229,14 @@ class SplinedPsf(psf.Psf):
         if minRow > maxRow:
             minRow, maxRow = maxRow, minRow
 
-        # With no input, use a comb spectrum
-        if spectrum == None:
-            spectrum = self.makeComb(np.linspace(waveRange[0], waveRange[1], (waveRange[1]-waveRange[0])/50))
-            allSpecValues = spectrum.getNativeValues()
-        elif spectrum == 1:
-            spectrum = self.makeComb(np.unique(self.wave))
-            allSpecValues = spectrum.getNativeValues()
-        else:
-            allSpecValues = spectrum.getNativeValues(waveRange=waveRange)
-        allSpecWaves = allSpecValues[:,0]
-        
         # Get the wavelengths for the fiber pixels.
         allPixelRows, allPixelWaves = self.wavesForRows([fiber], waveRange=waveRange, 
                                                         pixelScale=pixelScale)
-        allPixelWaves = allPixelWaves[0]
+        pixelWaves = allPixelWaves[0]
+        pixelFlux = spectrum(pixelWaves)
         
         # Get the PSFs and their locations on the oversampled pixels.
-        fiberPsfs, psfIds, centers = self.psfsAt([fiber], allSpecWaves, everyNthPsf=everyNthPsf)
+        fiberPsfs, psfIds, centers = self.psfsAt([fiber], pixelWaves, everyNthPsf=everyNthPsf)
         xCenters, yCenters = [c[0] for c in centers]
         
         psfToSpotRatio = self.detector.config['pixelScale'] / pixelScale
@@ -277,12 +268,11 @@ class SplinedPsf(psf.Psf):
             outExp = self.detector.simBias()
             outImg = outExp.image
 
-
         # construct the oversampled fiber image
         lasty = 0
-        for i, specValue in enumerate(allSpecValues):
-            specWave = specValue[0]
-            specFlux = specValue[1]
+        for i in range(len(pixelWaves)):
+            specWave = pixelWaves[i]
+            specFlux = pixelFlux[i]
             
             rawPsf = fiberPsfs[i]
 
@@ -302,7 +292,6 @@ class SplinedPsf(psf.Psf):
             fracy = yPixOffset - inty
 
             intx = round(xPixOffset)
-            fracx = xPixOffset - intx
 
             if i % 1000 in range(2):
                 print("%5d %6.1f xc: %3.4f yc: %3.4f %3.10f %d %d %3.10f " % (i, specWave, xc, yc, yPixOffset, lasty, inty, fracy))
