@@ -214,7 +214,7 @@ class SplinedPsf(psf.Psf):
 
         # Evaluate at highest resolution
         pixelScale = self.spotScale
-        everyNthPsf *= self.detector.config['pixelScale'] / self.spotScale
+        everyNthPsf *= int(self.detector.config['pixelScale'] / self.spotScale)
         
         if waveRange == None:
             waveRange = self.wave.min(), self.wave.max()
@@ -294,20 +294,17 @@ class SplinedPsf(psf.Psf):
             intx = round(xPixOffset)
 
             if i % 1000 in range(2):
-                print("%5d %6.1f xc: %3.4f yc: %3.4f %3.10f %d %d %3.10f " % (i, specWave, xc, yc, yPixOffset, lasty, inty, fracy))
+                print("%5d %6.1f xc: %3.4f yc: %3.4f %3.10f %d %d %3.10f %0.1f" % (i, specWave, xc, yc, yPixOffset, lasty, inty, fracy, specFlux))
             lasty = inty
             
             # Assume we are well enough oversampled to ignore fractional pixel shifts.
             spot = specFlux * rawPsf
-            # XXXX Hack to bring flux below saturation
-            spot /= 4
             
             self.placeSubimage(fiberImage, spot, intx, inty)
                         
             # bin psf to ccd pixels, shift by fractional pixel only.
             #psf = self.scalePsf(rawPsf, -fracx, -fracy, doDetails=doDetails)
             #self.placeSubimage(outImg, spot, intx, inty)
-
 
         # transfer flux from oversampled fiber image to final resolution output image
         resampledFiber = self.addOversampledImage(fiberImage, outImg, outImgOffset, outImgSpotPixelScale)
@@ -330,10 +327,9 @@ class SplinedPsf(psf.Psf):
         
         shape = a.shape
         lenShape = len(shape)
-        factor = np.asarray(shape)/np.asarray(args)
         evList = ['a.reshape('] + \
                  ['args[%d],factor[%d],'%(i,i) for i in range(lenShape)] + \
-                 [')'] + ['.mean(%d)'%(i+1) for i in range(lenShape)]
+                 [')'] + ['.sum(%d)'%(i+1) for i in range(lenShape)]
 
         return eval(''.join(evList))
     
@@ -470,7 +466,7 @@ def constructSplinesFromSpots(band, spotType='zemax'):
     outputDict['xc'] = s['spot_xc']
     outputDict['yc'] = s['spot_yc']
 
-    spots = s['spot'].astype('float64')
+    spots = s['spot'].astype('float32')
     outputDict['spots'] = spots
 
     imshape = spots.shape[1:]

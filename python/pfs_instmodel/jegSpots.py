@@ -1,6 +1,7 @@
 import glob
 import os
 import re
+import sys
 
 import numpy
 import scipy.signal
@@ -125,6 +126,9 @@ def readSpotDir(path, doConvolve=True):
             spot = convolveWithFiber(data[i,:,:], fiberImage)
         else:
             spot = data[i,:,:]
+        # Require total flux to be 1.0
+        spot /= spot.sum()
+        
         spots.append((fiberIdx, wavelength, xc, yc, spot))
         print("spot  %d (%d, %0.2f) sum=%f" % (i, fiberIdx, wavelength, sum))
         if fiberIdx != 0:
@@ -139,9 +143,6 @@ def readSpotDir(path, doConvolve=True):
 
     tarr = numpy.array(allSpots, dtype=spotDtype)
 
-    # Normalize
-    tarr['spot'] /= tarr['spot'].max()
-    
     # Now clean up... later steps expect to have wavelengths in order
     sortfrom = numpy.argsort(tarr['wavelength'][:nlam])
     arr = numpy.zeros(shape=tarr.shape, dtype=tarr.dtype)
@@ -195,5 +196,6 @@ def main(band):
     print "splining..."
     splinedPsf.constructSplinesFromSpots(band, spotType='jeg')
 
+    
 if __name__ == "__main__":
     main(sys.argv[1])
