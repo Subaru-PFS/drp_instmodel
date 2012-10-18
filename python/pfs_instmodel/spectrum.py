@@ -2,6 +2,7 @@ import numpy
 import scipy
 
 import pfs_tools
+from pfs_tools import pydebug
 
 class Spectrum(object):
 
@@ -71,10 +72,10 @@ class FlatSpectrum(Spectrum):
         return wave, pfs_tools.blackbody(wave, 3800.0) * 1e12
 
 class CombSpectrum(Spectrum):
-    def __init__(self, spacing=100, gain=1000.0):
+    def __init__(self, spacing=50, gain=10000.0):
         """ Create a spectrum which will return a flux of gain at every ~spacing AA, 0 elsewhere. """
         self.spacing = spacing
-
+        self.gain = gain
 
     def flux(self, wave):
         minWave = wave.min()
@@ -85,7 +86,7 @@ class CombSpectrum(Spectrum):
 
         idx = numpy.linspace(0, nWaves-1, dw/self.spacing + 1).astype('i4')
         flux = wave*0
-        flux[idx] = 1
-        
+        flux[idx] = self.gain
+
         return wave, flux
 
