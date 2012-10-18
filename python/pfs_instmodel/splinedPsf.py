@@ -429,7 +429,7 @@ class SplinedPsf(psf.Psf):
         # Make a spline for each pixel. The spots are centered on the output grid,
         # and we track the xc,yc offset separately.
 
-        # XXX - This fiber/wave indexing scheme is not safe in general
+        # XXX - Check that the input is properly sorted.
         xx = np.unique(self.fiber)
         yy = np.unique(self.wave)
 
