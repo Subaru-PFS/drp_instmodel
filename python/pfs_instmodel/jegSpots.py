@@ -139,10 +139,10 @@ def readSpotDir(path, doConvolve=True):
         spots.append((fiberIdx, wavelength, xc, yc, spot))
         print("spot  %d (%d, %0.2f) at (%0.1f %0.1f)" % (i, fiberIdx, wavelength, xc, yc))
         if fiberIdx != 0:
-            symSpots.append((-fiberIdx, wavelength, -xc, yc, spot[:,::-1]))
+            symSpots.append((-fiberIdx, wavelength, xc, -yc, spot[::-1,:]))
     symSpots.reverse()
 
-    allSpots = symSpots + spots    
+    allSpots = spots    
     spotw = spots[0][-1].shape[0]
     spotDtype = numpy.dtype([('fiberIdx','i2'),
                              ('wavelength','f4'),
