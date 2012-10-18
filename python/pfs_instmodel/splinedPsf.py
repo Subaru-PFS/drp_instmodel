@@ -277,8 +277,8 @@ class SplinedPsf(psf.Psf):
 
             intx = round(xPixOffset)
 
-            if i % 1000 in range(2):
-                print("%5d %6.1f xc: %3.4f yc: %3.4f %0.1f" % (i, specWave, xc, yc, specFlux))
+            if i % 1000 in range(2) or i > len(pixelWaves)-2:
+                print("%5d %6.1f (%3.3f, %3.3f) %0.1f" % (i, specWave, xc, yc, specFlux))
             lasty = inty
             
             # Assume we are well enough oversampled to ignore fractional pixel shifts.
