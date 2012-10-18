@@ -10,6 +10,8 @@ import scipy.ndimage
 import pyfits
 
 import splinedPsf
+import pfs_tools
+
 import pydebug
 """
 Read the raw PSF spot images from JEG's optical design, and convert
@@ -126,6 +128,9 @@ def readSpotDir(path, doConvolve=True):
             spot = convolveWithFiber(data[i,:,:], fiberImage)
         else:
             spot = data[i,:,:]
+
+        spot = spot[:-1,:-1]
+        spot = pfs_tools.rebin(spot, 85,85)
         # Require total flux to be 1.0
         spot /= spot.sum()
         
@@ -136,10 +141,11 @@ def readSpotDir(path, doConvolve=True):
     symSpots.reverse()
 
     allSpots = spots    
+    spotw = spots[0][-1].shape[0]
     spotDtype = numpy.dtype([('fiberIdx','i2'),
                              ('wavelength','f4'),
                              ('spot_xc','f4'), ('spot_yc','f4'),
-                             ('spot', '(256,256)f4')])
+                             ('spot', '(%d,%d)f4' % (spotw,spotw))])
 
     tarr = numpy.array(allSpots, dtype=spotDtype)
 
@@ -155,7 +161,7 @@ def writeSpotFITS(spotDir, data):
 
     phdu = pyfits.PrimaryHDU()
     phdr = phdu.header
-    phdr.update('pixscale', 0.001, 'mm/pixel')
+    phdr.update('pixscale', 0.003, 'mm/pixel')
 
     cols = []
     cols.append(pyfits.Column(name='fiberIdx',
@@ -171,10 +177,11 @@ def writeSpotFITS(spotDir, data):
                               format='D',
                               array=data['spot_yc']))
     spots = data['spot'][:]
-    spots.shape = (len(spots), 256*256)
+    spotw = spots[0].shape[0]
+    spots.shape = (len(spots), spotw*spotw)
     cols.append(pyfits.Column(name='spot',
-                              format='%dE' % (256*256),
-                              dim='(256,256)',
+                              format='%dE' % (spotw*spotw),
+                              dim='(%d,%d)' % (spotw, spotw),
                               array=spots))
     colDefs = pyfits.ColDefs(cols)
 
