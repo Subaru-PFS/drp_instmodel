@@ -327,6 +327,7 @@ class SplinedPsf(psf.Psf):
         
         shape = a.shape
         lenShape = len(shape)
+        factor = np.asarray(shape)/np.asarray(args)
         evList = ['a.reshape('] + \
                  ['args[%d],factor[%d],'%(i,i) for i in range(lenShape)] + \
                  [')'] + ['.sum(%d)'%(i+1) for i in range(lenShape)]
