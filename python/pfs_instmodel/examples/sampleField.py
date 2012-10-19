@@ -1,13 +1,5 @@
 from pfs_instmodel.schema.probes import PROBE
     
-field1 = ([PROBE(i,0.0,1.0,100.0,200.0,'SKY') for i in range(0,5)] +
-          [PROBE(i,0.0,1.0,100.0,200.0,'UNPLUGGED') for i in range(5,50)] +
-          [PROBE(i,0.0,1.0,100.0,200.0,'SIMCOMB') for i in range(50,55)] +
-          [PROBE(i,0.0,1.0,100.0,200.0,'UNPLUGGED') for i in range(55,100)] +
-          [PROBE(i,0.0,1.0,100.0,200.0,'SIMFLAT') for i in range(100,105)] +
-          [PROBE(i,0.0,1.0,100.0,200.0,'UNPLUGGED') for i in range(105,295)] +
-          [PROBE(i,0.0,1.0,100.0,200.0,'SKY') for i in range(295,301)])
-
 # Minimal sanity test field.
 quickfield = ([PROBE(i,0.0,1.0,100.0,200.0,'SIMCOMB') for i in range(-300,-298)] +
               [PROBE(i,0.0,1.0,100.0,200.0,'UNPLUGGED') for i in range(-298,-21)] +
