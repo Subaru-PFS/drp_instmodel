@@ -1,4 +1,4 @@
-import pfs_tools.par
+import pfs_tools.schema
 
 """ Schema definitions for probes. """
 
@@ -13,9 +13,9 @@ PROBETYPE = frozenset(('SKY',
 """ The external structure defining individual probes. We need to add some detail field(s), for
 object types, targeting info, etc. Or, say, spacing for SIMCOMBs.
 """
-PROBE = pfs_tools.par.makeParClass(('fiberId', int),
-                                   ('ra', float),  #: decimal degrees
-                                   ('dec', float), #: decimal degrees
-                                   ('x', float),   #: mm from center on focal plane
-                                   ('y', float),   #: mm from center on focal plane
-                                   ('type', PROBETYPE))
+PROBE = pfs_tools.schema.makeParClass(('fiberId', int),
+                                      ('ra', float),  #: decimal degrees
+                                      ('dec', float), #: decimal degrees
+                                      ('x', float),   #: mm from center on focal plane
+                                      ('y', float),   #: mm from center on focal plane
+                                      ('type', PROBETYPE))
