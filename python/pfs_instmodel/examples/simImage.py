@@ -9,7 +9,7 @@ import pfs_instmodel.simImage as simImage
 import pfs_instmodel.sky as pfsSky
 import pfs_instmodel.spectrum as pfsSpectrum
 
-def makeSim(band, fieldName=None, fibers=None, everyNthPsf=50):
+def makeSim(band, fieldName, fiberFilter=None, everyNthPsf=50):
     """ Construct a simulated image. 
 
     Parameters
@@ -17,10 +17,10 @@ def makeSim(band, fieldName=None, fibers=None, everyNthPsf=50):
 
     band : str
        The name of the wavelength band (for PFS: IR, Red, Blue)
-    fieldName : str, optional
+    fieldName : str
        The name of the field definition with the fiber locations and targeting.
-    fibers : list of integers, optional
-       [REMOVE now that we have field defs. ]
+    fiberFilter : list of integers, optional
+       Only process the given fiber IDs.
     everyNthPsf : int, optional
        How many (sub-)pixels we can use the same PSF on.
 
@@ -43,33 +43,37 @@ def makeSim(band, fieldName=None, fibers=None, everyNthPsf=50):
     flatSpectrum = pfsSpectrum.FlatSpectrum(sim.detector)
     combSpectrum = pfsSpectrum.CombSpectrum(spacing=50)
     
-    if fieldName:
-        field = loadField(fieldName)
+    field = loadField(fieldName)
 
-        fibers = []
-        spectra = []
-        for f in field:
-            if f.type == 'UNPLUGGED':
-                continue
-            if f.type == 'SKY':
-                fibers.append(f.fiberId)
-                spectra.append(skyModel.getSkyAt(ra=f.ra, dec=f.dec))
-            elif f.type == 'SIMFLAT':
-                fibers.append(f.fiberId)
-                spectra.append(flatSpectrum)
-            elif f.type == 'SIMCOMB':
-                fibers.append(f.fiberId)
-                spectra.append(combSpectrum)
-            else:
-                raise RuntimeError("sorry, we don't do %s spectra yet" % f.type)
-    else:
-        if not fibers:
-            # Interesting: At this point I don't know how many fibers there are.
-            fibers = numpy.concatenate([numpy.arange(3),
-                                        numpy.arange(3) + 100,
-                                        300 - numpy.arange(3)])
-        spectra = [skyModel.getSkyAt() for f in fibers]
-        
+    fibers = []
+    spectra = []
+    for f in field:
+        if fiberFilter and f.fiberId not in fiberFilter:
+            continue
+        if f.type == 'UNPLUGGED':
+            continue
+        if f.type == 'SKY':
+            fibers.append(f.fiberId)
+            spectra.append(skyModel.getSkyAt(ra=f.ra, dec=f.dec))
+        elif f.type == 'SIMFLAT':
+            fibers.append(f.fiberId)
+            spectra.append(flatSpectrum)
+        elif f.type == 'SIMCOMB':
+            fibers.append(f.fiberId)
+            spectra.append(combSpectrum)
+        if f.type == 'OBJECT':
+            raise RuntimeError("sorry, we don't do %s spectra yet" % f.type)
+
+            # Per JEG, we expect to insert object spectra differently
+            # from object spectra, so add them in one at a time.
+            fibers.append(f.fiberId)
+            spectra.append(skyModel.getSkyAt(ra=f.ra, dec=f.dec))
+            
+            fibers.append(f.fiberId)
+            spectra.append(fetchSpectrumSomehow(f.object))   # Boom for now.
+        else:
+            raise RuntimeError("sorry, we don't do %s spectra yet" % f.type)
+
     sim.addFibers(fibers,
                   spectra=spectra,
                   everyNthPsf=everyNthPsf)
@@ -148,9 +152,9 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
                                      formatter_class=argparse.RawDescriptionHelpFormatter,
                                      epilog=helpDoc)
     parser.add_argument('-b', '--band', action='store', required=True)
+    parser.add_argument('-F', '--field', action='store', required=True)
     parser.add_argument('-o', '--output', action='store', default=None)
     parser.add_argument('-f', '--fibers', action='store', default=None)
-    parser.add_argument('-F', '--field', action='store', default=None)
     parser.add_argument('--everyNth', action='store', type=int, default=50)
     parser.add_argument('-d', '--ds9', action='store_true', default=False)
 
@@ -159,7 +163,7 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
     fibers = expandRangeArg(args.fibers)
 
     sim = makeSim(args.band, fieldName=args.field, 
-                  fibers=fibers, everyNthPsf=args.everyNth)
+                  fiberFilter=fibers, everyNthPsf=args.everyNth)
     if args.output:
         saveSim(sim, args.output)
     if args.ds9:
