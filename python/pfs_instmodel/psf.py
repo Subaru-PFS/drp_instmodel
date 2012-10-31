@@ -9,11 +9,19 @@ class Psf(object):
         """ Instantiate a single PSF at the given position.
         """
         
-        ims, ctrs =  self.psfsAt([fiber], [wave])
+        ims, ids, ctrs =  self.psfsAt([fiber], [wave])
         return ims[0]
     
     def fiberImages(self, fibers, spectra=None, outImg=None, waveRange=None, everyNthPsf=1):
-        """ Return an image of the """
+        """ Return and/or place an image of the given spectra through the given fibers. 
+
+        Parameters
+        ----------
+        fibers : int[NFIBERS] XXX - should be some useful fiber objects.
+           The IDs of the fibers we want images through. 
+        spectra : Spectrum[NFIBERS]
+           
+        """
 
         if outImg == None:
             outImg = self.detector.simBias().image

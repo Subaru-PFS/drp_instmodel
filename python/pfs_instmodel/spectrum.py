@@ -5,7 +5,17 @@ import pfs_tools
 from pfs_tools import pydebug
 
 class Spectrum(object):
+    """ Track the best information about a spectrum and provide sampling. 
 
+    Note the following use cases:
+
+     * Model spectra
+     * Line lists
+     * Sampled spectra
+
+    For the sampled spectra (
+    """
+    
     def __init__(self, wave, flux):
         
         # Force a copy of the raw data
