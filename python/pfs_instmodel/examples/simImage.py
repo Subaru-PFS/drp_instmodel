@@ -61,7 +61,7 @@ def makeSim(band, fieldName, fiberFilter=None, everyNthPsf=50):
         elif f.type == 'SIMCOMB':
             fibers.append(f.fiberId)
             spectra.append(combSpectrum)
-        if f.type == 'OBJECT':
+        elif f.type == 'OBJECT':
             raise RuntimeError("sorry, we don't do %s spectra yet" % f.type)
 
             # Per JEG, we expect to insert object spectra differently
