@@ -2,6 +2,7 @@ import pyfits
 import numpy
 import scipy.ndimage
 import scipy.signal
+import matplotlib.pyplot as plt
 
 import pfs_tools
 
@@ -76,30 +77,7 @@ def shiftSpot2d(spot, dx, dy, kernels=None, kargs=None):
 
     sspot = scipy.signal.convolve(spot, kernel, mode='same')
     return sspot, kernels
-    
-def poo(arr, dx, dy, binFactor=10, kargs=None):
-    assert dx>=0 and dy>=0
-    
-    # Trim raw image to multiples of binFactor pixels.
-    maxSize = binFactor*(numpy.array(arr.shape,dtype='i4')/binFactor)
-    newSize = (maxSize / binFactor).tolist()
-    arr = arr[:maxSize[0],:maxSize[1]].copy()
 
-    # Get our unshifted, binned, reference image.
-    arr00 = pfs_tools.rebin(arr, *newSize)
-
-    # Put the rest of this in loop....
-    
-    # interpolation-shift the binned reference image
-    arrShifted, kernels = shiftSpot2d(arr00, float(dx)/binFactor, float(dy)/binFactor, kargs=kargs)
-
-    # And pixel-shift then pixel-bin a comparison image
-    arrPlaced = arr * 0
-    arrPlaced[dy:,dx:] = arr[slice(None,-dy if dy else None),
-                             slice(None,-dx if dx else None)]
-    arrPlaced = pfs_tools.rebin(arrPlaced, *newSize)
-    
-    return arr00, arrPlaced, arrShifted, kernels
     
 def lanczosWindow(x, n):
     if n > 0: 
@@ -145,11 +123,96 @@ def sincKernel(offset=0.0, n=3, padding=0, window=lanczos3, doNorm=True):
 def make1dKernel(n=3, offset=0.0, padding=0, doNorm=True):
     """ Construct a centered 1-d lanczos-windowed sinc kernel. """
 
-    x, y = sincKernel(n=n, offset=-offset, padding=padding)
-    w = lanczosWindow(x, n=n)
-    y *= w
+    x, y = sincKernel(n=n, offset=offset, padding=padding)
     
     if doNorm:
         y /= numpy.sum(y)
         
     return x, y
+
+def padArray(arr, padTo):
+    assert arr.shape[0] == arr.shape[1]
+    assert arr.shape[0] < padTo
+
+    print "old size=%d, new=%d" % (arr.shape[0], padTo)
+    newSize = numpy.array([padTo, padTo])
+    offset = (padTo-arr.shape[0])/2
+    parr = numpy.zeros(newSize, dtype=arr.dtype)
+    coreSlice = slice(offset, offset+arr.shape[0])
+    parr[offset:offset+arr.shape[0],
+         offset:offset+arr.shape[1]] = arr
+
+    return parr, coreSlice
+
+def unpadArray(arr, slice):
+    return arr[slice, slice]
+    
+def poo(arr, dx, dy, binFactor=10, padTo=0, kargs=None):
+    assert dx>=0 and dy>=0
+    
+    # Trim raw image to multiples of binFactor pixels.
+    maxSize = binFactor*(numpy.array(arr.shape,dtype='i4')/binFactor)
+    newSize = (maxSize / binFactor).tolist()
+    arr = arr[:maxSize[0],:maxSize[1]].copy()
+
+    # Get our unshifted, binned, reference image.
+    arr00 = pfs_tools.rebin(arr, *newSize)
+    if padTo:
+        arr00unpadded = arr00.copy()
+        arr00, padSlice = padArray(arr00, padTo)
+        
+    # Put the rest of this in loop....
+    
+    # interpolation-shift the binned reference image
+    arrShifted, kernels = shiftSpot2d(arr00, float(dx)/binFactor, float(dy)/binFactor, kargs=kargs)
+
+    # And pixel-shift then pixel-bin a comparison image
+    arrPlaced = arr * 0
+    arrPlaced[dy:,dx:] = arr[slice(None,-dy if dy else None),
+                             slice(None,-dx if dx else None)]
+    arrPlaced = pfs_tools.rebin(arrPlaced, *newSize)
+    if padTo:
+        arrShifted = unpadArray(arrShifted, padSlice)
+        arr00up = unpadArray(arr00, padSlice)
+        assert numpy.all(numpy.equal(arr00unpadded, arr00up))
+    
+    return arr00, arrPlaced.copy(), arrShifted.copy(), kernels
+
+def dispSpot(spotDict, key):
+    bin, pad, shift = key
+    res = spotDict[key]
+    images = res[0]
+    freqs = res[1]
+
+    f = plt.figure()
+    
+def gatherPoo(spot, kargs=None):
+    tries = ([1,0,(0,)],
+             [2,0,(0,1)],
+             [3,0,(0,1,2)],
+             [4,128,(0,1,2)],
+             [4,0,(0,1,2)],
+             [5,128,(0,1,2,3)],
+             [6,128,(0,1,2,3)],
+             [7,128,(0,1,2,3,4)],
+             [8,128,(0,1,2,3,4,5)],
+             [8,0,(0,1,2,3,4,5)],
+             [9,128,(0,1,2,3,4,8)],
+             [10,128,(0,1,2,3,4,5,6,9)],
+             [10,0,(0,1,2,3,4,5,6,9)])
+
+    if not kargs:
+        kargs = dict(n=3, padding=2)
+        
+    all = {}
+    for bin,pad,shifts in tries:
+        for shift in shifts:
+            ret = poo(spot, shift, 0, binFactor=bin, 
+                      padTo=pad,
+                      kargs=kargs)
+            freq = imfreq1d(ret[2])
+            all[(bin, pad, shift)] = ret, freq
+
+    return all, kargs
+        
+            
