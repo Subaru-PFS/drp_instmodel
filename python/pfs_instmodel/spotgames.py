@@ -50,7 +50,7 @@ def distmap(arr, x0=None, y0=None):
 
     return dmap
     
-def shiftSpot(spot, dx, dy, kernels=None, kargs=None):
+def shiftSpot1d(spot, dx, dy, kernels=None, kargs=None):
     """ shift an image using seperable x&y lanczos kernels. """
     
     if not kargs:
@@ -114,10 +114,6 @@ def sincKernel(offset=0.0, padding=0, window=lanczosWindow, n=3, doNorm=True):
     left = offset - n - padding
     right = offset + n + padding
 
-    #print("n,offset=%d,%0.2f %d %0.2f %0.2f" % (n, offset,
-    #                                            cnt,
-    #                                            left, right))
-        
     x = numpy.linspace(left, right, cnt)
     y = numpy.sinc(x)
     
@@ -167,7 +163,7 @@ def applyPixelResponse(arr, pixelSize):
 
     return out
     
-def poo(arr, dx, dy, binFactor=10, padTo=0, applyPixelResp=False, kargs=None):
+def poo(arr, dx, dy, splines=None, binFactor=10, padTo=0, applyPixelResp=False, kargs=None):
     assert dx>=0 and dy>=0
 
     # Trim raw image to multiples of binFactor pixels.
@@ -189,14 +185,21 @@ def poo(arr, dx, dy, binFactor=10, padTo=0, applyPixelResp=False, kargs=None):
     # Put the rest of this in loop....
     
     # interpolation-shift the binned reference image
-    arrShifted, kernels = shiftSpot(arr00, float(dx)/binFactor, float(dy)/binFactor, kargs=kargs)
+    if splines == None:
+        splines = 'shift1d'
+    splineFuncs = dict(shift2d=shiftSpot2d,
+                       shift1d=shiftSpot1d,
+                       shiftSpline=shiftSpotSpline,
+                       spline=shiftSpotSpline)
+    splineFunc = splineFuncs[splines]
+    arrShifted, kernels = splineFunc(arr00, float(dx)/binFactor, float(dy)/binFactor, kargs=kargs)
 
     # And pixel-shift (and optionally apply pixel response) then pixel-bin a comparison image
     arrPlaced = arr * 0
     arrPlaced[dy:,dx:] = arr[slice(None,-dy if dy else None),
                              slice(None,-dx if dx else None)]
     if applyPixelResp:
-        arrPlaced = applyPixelResponse(arrPlaced, 10)
+        arrPlaced = applyPixelResponse(arrPlaced, binFactor)
     arrPlaced = pfs_tools.rebin(arrPlaced, *newSize)
 
     if padTo:
@@ -237,6 +240,7 @@ def gatherPoo(spot, applyPixelResp=False, kargs=None):
         for shift in range(bin):
             print "processing %s with kargs=%s" % ((bin,pad,shift), kargs)
             ret = poo(spot, shift, 0, 
+                      splines=splines,
                       applyPixelResp=applyPixelResp,
                       binFactor=bin, 
                       padTo=pad,
