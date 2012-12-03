@@ -173,7 +173,7 @@ def poo(arr, dx, dy, splines=None, binFactor=10, padTo=0, applyPixelResp=False, 
 
     # Get our unshifted, binned, reference image.
     if applyPixelResp:
-        arrs = applyPixelResponse(arr, 10)
+        arrs = applyPixelResponse(arr, binFactor)
         arr00 = pfs_tools.rebin(arrs, *newSize)
     else:
         arr00 = pfs_tools.rebin(arr, *newSize)
@@ -216,13 +216,56 @@ def dispSpot(spotDict, key):
     freqs = res[1]
 
     f = plt.figure()
+
+def parts(spotDict, key):
+    scale = key[0]**2
+
+    spotShift = spotDict[key][0][2] / scale
+    spotPlace = spotDict[key][0][1] / scale
+    dspot = spotShift - spotPlace
+    dspotNorm = dspot / spotPlace
+    freqSpot = spotDict[key][1][2]
+    return (spotShift,
+            spotPlace,
+            dspot,
+            dspotNorm,
+            freqSpot)
     
-def gatherPoo(spot, applyPixelResp=False, kargs=None):
+def saveForBin(spotDict, bin, filebase):
+    filename = "%s_%d.fits" % (filebase, bin)
+
+    hdus = []
+    hdus.append(pyfits.PrimaryHDU(spotDict[(bin,0,0,0)][1][2].astype('f4')))
+    for s in range(bin):
+        skip0 = False
+        for dir in (0,s):
+            if skip0:
+                continue
+            if s == 0 and dir == 0:
+                skip0 = True
+                
+            sparts = parts(spotDict, (bin, 0, s, dir))
+            hdu = pyfits.ImageHDU(sparts[1].astype('f4'))
+            hdu.header['XSHIFT'] = s
+            hdu.header['YSHIFT'] = dir
+            hdu.header['TYPE'] = 'placed'
+            hdus.append(hdu)
+            print "added placed hdu for (%d,%d,%d)" % (bin, s, dir)
+            hdu = pyfits.ImageHDU(sparts[0].astype('f4'))
+            hdu.header['XSHIFT'] = s
+            hdu.header['YSHIFT'] = dir
+            hdu.header['TYPE'] = 'shifted'
+            hdus.append(hdu)
+            print "added shifted hdu for (%d,%d,%d)" % (bin, s, dir)
+    print "writing %d HDUs" % (len(hdus))
+    
+    hdulist = pyfits.HDUList(hdus)
+    hdulist.writeto(filename, clobber=True)
+                
+    
+def gatherPoo(spot, splines=None, applyPixelResp=False, kargs=None):
     tries = ([1,0],
-             [2,0],
-             [3,0],
              [4,0],
-             [4,128],
              [5,0],
              [6,0],
              [7,0],
@@ -247,6 +290,26 @@ def gatherPoo(spot, applyPixelResp=False, kargs=None):
                       kargs=kargs)
             freq = imfreq1d(ret[2])
             all[(bin, pad, shift)] = ret, freq
+
+    return all, kargs
+        
+def gatherPoo2(spot, bin, splines=None, pad=0, applyPixelResp=False, kargs=None):
+
+    if not kargs:
+        kargs = dict(n=3)
+        
+    all = {}
+    for xshift in range(bin):
+        for yshift in range(bin):
+            print "processing %s with kargs=%s" % ((bin,pad,xshift,yshift), kargs)
+            ret = poo(spot, xshift, yshift, 
+                      splines=splines,
+                      applyPixelResp=applyPixelResp,
+                      binFactor=bin, 
+                      padTo=pad,
+                      kargs=kargs)
+            freq = imfreq1d(ret[2])
+            all[(bin, pad, xshift,yshift)] = ret, freq
 
     return all, kargs
         
