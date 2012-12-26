@@ -6,7 +6,58 @@ import matplotlib.pyplot as plt
 
 import pfs_tools
 
-def toyline(at, width, sampling=0.1, sigma=1.0, ongrid=False, donorm=False):
+def radToIndices(rad, sampling=1.0, offset=0.0):
+    """ Return the indices for an odd-width vector. """
+    
+    if rad < 1:
+        raise RuntimeError("radius must be positive.")
+    x = numpy.linspace(-(rad-1), rad-1, 
+                       (2*rad-1)/sampling).astype('f4')
+    return x+offset
+
+def radToImageIndices(rad, sampling=1.0, offset=None):
+    """ Return the indices for an odd-width image. """
+    
+    x = radToIndices(rad, sampling=sampling)
+    xx, yy = numpy.meshgrid(x, x)
+
+    if offset != None:
+        xx += offset[0]
+        yy += offset[1]
+        
+    r = numpy.sqrt(xx**2 + yy**2)
+
+    return r
+    
+def radFuncToVector(func, rad, sampling=1.0):
+    """ Take a symmetric function and expand it into an array. 
+    0 is placed at the center of an odd-width vector.
+    """
+    
+    x = radToIndices(rad, sampling=sampling)
+    return x, func(x)
+    
+def radFuncToImage(func, rad, sampling=1.0):
+    """ Take a circularily symmetric function and expand it into an image. 
+    0,0 is placed at the center of an odd-width image.
+    """
+
+    r = radToImageIndices(rad, sampling)
+    im = func(r)
+
+    return r, im
+
+def tophat(rad, width):
+    return (rad < width).astype('f4')
+        
+def gaussian(rad, at=0.0, sigma=1.0, donorm=False):
+    y = numpy.exp(-0.5*(rad/sigma)**2)
+    if donorm:
+        y /= sigma * numpy.sqrt(2*numpy.pi)
+        
+    return rad+at, y
+
+def toyspot(at, width, sampling=0.1, sigma=1.0, ongrid=False, donorm=False):
     x = numpy.arange(-width, width, step=sampling)
     y = numpy.exp(-0.5*(x/sigma)**2)
     if donorm:
