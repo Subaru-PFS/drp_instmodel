@@ -15,7 +15,7 @@ import pfs_tools
 from pfs_tools import pydebug
 
 class SplinedPsf(psf.Psf):
-    def __init__(self, detector, spotType='jeg'):
+    def __init__(self, detector, spotType='jeg', spotIDs=None):
         """ Create or read in our persisted form. By default use JEG's models. 
 
         Parameters
@@ -25,6 +25,8 @@ class SplinedPsf(psf.Psf):
            carries the properties of the detector (and camera).
         spotType : str, optional
            Whether to load 'jeg' or 'zemax' spot images.
+        spotIDs : list/string, optional
+           If spotType is set, some dataset identifier. Opaque to us.
         """
 
         psf.Psf.__init__(self, detector)
@@ -39,7 +41,7 @@ class SplinedPsf(psf.Psf):
         self.ycCoeffs = []
 
         if spotType:
-            self.loadFromSpots(spotType)
+            self.loadFromSpots(spotType, spotIDs)
 
     def __str__(self):
         nSpots = len(self.spots)
@@ -410,14 +412,14 @@ class SplinedPsf(psf.Psf):
         newimage = scipy.signal.convolve2d(image, kernel, mode='same')
         return newimage
 
-    def loadFromSpots(self, spotType='jeg'):
+    def loadFromSpots(self, spotType='jeg', spotIDs=None):
         """ Generate ourself from a semi-digested pfs_instdata spot file. 
 
         """
         
         print "reading and interpolating PSF spots..."
         
-        spotsFilepath = SplinedPsf.psfSpotsFile(self.detector.band, spotType)
+        spotsFilepath = SplinedPsf.psfSpotsFile(self.detector.band, spotType, spotIDs)
         sf = pyfits.open(spotsFilepath, mode='readonly')
         s = sf[1].data
 
