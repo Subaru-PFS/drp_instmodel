@@ -23,7 +23,7 @@ class SimImage(object):
         self.psf = psf if psf else pfsPsf.SplinedPsf(self.detector)
         self.image = None
         
-    def addFibers(self, fibers, spectra, waveRange=None, everyNthPsf=1):
+    def addFibers(self, fibers, spectra, waveRange=None, everyNthPsf=1, doReadout=True):
         """ Add images of the given fibers. 
 
         Parameters
@@ -53,11 +53,15 @@ class SimImage(object):
           * 
         """
         if self.image == None:
-            self.image = self.detector.simBias().image
+            self.exposure = self.detector.makeEmptyExposure()
+            self.image = self.exposure.image
 
         for i, fiber in enumerate(fibers):
             self.psf.fiberImage(fiber, spectra[i], outImg=self.image,
                                 waveRange=waveRange, everyNthPsf=everyNthPsf)
 
+        if doReadout:
+            self.detector.readout(self.exposure)
+            
         return self.image
 
