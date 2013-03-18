@@ -23,3 +23,8 @@ skyField = [PROBE(i,0.0,1.0,100.0,200.0,'SKY') for i in range(-300,301)]
 
 sparseCombField = [PROBE(i,0.0,1.0,100.0,200.0,('SIMCOMB' if i%10 == 0 else 'UNPLUGGED')) for i in range(-300,301)]
 sparseFlatField = [PROBE(i,0.0,1.0,100.0,200.0,('SIMFLAT' if i%10 == 0 else 'UNPLUGGED')) for i in range(-300,301)]
+
+bundledFlatField =   [PROBE(i,0.0,1.0,100.0,200.0,('UNPLUGGED' if i%36 == 0 else 'SIMFLAT')) for i in range(-300,301)]
+oneBundleFlatField = [PROBE(i,0.0,1.0,100.0,200.0,('UNPLUGGED' if i%36 == 0 else 'SIMFLAT')) for i in range(-10,-1)]
+
+oneSkyField = [PROBE(i,0.0,1.0,100.0,200.0,('SKY' if i == 0 else 'UNPLUGGED')) for i in range(-5,5)]
