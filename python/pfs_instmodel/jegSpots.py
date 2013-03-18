@@ -49,23 +49,29 @@ def convolveWithFiber(spot, fiberImage=None):
     
     return scipy.ndimage.convolve(spot, fiberImage, mode='constant', cval=0.0)
 
-def getFiberIds(header):
+def getFiberIds(header, headerVersion):
     """ Given the header, return the fiberIDs. We assume that the spacing is proportional to the SINANGs. """
 
     nang = int(header['NANG'])
-    angs = []
-    for i in range(nang):
-        ang = float(header['SINANG[%d]' % (i)])
-        angs.append(ang)
+    if headerVersion == 1:
+        angs = []
+        for i in range(nang):
+            ang = float(header['SINANG[%d]' % (i)])
+            angs.append(ang)
+    else:
+        angs = [float(ang) for ang in header['SINANG[]'].split()]
+        assert len(angs) == nang
+                        
     angs = numpy.array(angs)
-    angs /= angs.max()
-    fibers = (angs * 300).astype('i2')
+    normAngs = angs / angs.max()
+    fibers = (normAngs * 300).astype('i2')
 
-    print "fiber IDSs: %s" % (fibers)
+    print "fiber angles: %s" % (angs)
+    print "fiber IDs   : %s" % (fibers)
     
     return fibers
     
-def readSpotDir(path, doConvolve=True):
+def readSpotDir(path, doConvolve=None, filePattern='*.imgstk'):
     """ Read slightly cleaned up versions of JEGs spots.
 
     The .imgstk file contains a few 1k-aligned sections:
@@ -80,8 +86,13 @@ def readSpotDir(path, doConvolve=True):
 
     names = glob.glob(os.path.join(path, '*.imgstk'))
     assert len(names) == 1, "path %s does not have exactly one .imgstk file" % (path)
-        
-    with open(names[0], 'r') as f:
+    name = names[0]
+    if name.endswith('.gz'):
+        fopen = gzip.open
+    else:
+        fopen = open
+
+    with fopen(names[0], 'r') as f:
         rawHeader = f.read(2*1024)
         rawDesign = f.read((8-2)*1024)    # unused, so far.
         rawPositions = f.read((32-8)*1024)
@@ -98,7 +109,11 @@ def readSpotDir(path, doConvolve=True):
             headerDict[key] = value
         else:
             headerDict['LINE%03d'%(i)] = h
-                       
+
+    headerVersion = 1 if 'LAM[1]' in headerDict else 2
+    if doConvolve == None:
+        doConvolve = headerVersion == 1
+        
     nimage = int(headerDict['NIMAGE'])
     xsize = int(headerDict['XSIZE'])
     ysize = int(headerDict['YSIZE'])
@@ -106,12 +121,16 @@ def readSpotDir(path, doConvolve=True):
     
     wavelengths = []
     nlam = int(headerDict['NLAM'])
-    for i in range(nlam):
-        waveKey = "LAM[%d]" % (i)
-        wavelength = float(headerDict[waveKey])
-        wavelengths.append(wavelength)
-        
-    fiberIDs = getFiberIds(headerDict)
+    if headerVersion == 1:
+        for i in range(nlam):
+            waveKey = "LAM[%d]" % (i)
+            wavelength = float(headerDict[waveKey])
+            wavelengths.append(wavelength)
+    else:
+        wavelengths = [float(lam) for lam in headerDict['LAM[]'].split()]
+        assert len(wavelengths) == nlam
+                        
+    fiberIDs = getFiberIds(headerDict, headerVersion)
         
     data = numpy.fromstring(rawData, dtype='(%d,%d)u2' % (xsize,ysize), count=nimage).astype('f4')
     fiberImage = makeFiberImage()
@@ -193,12 +212,13 @@ def writeSpotFITS(spotDir, data):
                     checksum=True, clobber=True)
 
     
-def main(band):
+def main(band, spotDir=None, filePattern=None):
     """ Convert a directory of zemax spot files into a slightly more convenient FITS table. """
 
-    spotDir = os.path.join(os.environ['PFS_INSTDATA_DIR'], 'data/spots/jeg', band)
+    if not spotDir:
+        spotDir = os.path.join(os.environ['PFS_INSTDATA_DIR'], 'data/spots/jeg', band)
 
-    data = readSpotDir(spotDir)
+    data = readSpotDir(spotDir, filePattern)
     writeSpotFITS(spotDir, data)
 
 if __name__ == "__main__":
