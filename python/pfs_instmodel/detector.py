@@ -32,7 +32,7 @@ class Detector(object):
     def simBias(self, shape=None):
         """ Return a bias image based on our properties. """
         
-        exp = self.makeEmptyExposure()
+        exp = self.makeEmptyExposure(doNew=True)
 
         if not shape:
             shape = self.config['ccdSize']
@@ -44,7 +44,19 @@ class Detector(object):
         exp.setImage(bias, ivar)
 
         return exp
- 
+
+    def readout(self, exp, keepParts=False):
+        """ 'Readout' an exposure: add in read noise, bad columns, hot pixels, etc. """
+
+        shape = exp.shape
+
+        bias = numpy.random.normal(self.config['bias'],
+                                   self.config['readNoise'],
+                                   shape).astype('u2')
+        ivar = bias*0 + 1/self.config['readNoise']**2
+
+        exp.addFlux(bias, addPlane=keepParts)
+
     def getResponseSpline(self):
         """ Read in JEG's preliminary detector response.
 
