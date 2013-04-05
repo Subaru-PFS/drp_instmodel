@@ -78,7 +78,7 @@ def getFiberIds(header, headerVersion):
             ang = float(header['SINANG[%d]' % (i)])
             angs.append(ang)
     else:
-        angs = [float(ang) for ang in header['SINANG[]'].split()]
+        angs = header['SINANG[]']
         assert len(angs) == nang
                         
     angs = numpy.array(angs)
@@ -87,6 +87,7 @@ def getFiberIds(header, headerVersion):
 
     print "fiber angles: %s" % (angs)
     print "fiber IDs   : %s" % (fibers)
+    print "  XXX: BASED ON hardwired max(fiberid)==314 logic"
     
     return fibers
 
@@ -96,8 +97,20 @@ def clearSpotCache():
     _spotCache.clear()
 
 def readSpotFile(pathSpec, doConvolve=None, doRebin=False, doNorm=False, 
+                 doSwapaxes=True,
                  verbose=False, clearCache=False):
     """ Directly read some recent version of JEGs spots.
+
+    Parameters
+    -------
+    pathSpec : dict
+       Enough info to uniquely identify a jeg spot dataset.
+       The keys are: (date, band, frd, focus). 
+
+    Returns
+    -------
+    arr : the table of spots, with wavelength(AA), fiberID, xc, yc, image
+    metadata : the partially converted header from the .imgstk file.
 
     The .imgstk file contains a few 1k-aligned sections:
     
@@ -131,11 +144,32 @@ def readSpotFile(pathSpec, doConvolve=None, doRebin=False, doNorm=False,
     header = rawHeader.split('\n')
 
     headerDict = {'TITLE':header.pop(0)}
+    converters = {'SLIT_RADIUS':float,
+                  'FOFFSET':float,
+                  'FSLOPE':float,
+                  'FRD_SIGMA':float,
+                  'FOFFSET':float,
+                  'XPIX':float,
+                  'YPIX':float,
+
+                  'FRD_ON':bool,
+
+                  'NIMAGE':int,
+                  'NLAM':int,
+                  'NANG':int,
+                  'XSIZE':int,
+                  'YSIZE':int,
+
+                  'LAM': lambda _s : [float(x) for x in _s.split(' ')],
+                  'SINANG': lambda _s : [float(x) for x in _s.split(' ')]
+    }
+    
     for i, h in enumerate(header):
         m = re.match('(^[A-Z][-A-Z_ 0-9\[\]]*) = (.*)', h)
         if m:
             key, value = m.groups()
-            headerDict[key] = value
+            convert = converters.get(key, str)
+            headerDict[key] = convert(value)
         else:
             headerDict['LINE%03d'%(i)] = h
 
@@ -143,20 +177,20 @@ def readSpotFile(pathSpec, doConvolve=None, doRebin=False, doNorm=False,
     if doConvolve == None:
         doConvolve = headerVersion == 1
         
-    nimage = int(headerDict['NIMAGE'])
-    xsize = int(headerDict['XSIZE'])
-    ysize = int(headerDict['YSIZE'])
+    nimage = headerDict['NIMAGE']
+    xsize = headerDict['XSIZE']
+    ysize = headerDict['YSIZE']
     positions = numpy.fromstring(rawPositions, dtype='3f4', count=nimage)
     
     wavelengths = []
-    nlam = int(headerDict['NLAM'])
+    nlam = headerDict['NLAM']
     if headerVersion == 1:
         for i in range(nlam):
             waveKey = "LAM[%d]" % (i)
             wavelength = float(headerDict[waveKey])
             wavelengths.append(wavelength)
     else:
-        wavelengths = [float(lam) for lam in headerDict['LAM[]'].split()]
+        wavelengths = headerDict['LAM[]']
         assert len(wavelengths) == nlam
                         
     fiberIDs = getFiberIds(headerDict, headerVersion)
@@ -177,6 +211,8 @@ def readSpotFile(pathSpec, doConvolve=None, doRebin=False, doNorm=False,
             spot = data[i,:,:]
 
         if doRebin:
+            raise NotImplementedError("readSpotFile(doRebin=True) has bit rot")
+
             # bin from 256x256 1um pixels to 85x85 3um pixels.
             # Still oversampled by 5.
             spot = spot[:-1,:-1]
@@ -209,9 +245,10 @@ def readSpotFile(pathSpec, doConvolve=None, doRebin=False, doNorm=False,
 
     _spotCache[path] = arr
 
-    return arr
+    return arr, headerDict
 
 def writeSpotFITS(spotDir, data):
+    raise NotImplementedError("writeSpotFITS() no longer needed or tested")
 
     phdu = pyfits.PrimaryHDU()
     phdr = phdu.header
