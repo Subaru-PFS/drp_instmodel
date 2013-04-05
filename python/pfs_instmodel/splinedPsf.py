@@ -417,16 +417,28 @@ class SplinedPsf(psf.Psf):
 
         """
         
-        print "reading and interpolating PSF spots..."
-        
-        spotsFilepath = SplinedPsf.psfSpotsFile(self.detector.band, spotType, spotIDs)
-        sf = pyfits.open(spotsFilepath, mode='readonly')
-        s = sf[1].data
+        print "reading and interpolating %s PSF spots: %s..." % (spotType, spotIDs)
+        if spotType == 'jeg':
+            import jegSpots
 
-        self.spotScale = sf[0].header['pixscale']
-        self.wave = s['wavelength']
-        self.fiber = s['fiberIdx']
-        self.spots = s['spot'].astype('float32')
+            rawSpots, spotInfo = jegSpots.readSpotFile(spotIDs)
+            assert spotInfo['XPIX'] == spotInfo['YPIX']
+
+            self.wave = rawSpots['wavelength']
+            self.fibers = rawSpots['fiberIdx']
+            self.spots = rawSpots['spots']
+            self.spotScale = spotInfo['XPIX']
+
+
+        else:
+            spotsFilepath = SplinedPsf.psfSpotsFile(self.detector.band, spotType, spotIDs)
+            sf = pyfits.open(spotsFilepath, mode='readonly')
+            s = sf[1].data
+
+            self.spotScale = sf[0].header['pixscale']
+            self.wave = s['wavelength']
+            self.fiber = s['fiberIdx']
+            self.spots = s['spot'].astype('float32')
 
         imshape = self.spots.shape[1:]
 
