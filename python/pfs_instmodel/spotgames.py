@@ -3,8 +3,12 @@ import numpy
 import scipy.ndimage
 import scipy.signal
 import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
 
 import pfs_tools
+import plotutils
+
+import pfs_instmodel.jegSpots as jegSpots
 
 def radToIndices(rad, sampling=1.0, offset=0.0):
     """ Return the indices for an odd-width vector. """
@@ -47,6 +51,7 @@ def radFuncToImage(func, rad, sampling=1.0):
 
     return r, im
 
+
 def tophat(rad, width):
     return (rad < width).astype('f4')
         
@@ -69,30 +74,68 @@ def readSpot(filename):
     spot = pyfits.getdata(filename)
     return spot
 
-def imfreq(im):
+def imfreq(im, doShift=True, doAbs=False):
     """ return the 2d frequency map for an image. """
     
-    imfft = numpy.abs(numpy.fft.fftshift(numpy.fft.fftn(im)))
-    return imfft
+    fftim = numpy.fft.fftn(im)
+    if doAbs:
+        fftim = numpy.abs(fftim)
+    if doShift:
+        fftim = numpy.fft.fftshift(fftim)
 
-def imfreq1d(im):
+    return fftim
+
+
+def imfreq1d(im, doAbs=False, doAverage=True, sampling=None):
     """ return the 1d frequency vector for an image, where the 2d frequencies are azimuthally flattened. """
 
-    imfreqImg = imfreq(im)
+    imfreqImg = imfreq(im, doAbs=doAbs)
     fmap = imfreqImg.flatten()
     dmap = distmap(im).flatten()
 
     sort_i = numpy.argsort(dmap)
 
-    return dmap[sort_i], fmap[sort_i], imfreqImg
+    freqs = dmap[sort_i]
+    ampl = fmap[sort_i] 
+    if doAverage:
+        uux, uui = numpy.unique(freqs, return_index=True)
+        for i in range(len(uui)-1):
+            ampl[uui[i]:uui[i+1]] = numpy.mean(numpy.abs(ampl[uui[i]:uui[i+1]]))
+
+    if sampling:
+        freqs = freqs / (numpy.sqrt(2) * im.shape[0]*sampling)
+    return freqs, ampl, imfreqImg
+
+def freq2im(fftim, doAbs=True, doShift=True):
+    """ return the image from an fft. """
+    
+    if doShift:
+        fftim = numpy.fft.ifftshift(fftim)
+
+    im = numpy.fft.ifftn(fftim)
+    if doAbs:
+        im = numpy.abs(im)
+
+    return im
+
+def imextent(im, scale=1.0, doCenter=False):
+    """ return (l,r,b,t) indices for the pixel centers. """
+
+    rows,cols = im.shape
+    rows /= scale
+    cols /= scale
+    x0 = 0 if doCenter==False else -cols/2.0
+    y0 = 0 if doCenter==False else -rows/2.0
+    
+    return (x0, x0+cols, y0, y0+rows)
 
 def distmap(arr, x0=None, y0=None):
     """ return the pixel distance map for a given array. """
 
     if x0 == None:
-        x0 = arr.shape[1]/2
+        x0 = (arr.shape[1]-1)/2.0
     if y0 == None:
-        y0 = arr.shape[0]/2
+        y0 = (arr.shape[0]-1)/2.0
     
     yd = numpy.linspace(0,arr.shape[0]-1,arr.shape[0]) - y0
     xd = numpy.linspace(0,arr.shape[1]-1,arr.shape[1]) - x0
@@ -260,6 +303,64 @@ def poo(arr, dx, dy, splines=None, binFactor=10, padTo=0, applyPixelResp=False, 
     
     return arr00, arrPlaced.copy(), arrShifted.copy(), kernels
 
+def shiftSpotBy(spot, shiftBy, binTo,
+                applyPixelResp=False, shiftFunc=shiftSpot1d,
+                oversampleFactor=10, doNorm=False):
+    """ shift oversampled spot by 'shiftBy' unbinned pixels, both by shifting and placing and 
+    by binning and shifting. 
+    """
+
+    binnedOversample = oversampleFactor/binTo
+    assert binnedOversample == float(oversampleFactor)/binTo
+
+    try:
+        dx, dy = shiftBy
+    except:
+        dx, dy = shiftBy, shiftBy
+        
+    binnedShape = (numpy.array(spot.shape,'i2')/(binnedOversample)).tolist()
+    binnedSpot = pfs_tools.rebin(spot, *binnedShape)
+    if doNorm:
+        binnedSpot = binnedSpot / binnedSpot.sum()
+    binnedShift = (float(dx)/binnedOversample, 
+                   float(dy)/binnedOversample)
+    if "debug":
+        print ("binTo=%d; oversampling = %d; binnedOversample = %s; binnedShape = %s; binnedShift = %s; dx, dy = %d, %d" % 
+               (binTo,
+                oversampleFactor,
+                binnedOversample,
+                binnedShape,
+                binnedShift, 
+                dx, dy))
+
+    if numpy.abs(binnedShift[0]) >= 1 or numpy.abs(binnedShift[1]) >= 1:
+        idx = int(binnedShift[0])
+        idy = int(binnedShift[1])
+        print "cannot interpolate more than 1 pixel, moving by %d,%d first" % (idx,idy)
+        binnedShift = (binnedShift[0]-idx, binnedShift[1]-idy)
+        tSpot = numpy.zeros(binnedSpot.shape, dtype='f4')
+        tSpot[idy:,idx:] = binnedSpot[slice(None,-idy if idy else None),
+                                      slice(None,-idx if idx else None)]
+        binnedSpot = tSpot
+
+    # interpolation-shift the binned image
+    print "shifting %s by %g,%g" % (binnedSpot.shape, binnedShift[0], binnedShift[1])
+    shiftedSpot, kernels = shiftFunc(binnedSpot, *binnedShift)
+
+    # And pixel-shift (and optionally apply pixel response) then pixel-bin a comparison image
+    print "placing %s by %d,%d" % (spot.shape, dx,dy)
+    placedSpot = numpy.zeros(spot.shape, dtype='f4')
+    placedSpot[dy:,dx:] = spot[slice(None,-dy if dy else None),
+                               slice(None,-dx if dx else None)]
+    if applyPixelResp:
+        placedSpot = applyPixelResponse(placedSpot, oversampleFactor)
+
+    placedSpot = pfs_tools.rebin(placedSpot, *binnedShape)
+    if doNorm:
+        placedSpot = placedSpot / placedSpot.sum()
+
+    return placedSpot, shiftedSpot, kernels
+
 def dispSpot(spotDict, key):
     bin, pad, shift = key
     res = spotDict[key]
@@ -365,3 +466,265 @@ def gatherPoo2(spot, bin, splines=None, pad=0, applyPixelResp=False, kargs=None)
     return all, kargs
         
             
+def spotShowImages(im, fftim, iim, imbox, fig, plotids, resClip=0, 
+                   pixLims=None,pixscale=0.015,
+                   showAliasAt=None, colorbars=(),):
+
+    if im != None:
+        plt_im = fig.add_subplot(plotids[0])
+        plt_im.xaxis.set_visible(False)
+        #plt_im.imshow(plotutils.asinh(im, non_linear=0.0001, scale_max=0.2),extent=imbox)
+        plt_im.imshow(im, extent=imbox, interpolation='nearest')
+        plt_im.set_ylabel('%g um pixels' % (1000*pixscale))
+
+        l0,l1 = plt_im.get_xlim()
+        plt_im.vlines(0,l0,l1,'r', alpha=0.3)
+        plt_im.hlines(0,l0,l1,'r', alpha=0.3)
+    else:
+        plt_im = None
+
+    if fftim != None:
+        plt_fft = fig.add_subplot(plotids[1])
+        #plt_fft.yaxis.set_visible(False)
+        plt_fft.xaxis.set_visible(False)
+        plt_fft.imshow(numpy.log10(numpy.abs(fftim)), extent=imbox)
+
+        if showAliasAt:
+            plt_fft.vlines(-showAliasAt, -showAliasAt, showAliasAt+1, 'r', alpha=0.6)
+            plt_fft.vlines(showAliasAt+1, -showAliasAt, showAliasAt+1, 'r', alpha=0.6)
+            plt_fft.hlines(-showAliasAt, -showAliasAt, showAliasAt+1, 'r', alpha=0.6)
+            plt_fft.hlines(showAliasAt+1, -showAliasAt, showAliasAt+1, 'r', alpha=0.6)
+    else:
+        plt_fft = None
+
+    if iim != None:
+        plt_iim = fig.add_subplot(plotids[2])
+        plt_iim.xaxis.set_visible(False)
+        #if resClip:
+        #    residIm = numpy.clip(iim,-resClip,resClip)
+        #else:
+        #    residIm = iim
+        residIm = iim
+
+        im3 = plt_iim.imshow(residIm, extent=imbox, vmin=-resClip, vmax=resClip)
+        ticks = numpy.sort(numpy.append(numpy.linspace(-resClip,resClip,4),[0]))
+        print "setting ticks to %s" % (ticks)
+        fig.colorbar(im3, ticks=ticks)
+        l0,l1 = plt_iim.get_xlim()
+        plt_iim.vlines(0,l0,l1,'r', alpha=0.3)
+        plt_iim.hlines(0,l0,l1,'r', alpha=0.3)
+
+    else:
+        plt_iim = None
+
+    if pixLims:
+        for i,p in enumerate([plt_im,plt_fft,plt_iim]):
+            if pixLims[i] and p != None:
+                p.set_xlim(-pixLims[i],pixLims[i],auto=False)
+                p.set_ylim(-pixLims[i],pixLims[i],auto=False)
+
+
+    return plt_im, plt_fft, plt_iim
+
+def spotShow(im, scale=10, binning=2):
+    fig = plt.figure('spot')
+    sgs = gridspec.GridSpec(3,3, hspace=0.1, wspace=0.1)
+
+    im = im/im.sum()
+    fftx, ffty, fftim = imfreq1d(im, sampling=1.0/scale)
+    iim = freq2im(fftim, doAbs=False)
+    imbox = imextent(im, scale=scale, doCenter=True)
+    spotShowImages(im, fftim, iim, imbox, fig, [sgs[0,0],sgs[0,1],sgs[0,2]])
+
+    p1 = fig.add_subplot(sgs[6:])
+    p1.plot(fftx/scale, numpy.abs(ffty))
+    p1.set_yscale('log')
+
+    im = pfs_tools.rebin(im, 
+                         im.shape[0]/binning,
+                         im.shape[0]/binning)
+    binnedScale = float(scale)/binning
+    im = im/im.sum()
+    fftx, ffty, fftim = imfreq1d(im, sampling=1.0/binnedScale)
+    iim = freq2im(fftim, doAbs=False)
+    imbox = imextent(im, scale=binnedScale, doCenter=True)
+    spotShowImages(im, fftim, iim, imbox, fig, [sgs[1,0],sgs[1,1],sgs[1,2]])
+    p1.plot(fftx/binnedScale, numpy.abs(ffty))
+
+    fig.show()
+
+def frdShow(frds,
+            band='IR', date='2013-04-18',
+            focus=0,
+            fiberIdx=0, wavelength=11067, titleExtra='',
+            figName='frd', doClear=True,
+            doNorm=True, yrange=None):
+
+    
+    fig = plt.figure(figName)
+    if doClear:
+        fig.clf()
+
+    spots = []
+    for f in frds:
+        d = jegSpots.readSpotFile(pathSpec=dict(band=band,
+                                                date=date,
+                                                focus=focus,
+                                                frd=f))
+        spot_w = numpy.where((d['wavelength'] == wavelength) &
+                             (d['fiberIdx'] == fiberIdx))[0]
+        if len(spot_w) != 1:
+            raise RuntimeError("you did not specify a unique spot (%d)" % (len(spot_w)))
+
+        spots.append(d['spot'][spot_w][0])
+        print "spot %d max=%g sum=%g" % (f, spots[-1].max(), spots[-1].sum())
+
+    p1 = fig.add_subplot(1,1,1)
+    
+    refSpot = spots[0]
+    normScale = 1.0*refSpot.max()
+    midline = refSpot.shape[0]/2
+    x = (numpy.arange(2*midline)-midline)/10.0
+    colors = ['b','g','r']
+    p1.xaxis.grid(True, which='major',
+                  markevery=1,
+                  color="#a0a0a0", linestyle='-')
+    p1.set_title('%s, fiber %d, wavelength %d %s' % (band, 
+                                                     fiberIdx,
+                                                     wavelength,
+                                                     titleExtra))
+    p1.set_xlabel('15um pixels')
+    p1.set_ylabel('of peak flux in %0.3f sigma spot' % (frds[0]/1000.0))
+    p1.set_autoscalex_on(False)
+    p1.set_xlim(-5, 5)
+    p1.xaxis.set_ticks(numpy.arange(-5,6))
+
+    for i in range(1,len(frds)):
+        s = spots[i]
+        dline = s[midline,:]/normScale - refSpot[midline,:]/normScale
+        p1.plot(x, dline, '+-%s' % (colors[i-1]), label='frd%d - frd%s' % (frds[i], frds[0]))
+        dline = s[:,midline]/normScale - refSpot[:,midline]/normScale
+        p1.plot(x, dline, '+-%s' % (colors[i-1]))
+
+    p1.set_autoscaley_on(False)
+    if yrange != None:
+        p1.set_ylim(*yrange)
+
+    p1.plot(x, refSpot[midline,:]/normScale, '-', color='gray', alpha=0.5,
+            label='%0.3f sigma FRD' % (frds[0]/1000.0))
+    p1.plot(x, refSpot[:,midline]/normScale, '-', color='gray', alpha=0.5)
+
+    p1.legend()
+
+    return spots
+                               
+
+def spotShow2(spot0, scale1, scale2, figname='spot', 
+              plotWidth=8,
+              maxFreq=5, shiftBy=None, 
+              applyPixelResp=False,
+              unbinnedScale=10, 
+              shiftFunc=shiftSpotSpline):
+    fig = plt.figure(figname)
+    sgs = gridspec.GridSpec(3,3, hspace=0.05, wspace=0.05)
+
+    assert spot0.shape[0] == spot0.shape[1]
+    fullSize = spot0.shape[0]
+    spot0 = spot0/spot0.sum()
+
+    size1 = scale1 * fullSize/unbinnedScale
+    size2 = scale2 * fullSize/unbinnedScale
+    print "sizes = %s, %s" % (size1, size2)
+
+    spot1 = pfs_tools.rebin(spot0, size1, size1)
+    spot2 = pfs_tools.rebin(spot0, size2, size2)
+
+    spot1 = spot1/spot1.sum()
+    spot2 = spot2/spot2.sum()
+
+    if shiftBy != None:
+        placedSpot1, shiftedSpot1, kernels = shiftSpotBy(spot0, shiftBy, scale1,
+                                                         shiftFunc=shiftFunc, 
+                                                         applyPixelResp=applyPixelResp,
+                                                         doNorm=True)
+    else:
+        placedSpot1 = numpy.zeros(spot1.shape)
+        shiftedSpot1 = numpy.zeros(spot1.shape)
+
+    fftx, ffty, fftim1 = imfreq1d(spot1, sampling=1.0/scale1)
+    imbox1 = imextent(spot1, doCenter=True)
+    imlims = [-plotWidth*scale1, plotWidth*scale1]*2
+
+    p1 = fig.add_subplot(sgs[6:])
+    if maxFreq:
+        p1.set_autoscalex_on(False)
+        p1.set_xlim([0, maxFreq])
+    p1.set_yscale('log')
+    p1.set_xlabel('cycles per 15um CCD pixel')
+    p1.plot(fftx, numpy.abs(ffty), label='1.5um pixel')
+
+    fftx, ffty, fftim2 = imfreq1d(spot2, sampling=1.0/scale2)
+    imbox2 = imextent(spot2, scale=scale2, doCenter=True)
+    imlims = [-plotWidth*scale2, plotWidth*scale2] # imextent(spot1, scale=scale1, doCenter=True)
+
+    if shiftBy != None:
+        placedSpot2, shiftedSpot2, kernels = shiftSpotBy(spot0, shiftBy, scale2,
+                                                         shiftFunc=shiftFunc,
+                                                         applyPixelResp=applyPixelResp,
+                                                         doNorm=True)
+    else:
+        placedSpot2 = numpy.zeros(spot2.shape)
+        shiftedSpot2 = numpy.zeros(spot2.shape)
+    diffIm2 = placedSpot2 - shiftedSpot2
+    print "flux=%g,%g,resid=%g" % (placedSpot2.sum(),shiftedSpot2.sum(),
+                                   numpy.abs(diffIm2).sum())
+
+    trimRad = spot2.shape[0]/2
+    xr = numpy.arange(spot1.shape[0]) - (spot1.shape[0]+1)/2
+    mx,my = numpy.meshgrid(xr,xr)
+    trimMask = ((mx < -trimRad) | (mx > trimRad) |
+                (my < -trimRad) | (my > trimRad))
+    trimMask = distmap(fftim1) > trimRad
+    maskedFftim = fftim1 * trimMask
+    maskedSpot = freq2im(maskedFftim)
+    diffIm1 = maskedSpot
+
+    basePixScale=0.015
+    pixLim = 6
+    if 'lastminute':
+        spotShowImages(spot1, fftim1, None, imbox1, fig, [sgs[0,0],sgs[0,1],None], resClip=0.002,
+                       pixLims=[pixLim*scale1]*3, pixscale=basePixScale/scale1, showAliasAt=size2/2.0)
+        plots = spotShowImages(spot2, None, diffIm2, imbox2, fig, [sgs[1,0],None,sgs[1,2]], resClip=0.003,
+                               pixLims=[pixLim*scale2,None,pixLim*scale2], pixscale=basePixScale/scale2,
+                               colorbars=[1])
+        plots[2].set_title('placed - shifted\nfraction of total spot flux')
+    else:
+        spotShowImages(spot1, fftim1, diffIm1, imbox1, fig, [sgs[0,0],sgs[0,1],sgs[0,2]], resClip=0.002,
+                       pixLims=[pixLim*scale1]*3, pixscale=basePixScale/scale1, showAliasAt=size2/2.0)
+        spotShowImages(spot2, fftim2, diffIm2, imbox2, fig, [sgs[1,0],sgs[1,1],sgs[1,2]], resClip=0.003,
+                       pixLims=[pixLim*scale2,None,pixLim*scale2], pixscale=basePixScale/scale2)
+
+    p1.plot(fftx, numpy.abs(ffty), label="15um pixel")
+    p1.legend()
+
+    # fig.suptitle('Interpolation at IR detector center')
+
+    return fig
+
+def plot2bins(spot, bin1, bin2, trimmedSize=None, 
+              shiftBy=None, plotWidth=6,
+              figname='spot', unbinnedScale=10, 
+              shiftFunc=shiftSpotSpline, maxFreq=2):
+
+    fullSize = 256
+    assert spot.shape == (fullSize, fullSize)
+
+    if trimmedSize:
+        inset = (fullSize-trimmedSize)/2
+        spot = spot[inset:-inset,inset:-inset].astype('f8')
+        
+    return spotShow2(spot, bin1, bin2, 
+                     plotWidth=plotWidth,
+                     shiftBy=shiftBy, figname=figname, 
+                     unbinnedScale=unbinnedScale,
+                     shiftFunc=shiftFunc,maxFreq=maxFreq)
