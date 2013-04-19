@@ -6,11 +6,13 @@ import os
 import re
 
 import pfs_tools.par
+import pfs_instmodel.splinedPsf as simPsf
 import pfs_instmodel.simImage as simImage
 import pfs_instmodel.sky as pfsSky
 import pfs_instmodel.spectrum as pfsSpectrum
 
-def makeSim(band, fieldName, fiberFilter=None, everyNthPsf=50):
+def makeSim(band, fieldName, fiberFilter=None, everyNthPsf=50,
+            frd=None, focus=None, date=None):
     """ Construct a simulated image. 
 
     Parameters
@@ -39,10 +41,13 @@ def makeSim(band, fieldName, fiberFilter=None, everyNthPsf=50):
     :download:`examples/sampleField.py <../../examples/sampleField.py>`
     """
     
-    sim = simImage.SimImage(band)
+    simID = dict(band=band, frd=frd, focus=focus, date=date)
+
+    sim = simImage.SimImage(band, simID=simID)
     skyModel = pfsSky.StaticSkyModel(band) # plus field info....
     flatSpectrum = pfsSpectrum.FlatSpectrum(sim.detector)
-    combSpectrum = pfsSpectrum.CombSpectrum(spacing=50)
+    combSpectrum = pfsSpectrum.CombSpectrum(spacing=50, 
+                                            gain=1.0/(sim.detector.config['pixelScale']/sim.psf.spotScale)**2)
     
     field = loadField(fieldName)
 
@@ -156,6 +161,9 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
     parser.add_argument('-F', '--field', action='store', required=True)
     parser.add_argument('-o', '--output', action='store', default=None)
     parser.add_argument('-f', '--fibers', action='store', default=None)
+    parser.add_argument('--focus', action='store', default=0)
+    parser.add_argument('--frd', action='store', default=23)
+    parser.add_argument('--date', action='store', default='2013-04-18')
     parser.add_argument('--everyNth', action='store', type=int, default=50)
     parser.add_argument('-d', '--ds9', action='store_true', default=False)
 
@@ -164,7 +172,8 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
     fibers = expandRangeArg(args.fibers)
 
     sim = makeSim(args.band, fieldName=args.field, 
-                  fiberFilter=fibers, everyNthPsf=args.everyNth)
+                  fiberFilter=fibers, everyNthPsf=args.everyNth,
+                  frd=args.frd, focus=args.focus, date=args.date)
     if args.output:
         saveSim(sim, args.output)
     if args.ds9:
