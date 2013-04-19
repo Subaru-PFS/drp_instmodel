@@ -1,5 +1,7 @@
 from pfs_instmodel.schema.probes import PROBE
     
+fiberLim = 313
+
 # Minimal sanity test field.
 quickfield = ([PROBE(i,0.0,1.0,100.0,200.0,'SIMCOMB') for i in range(-300,-298)] +
               [PROBE(i,0.0,1.0,100.0,200.0,'UNPLUGGED') for i in range(-298,-21)] +
@@ -21,8 +23,8 @@ combField = [PROBE(i,0.0,1.0,100.0,200.0,'SIMCOMB') for i in range(-300,301)]
 flatField = [PROBE(i,0.0,1.0,100.0,200.0,'SIMFLAT') for i in range(-300,301)]
 skyField = [PROBE(i,0.0,1.0,100.0,200.0,'SKY') for i in range(-300,301)]
 
-sparseCombField = [PROBE(i,0.0,1.0,100.0,200.0,('SIMCOMB' if i%10 == 0 else 'UNPLUGGED')) for i in range(-300,301)]
-sparseFlatField = [PROBE(i,0.0,1.0,100.0,200.0,('SIMFLAT' if i%10 == 0 else 'UNPLUGGED')) for i in range(-300,301)]
+sparseCombField = [PROBE(i,0.0,1.0,100.0,200.0,('SIMCOMB' if i%100 == 0 or i in (-fiberLim, fiberLim) else 'UNPLUGGED')) for i in range(-fiberLim, fiberLim+1)]
+sparseFlatField = [PROBE(i,0.0,1.0,100.0,200.0,('SIMFLAT' if i%50 == 0 else 'UNPLUGGED')) for i in range(-300,301)]
 
 bundledFlatField =   [PROBE(i,0.0,1.0,100.0,200.0,('UNPLUGGED' if i%36 == 0 else 'SIMFLAT')) for i in range(-300,301)]
 oneBundleFlatField = [PROBE(i,0.0,1.0,100.0,200.0,('UNPLUGGED' if i%36 == 0 else 'SIMFLAT')) for i in range(-10,-1)]
