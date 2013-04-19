@@ -71,7 +71,8 @@ def convolveWithFiber(spot, fiberImage=None):
 def getFiberIds(header, headerVersion):
     """ Given the header, return the fiberIDs. We assume that the spacing is proportional to the SINANGs. """
 
-    nang = int(header['NANG'])
+    nang = header['NANG']
+    maxFiber = header['MAXFIBER']
     if headerVersion == 1:
         angs = []
         for i in range(nang):
@@ -83,11 +84,10 @@ def getFiberIds(header, headerVersion):
                         
     angs = numpy.array(angs)
     normAngs = angs / angs.max()
-    fibers = (normAngs * 314).astype('i2')
+    fibers = (normAngs * (maxFiber-1)).astype('i2')
 
     print "fiber angles: %s" % (angs)
     print "fiber IDs   : %s" % (fibers)
-    print "  XXX: BASED ON hardwired max(fiberid)==314 logic"
     
     return fibers
 
@@ -160,8 +160,8 @@ def readSpotFile(pathSpec, doConvolve=None, doRebin=False, doNorm=False,
                   'XSIZE':int,
                   'YSIZE':int,
 
-                  'LAM': lambda _s : [float(x) for x in _s.split(' ')],
-                  'SINANG': lambda _s : [float(x) for x in _s.split(' ')]
+                  'LAM[]': lambda _s : [float(x) for x in _s.split(' ')],
+                  'SINANG[]': lambda _s : [float(x) for x in _s.split(' ')]
     }
     
     for i, h in enumerate(header):
@@ -169,9 +169,13 @@ def readSpotFile(pathSpec, doConvolve=None, doRebin=False, doNorm=False,
         if m:
             key, value = m.groups()
             convert = converters.get(key, str)
-            headerDict[key] = convert(value)
+            headerDict[key] = convert(value.strip())
         else:
             headerDict['LINE%03d'%(i)] = h
+
+    # Add in a temporary fiber range, until the .imgstk file specifies one
+    headerDict['MAXFIBER'] = 314
+    print "  XXX: hardwired max(fiberid)==%d logic" % (headerDict['MAXFIBER'])
 
     headerVersion = 1 if 'LAM[1]' in headerDict else 2
     if doConvolve == None:
@@ -181,7 +185,7 @@ def readSpotFile(pathSpec, doConvolve=None, doRebin=False, doNorm=False,
     xsize = headerDict['XSIZE']
     ysize = headerDict['YSIZE']
     positions = numpy.fromstring(rawPositions, dtype='3f4', count=nimage)
-    
+
     wavelengths = []
     nlam = headerDict['NLAM']
     if headerVersion == 1:
@@ -204,7 +208,7 @@ def readSpotFile(pathSpec, doConvolve=None, doRebin=False, doNorm=False,
         fiberIdx = fiberIDs[i / nlam]
         wavelength = wavelengths[i % nlam]
         xc = positions[i,0]
-        yc = positions[i,1]
+        yc = -positions[i,1]
         if doConvolve:
             spot = convolveWithFiber(data[i,:,:], fiberImage)
         else:
@@ -227,7 +231,8 @@ def readSpotFile(pathSpec, doConvolve=None, doRebin=False, doNorm=False,
         xc, yc = yc, xc
         spots.append((fiberIdx, wavelength, xc, yc, spot))
         if verbose:
-            print("spot  %d (%d, %0.2f) at (%0.1f %0.1f)" % (i, fiberIdx, wavelength, xc, yc))
+            print("spot  %d (%d, %0.2f) at (%0.1f %0.1f), max=%d" % 
+                  (i, fiberIdx, wavelength, xc, yc, spot.max()))
         if fiberIdx != 0:
             symSpots.append((-fiberIdx, wavelength, -xc, yc, spot[::-1,:]))
 
