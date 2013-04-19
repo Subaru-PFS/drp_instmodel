@@ -96,7 +96,8 @@ def clearSpotCache():
     global _spotCache
     _spotCache.clear()
 
-def readSpotFile(pathSpec, doConvolve=None, doRebin=False, doNorm=False, 
+def readSpotFile(pathSpec, doConvolve=None, doRebin=False, 
+                 doNorm=False, 
                  doSwapaxes=True,
                  verbose=False, clearCache=False):
     """ Directly read some recent version of JEGs spots.
