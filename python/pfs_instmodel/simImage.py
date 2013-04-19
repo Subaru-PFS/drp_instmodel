@@ -17,10 +17,10 @@ _______
 """
 
 class SimImage(object):
-    def __init__(self, band, sky=None, psf=None):
+    def __init__(self, band, sky=None, psf=None, simID=None):
         self.detector = pfsDet.Detector(band)
         self.sky = sky if sky else pfsSky.StaticSkyModel(band)
-        self.psf = psf if psf else pfsPsf.SplinedPsf(self.detector)
+        self.psf = psf if psf else pfsPsf.SplinedPsf(self.detector, spotID=simID)
         self.image = None
         
     def addFibers(self, fibers, spectra, waveRange=None, everyNthPsf=1, doReadout=True):
