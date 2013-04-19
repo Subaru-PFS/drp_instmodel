@@ -2,8 +2,6 @@
 
 import os
 import pyfits
-import cPickle as pickle
-
 import numpy
 
 import scipy.ndimage
@@ -15,7 +13,7 @@ import pfs_tools
 from pfs_tools import pydebug
 
 class SplinedPsf(psf.Psf):
-    def __init__(self, detector, spotType='jeg', spotIDs=None):
+    def __init__(self, detector, spotType='jeg', spotID=None):
         """ Create or read in our persisted form. By default use JEG's models. 
 
         Parameters
@@ -25,7 +23,7 @@ class SplinedPsf(psf.Psf):
            carries the properties of the detector (and camera).
         spotType : str, optional
            Whether to load 'jeg' or 'zemax' spot images.
-        spotIDs : list/string, optional
+        spotID : list/string/dict, optional
            If spotType is set, some dataset identifier. Opaque to us.
         """
 
@@ -41,7 +39,7 @@ class SplinedPsf(psf.Psf):
         self.ycCoeffs = []
 
         if spotType:
-            self.loadFromSpots(spotType, spotIDs)
+            self.loadFromSpots(spotType, spotID)
 
     def __str__(self):
         nSpots = len(self.spots)
@@ -421,24 +419,23 @@ class SplinedPsf(psf.Psf):
         if spotType == 'jeg':
             import jegSpots
 
-            rawSpots, spotInfo = jegSpots.readSpotFile(spotIDs)
+            rawSpots, spotInfo = jegSpots.readSpotFile(spotIDs, verbose=True)
             assert spotInfo['XPIX'] == spotInfo['YPIX']
 
             self.wave = rawSpots['wavelength']
-            self.fibers = rawSpots['fiberIdx']
-            self.spots = rawSpots['spots']
+            self.fiber = rawSpots['fiberIdx']
+            self.spots = rawSpots['spot'].astype('float32')
             self.spotScale = spotInfo['XPIX']
-
 
         else:
             spotsFilepath = SplinedPsf.psfSpotsFile(self.detector.band, spotType, spotIDs)
             sf = pyfits.open(spotsFilepath, mode='readonly')
-            s = sf[1].data
+            rawSpots = sf[1].data
 
             self.spotScale = sf[0].header['pixscale']
-            self.wave = s['wavelength']
-            self.fiber = s['fiberIdx']
-            self.spots = s['spot'].astype('float32')
+            self.wave = rawSpots['wavelength']
+            self.fiber = rawSpots['fiberIdx']
+            self.spots = rawSpots['spot'].astype('float32')
 
         imshape = self.spots.shape[1:]
 
@@ -457,8 +454,8 @@ class SplinedPsf(psf.Psf):
         self.coeffs = coeffs
 
         # Shift offsets to origin.
-        self.xc = s['spot_xc'] + self.detector.config['ccdSize'][1] * self.detector.config['pixelScale'] / 2
-        self.yc = s['spot_yc'] + self.detector.config['ccdSize'][0] * self.detector.config['pixelScale'] / 2
+        self.xc = rawSpots['spot_xc'] + self.detector.config['ccdSize'][1] * self.detector.config['pixelScale'] / 2
+        self.yc = rawSpots['spot_yc'] + self.detector.config['ccdSize'][0] * self.detector.config['pixelScale'] / 2
 
         self.xcCoeffs = spInterp.RectBivariateSpline(xx, yy, self.xc.reshape(len(xx), len(yy)))
         self.ycCoeffs = spInterp.RectBivariateSpline(xx, yy, self.yc.reshape(len(xx), len(yy)))
@@ -481,50 +478,5 @@ class SplinedPsf(psf.Psf):
         tx = ty = 128
         print "%d,%d: %s)" % (tx, ty, coeffs[ty, tx]([0],[0]))
         
-    def loadFromFile(self, spotType, filename=None):
-        """ Deprecated -- assuming we can load and spline the spots fast enough.  """
 
-        raise NotImplementedError('loadFromFile has been pulled')
-
-def constructSplinesFromSpots(band, spotType='jeg'):
-    """ NASTY and deprecated function to construct a pickle file holding the per-pixel spot splines. These should probably be 
-    in the FITS file, but I haven't worked out how to do that (.knots -> binary table?)
-    """
-    
-    psfFilepath = SplinedPsf.psfSplinesFile(band, spotType)
-    spotsFilepath = SplinedPsf.psfSpotsFile(band, spotType)
-    
-    sf = pyfits.open(spotsFilepath, mode='readonly')
-    s = sf[1].data
-    
-    outputDict = {}
-    outputDict['wave'] = s['wavelength']
-    outputDict['fiber'] = s['fiberIdx']
-    outputDict['spotScale'] = sf[0].header['pixscale']
-    outputDict['xc'] = s['spot_xc']
-    outputDict['yc'] = s['spot_yc']
-
-    spots = s['spot'].astype('float32')
-    outputDict['spots'] = spots
-
-    imshape = spots.shape[1:]
-
-    # Make a spline for each pixel. The spots are centered on the output grid,
-    # and we track the xc,yc offset separately.
-
-    # XXX - This fiber/wave indexing scheme is not safe in general
-    xx = numpy.unique(outputDict['fiber'])
-    yy = numpy.unique(outputDict['wave'])
-
-    coeffs = numpy.zeros(imshape, dtype='O')
-    for ix in range(imshape[0]):
-        print "splining col %d" % (ix)
-        for iy in range(imshape[1]):
-            coeffs[iy, ix] = spInterp.RectBivariateSpline(xx, yy,
-                                                          spots[:, iy, ix].reshape(len(xx), len(yy)))
-    outputDict['coeffs'] = coeffs
-    
-    with open(psfFilepath, 'w+') as pfile:
-        print "pickling...."
-        pickle.dump(outputDict, pfile, protocol=-1)
 
