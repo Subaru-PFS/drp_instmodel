@@ -43,15 +43,15 @@ class Exposure(object):
                    image individually.
         """
         
-        self.image += im
+        self._image += im
         if ivar:
-            self.ivar += ivar
+            self._ivar += ivar
         if mask:
-            self.mask += mask
+            self._mask += mask
         if addPlane:
             assert isinstance(addPlane, basestring), "addPlane argument must be a string"
             if hasattr(self.planes, addPlane):
-                raise KeyError("plane named %s already exists" % (addPlane)
+                raise KeyError("plane named %s already exists" % (addPlane))
 
             # Go back and be fancy with properties -- CPL
             setattr(self, addPlane, im)
