@@ -97,7 +97,7 @@ def clearSpotCache():
     _spotCache.clear()
 
 def readSpotFile(pathSpec, doConvolve=None, doRebin=False, 
-                 doNorm=False, 
+                 doNorm=True, 
                  doSwapaxes=True,
                  verbose=False, clearCache=False):
     """ Directly read some recent version of JEGs spots.
@@ -205,6 +205,8 @@ def readSpotFile(pathSpec, doConvolve=None, doRebin=False,
 
     spots = []
     symSpots = []
+    maxFlux = max([data[d].sum() for d in range(data.shape[0])])
+    print("max spot = %0.2f" % (maxFlux))
     for i in range(data.shape[0]):
         fiberIdx = fiberIDs[i / nlam]
         wavelength = wavelengths[i % nlam]
@@ -223,17 +225,19 @@ def readSpotFile(pathSpec, doConvolve=None, doRebin=False,
             spot = spot[:-1,:-1]
             spot = pfs_tools.rebin(spot, 85,85)
 
+        rawSum = spot.sum()
         if doNorm:
-            # Require total flux to be 1.0
-            spot /= spot.sum()
+            # Normalize the flux of each spot, w.r.t. the brightest spot.
+            spot /= maxFlux
         
         # Rotate x-up mechanical view to y-up detector view (dispersing along columns)
         spot = numpy.swapaxes(spot,0,1)
         xc, yc = yc, xc
         spots.append((fiberIdx, wavelength, xc, yc, spot))
         if verbose:
-            print("spot  %d (%d, %0.2f) at (%0.1f %0.1f), max=%d" % 
-                  (i, fiberIdx, wavelength, xc, yc, spot.max()))
+            print("spot  %d (%d, %0.2f) at (%0.1f %0.1f), max=%0.2f sum=%0.2f, rawSum=%0.2f" % 
+                  (i, fiberIdx, wavelength, xc, yc, 
+                   spot.max(), spot.sum(), rawSum))
         if fiberIdx != 0:
             symSpots.append((-fiberIdx, wavelength, -xc, yc, spot[::-1,:]))
 
