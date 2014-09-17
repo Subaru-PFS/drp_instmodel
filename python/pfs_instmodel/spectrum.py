@@ -79,25 +79,18 @@ class Spectrum(object):
         return self.flux(wave)[1]
     
 class FlatSpectrum(Spectrum):
-    def __init__(self, detector):
+    def __init__(self, detector, gain=1.0):
         self.detector = detector
+        self.scale = 1e11 * gain
 
     def flux(self, wave):
-        """ return a quartz lamp spectrum, as seen by our detector. 
+        """ return a quartz lamp spectrum, as seen by our detector. """
 
-        Notes
-        -----
-
-        We need to apply the instrument response, but that is not available for the new
-        optics design. So we just return the full blackbody.
-
-        We require wavelengths to evaluate at, and not just a range or a "full spectrum".
-        """
         # Work out the fing scaling, CPL
-        return wave, pfs_tools.blackbody(wave, 3800.0) * 1e12
+        return wave, pfs_tools.blackbody(wave, 3800.0) * self.scale
 
 class CombSpectrum(Spectrum):
-    def __init__(self, spacing=50, gain=1.0):
+    def __init__(self, spacing=50, gain=1000.0):
         """ Create a spectrum which will return a flux of gain at every ~spacing AA, 0 elsewhere. 
 
         Actually, return a comb spectrum with non-zero values at the full range endpoints and at as
