@@ -23,10 +23,10 @@ class Psf(object):
            
         """
 
-        if outImg == None:
+        if outImg is None:
             outImg = self.detector.simBias().image
 
-        if spectra == None:
+        if spectra is None:
             spectra = [None] * len(fibers)
         for i, fiber in enumerate(fibers):
             self.fiberImage(fiber, spectra[i], outImg=outImg, 

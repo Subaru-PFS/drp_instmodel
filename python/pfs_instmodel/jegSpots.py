@@ -179,7 +179,7 @@ def readSpotFile(pathSpec, doConvolve=None, doRebin=False,
     print "  XXX: hardwired max(fiberid)==%d logic" % (headerDict['MAXFIBER'])
 
     headerVersion = 1 if 'LAM[1]' in headerDict else 2
-    if doConvolve == None:
+    if doConvolve is None:
         doConvolve = headerVersion == 1
         
     nimage = headerDict['NIMAGE']

@@ -109,10 +109,10 @@ class SplinedPsf(psf.Psf):
     
         """
 
-        if pixelScale == None:
+        if pixelScale is None:
             pixelScale = self.detector.config['pixelScale']            
         
-        if waveRange == None:
+        if waveRange is None:
             waveRange = self.wave.min(), self.wave.max()
 
         # Assume that the full spectrum fits on the detector.
@@ -122,13 +122,13 @@ class SplinedPsf(psf.Psf):
             minY, maxY = maxY, minY
         if minY < 0:
             print("one of wavelengths %s maps below the deector (%0.5f mm)" % (waveRange, minY))
-        if maxY >self.detector.config['ccdSize'][1]:
+        if maxY > self.detector.config['ccdSize'][1]:
             print("one of wavelengths %s maps above the deector (%0.5f mm)" % (waveRange, maxY))
         
         minRow = int(minY/pixelScale)
         maxRow = int(maxY/pixelScale)
 
-        if rows == None:
+        if rows is None:
             rows = numpy.arange(minRow, maxRow+1)
 
         # Invert the spline into a row->wave map. 
@@ -181,19 +181,19 @@ class SplinedPsf(psf.Psf):
         
         """
 
-        if waves == None:
+        if waves is None:
             waves = numpy.unique(self.wave)
             
         waveSign = 1 if waves[-1] > waves[0] else -1
         interpWaves = waves[::waveSign*everyNthPsf]
         
         centers = [(x,y) for x in fibers for y in waves]
-        if usePsfs != None:
+        if usePsfs is not None:
             newImages = usePsfs
         else:
             newImages = numpy.zeros(shape=(len(fibers)*len(interpWaves),
-                                        self.imshape[0],
-                                        self.imshape[1]))
+                                           self.imshape[0],
+                                           self.imshape[1]))
             for ix in range(self.imshape[0]):
                 for iy in range(self.imshape[1]):
                     newImages[:, iy, ix] = self.coeffs[iy, ix](fibers, interpWaves).flat
@@ -220,7 +220,7 @@ class SplinedPsf(psf.Psf):
         pixelScale = self.spotScale
         everyNthPsf *= int(self.detector.config['pixelScale'] / self.spotScale)
         
-        if waveRange == None:
+        if waveRange is None:
             waveRange = self.wave.min(), self.wave.max()
         minX, maxX = self.xcCoeffs([fiber], waveRange)[0]
         minY, maxY = self.ycCoeffs([fiber], waveRange)[0]
@@ -238,7 +238,7 @@ class SplinedPsf(psf.Psf):
                                                         pixelScale=pixelScale)
         pixelWaves = allPixelWaves[0]
         pixelFlux = spectrum(pixelWaves)
-        
+
         # Get the PSFs and their locations on the oversampled pixels.
         fiberPsfs, psfIds, centers = self.psfsAt([fiber], pixelWaves, everyNthPsf=everyNthPsf)
         xCenters, yCenters = [c[0] for c in centers]
@@ -268,7 +268,7 @@ class SplinedPsf(psf.Psf):
         fiberImageOffset -= (outImgOffset - outImgOffset.astype('i4')) * self.detector.config['pixelScale']
         outImgOffset = outImgOffset.astype('i4')
         
-        if outImg == None:
+        if outImg is None:
             outExp = self.detector.simBias()
             outImg = outExp.image
 
@@ -340,7 +340,7 @@ class SplinedPsf(psf.Psf):
 
         try:
             img[parenty, parentx] += numpy.require(subImg[childy, childx], 
-                                                dtype=img.dtype)
+                                                   dtype=img.dtype)
         except ValueError, e:
             print "failed to place child at (%d,%d): %s" % (xc,yc, e)
     
@@ -386,7 +386,7 @@ class SplinedPsf(psf.Psf):
     def _sincfunc(self, x, dx):
         dampfac = 3.25
         if dx != 0.0:
-            return numpy.exp( -((x+dx)/dampfac)**2 ) * numpy.sin( numpy.pi*(x+dx) ) / (numpy.pi * (x+dx))
+            return numpy.exp(-((x+dx)/dampfac)**2) * numpy.sin(numpy.pi*(x+dx)) / (numpy.pi * (x+dx))
         else:
             xx = numpy.zeros(len(x))
             xx[len(x)/2] = 1.0

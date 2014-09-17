@@ -52,7 +52,7 @@ class SimImage(object):
         the following 
           * 
         """
-        if self.image == None:
+        if self.image is None:
             self.exposure = self.detector.makeEmptyExposure()
             self.image = self.exposure.image
 
