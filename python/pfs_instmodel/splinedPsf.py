@@ -213,6 +213,22 @@ class SplinedPsf(psf.Psf):
                                                                                   len(interpWaves))
         return finalImages, centers, self.traceCenters(fibers, waves)
 
+    def fiberGeometry(self, fiber, waveRange=None):
+        # Evaluate at image resolution
+        pixelScale = self.detector.config['pixelScale']
+        
+        if waveRange is None:
+            waveRange = self.wave.min(), self.wave.max()
+
+        # Get the wavelengths for the fiber pixels.
+        allPixelRows, allPixelWaves = self.wavesForRows([fiber], waveRange=waveRange, 
+                                                        pixelScale=pixelScale)
+        pixelWaves = allPixelWaves[0]
+
+        centers = self.traceCenters([fiber], pixelWaves)
+        
+        return pixelWaves, centers
+
     def fiberImage(self, fiber, spectrum, outImg=None, waveRange=None, everyNthPsf=1, returnUnbinned=False):
         """ Return an interpolated image of a fiber """
 
@@ -297,15 +313,16 @@ class SplinedPsf(psf.Psf):
 
             intx = round(xPixOffset)
 
-            if i % 1000 in range(2) or i > len(pixelWaves)-2:
-                print("%5d %6.1f (%3.3f, %3.3f) %0.1f" % (i, specWave, xc, yc, specFlux))
             lasty = inty
 
-            if specFlux < 1e-2:
-                continue
-            
             # Assume we are well enough oversampled to ignore fractional pixel shifts.
             spot = specFlux * rawPsf
+            if i % 1000 == 0 or i > len(pixelWaves)-2:
+                print("%5d %6.1f (%3.3f, %3.3f) %0.2f %0.2f %0.2f" % (i, specWave, xc, yc, 
+                                                                      rawPsf.sum(), spot.sum(), specFlux))
+
+            if spot.sum() < 1:
+                continue
             
             self.placeSubimage(fiberImage, spot, intx, inty)
                         
@@ -436,6 +453,9 @@ class SplinedPsf(psf.Psf):
             self.wave = rawSpots['wavelength']
             self.fiber = rawSpots['fiberIdx']
             self.spots = rawSpots['spot'].astype('float32')
+
+        # Keep the raw info around, at least until production.
+        self.rawSpots = rawSpots
 
         imshape = self.spots.shape[1:]
 
