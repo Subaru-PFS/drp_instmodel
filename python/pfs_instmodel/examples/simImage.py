@@ -10,6 +10,7 @@ import pfs_instmodel.splinedPsf as simPsf
 import pfs_instmodel.simImage as simImage
 import pfs_instmodel.sky as pfsSky
 import pfs_instmodel.spectrum as pfsSpectrum
+reload(pfsSpectrum)
 
 def makeSim(band, fieldName, fiberFilter=None, everyNthPsf=50,
             frd=None, focus=None, date=None):
@@ -45,9 +46,11 @@ def makeSim(band, fieldName, fiberFilter=None, everyNthPsf=50,
 
     sim = simImage.SimImage(band, simID=simID)
     skyModel = pfsSky.StaticSkyModel(band) # plus field info....
-    flatSpectrum = pfsSpectrum.FlatSpectrum(sim.detector)
+    flatSpectrum = pfsSpectrum.FlatSpectrum(sim.detector, gain=10.0)
+    #combSpectrum = pfsSpectrum.CombSpectrum(spacing=50, 
+    #                                        gain=10000.0/(sim.detector.config['pixelScale']/sim.psf.spotScale)**2)
     combSpectrum = pfsSpectrum.CombSpectrum(spacing=50, 
-                                            gain=1.0/(sim.detector.config['pixelScale']/sim.psf.spotScale)**2)
+                                            gain=10000.0)
     
     field = loadField(fieldName)
 
@@ -125,10 +128,17 @@ def expandRangeArg(arg):
     return fullRange
 
 def saveSim(sim, outputFile):
-    import pyfits
+    from astropy.io import fits 
 
-    pyfits.writeto(outputFile, sim.image, checksum=True, clobber=True)
-    
+    fits.writeto(outputFile, sim.image, checksum=True, clobber=True)
+
+    waveImage = sim.waveImage()
+    fits.append(outputFile, waveImage, checksum=True, clobber=True)
+
+    # For Stella v.0.x, provide waves with 0s in place of nans, in a separate file.
+    waveImage[numpy.isnan(waveImage)] = 0
+    fits.writeto('WAVE-'+outputFile, waveImage)
+
 def main(args=None):
     """ called by __main__, or pass in a string as if it were a command line. 
 
@@ -141,7 +151,8 @@ def main(args=None):
     
     """
     if isinstance(args, basestring):
-        args = args.split()
+        import shlex
+        args = shlex.split(args)
 
     helpDoc = \
 """ 
@@ -161,8 +172,8 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
     parser.add_argument('-F', '--field', action='store', required=True)
     parser.add_argument('-o', '--output', action='store', default=None)
     parser.add_argument('-f', '--fibers', action='store', default=None)
-    parser.add_argument('--focus', action='store', default=0)
-    parser.add_argument('--frd', action='store', default=23)
+    parser.add_argument('--focus', action='store', default=0, type=int)
+    parser.add_argument('--frd', action='store', default=23, type=int)
     parser.add_argument('--date', action='store', default='2013-04-18')
     parser.add_argument('--everyNth', action='store', type=int, default=50)
     parser.add_argument('-d', '--ds9', action='store_true', default=False)
