@@ -1,4 +1,4 @@
-import pyfits
+import astropy.io.fits as pyfits
 import numpy
 import scipy.ndimage
 import scipy.signal

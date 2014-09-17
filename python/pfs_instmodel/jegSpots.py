@@ -8,7 +8,7 @@ import numpy
 import scipy.signal
 import scipy.ndimage
 
-import pyfits
+import astropy.io.fits as fits
 
 import pfs_tools
 
@@ -63,7 +63,7 @@ def makeFiberImage(fiberRadius=28, shape=(64,64), dtype='f4'):
     return im
     
 def convolveWithFiber(spot, fiberImage=None):
-    if fiberImage == None:
+    if fiberImage is None:
         fiberImage = makeFiberImage()
     
     return scipy.ndimage.convolve(spot, fiberImage, mode='constant', cval=0.0)
@@ -254,36 +254,36 @@ def readSpotFile(pathSpec, doConvolve=None, doRebin=False,
     return arr, headerDict
 
 def writeSpotFITS(spotDir, data):
-    raise NotImplementedError("writeSpotFITS() no longer needed or tested")
+#    raise NotImplementedError("writeSpotFITS() no longer needed or tested")
 
-    phdu = pyfits.PrimaryHDU()
+    phdu = fits.PrimaryHDU()
     phdr = phdu.header
     phdr.update('pixscale', 0.003, 'mm/pixel')
 
     cols = []
-    cols.append(pyfits.Column(name='fiberIdx',
-                              format='I',
-                              array=data['fiberIdx']))
-    cols.append(pyfits.Column(name='wavelength',
-                              format='D',
-                              array=data['wavelength']))
-    cols.append(pyfits.Column(name='spot_xc',
-                              format='D',
-                              array=data['spot_xc']))
-    cols.append(pyfits.Column(name='spot_yc',
-                              format='D',
-                              array=data['spot_yc']))
+    cols.append(fits.Column(name='fiberIdx',
+                            format='I',
+                            array=data['fiberIdx']))
+    cols.append(fits.Column(name='wavelength',
+                            format='D',
+                            array=data['wavelength']))
+    cols.append(fits.Column(name='spot_xc',
+                            format='D',
+                            array=data['spot_xc']))
+    cols.append(fits.Column(name='spot_yc',
+                            format='D',
+                            array=data['spot_yc']))
     spots = data['spot'][:]
     spotw = spots[0].shape[0]
     spots.shape = (len(spots), spotw*spotw)
-    cols.append(pyfits.Column(name='spot',
-                              format='%dE' % (spotw*spotw),
-                              dim='(%d,%d)' % (spotw, spotw),
-                              array=spots))
-    colDefs = pyfits.ColDefs(cols)
+    cols.append(fits.Column(name='spot',
+                            format='%dE' % (spotw*spotw),
+                            dim='(%d,%d)' % (spotw, spotw),
+                            array=spots))
+    colDefs = fits.ColDefs(cols)
 
-    thdu = pyfits.new_table(colDefs)
-    hdulist = pyfits.HDUList([phdu, thdu])
+    thdu = fits.new_table(colDefs)
+    hdulist = fits.HDUList([phdu, thdu])
 
     hdulist.writeto(os.path.join(spotDir, 'spots.fits'), 
                     checksum=True, clobber=True)

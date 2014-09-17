@@ -1,5 +1,5 @@
 import numpy
-import pyfits
+from astropy.io import fits as pyfits
 
 class Exposure(object):
     def __init__(self, detector, doNew=True, dtype='u2'):
