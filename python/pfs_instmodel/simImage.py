@@ -3,6 +3,7 @@ import numpy
 import pfs_instmodel.detector as pfsDet
 import pfs_instmodel.sky as pfsSky
 import pfs_instmodel.splinedPsf as pfsPsf
+reload(pfsPsf)
 
 """
 Example
@@ -15,14 +16,14 @@ _______
                                 spectra=[irSky]*len(fibers),
                                 everyNthPsf=50)
 """
-
 class SimImage(object):
     def __init__(self, band, sky=None, psf=None, simID=None):
         self.detector = pfsDet.Detector(band)
         self.sky = sky if sky else pfsSky.StaticSkyModel(band)
         self.psf = psf if psf else pfsPsf.SplinedPsf(self.detector, spotID=simID)
         self.image = None
-        
+        self.fibers = {}
+
     def addFibers(self, fibers, spectra, waveRange=None, everyNthPsf=1, doReadout=True):
         """ Add images of the given fibers. 
 
@@ -59,9 +60,32 @@ class SimImage(object):
         for i, fiber in enumerate(fibers):
             self.psf.fiberImage(fiber, spectra[i], outImg=self.image,
                                 waveRange=waveRange, everyNthPsf=everyNthPsf)
+            self.fibers[fiber] = dict(spectrum=spectra[i])
 
         if doReadout:
             self.detector.readout(self.exposure)
             
         return self.image
+
+    def waveImage(self):
+        """ """
+
+        nFibers = len(self.fibers)
+        f_i = sorted(self.fibers)
+        
+        waveArr = numpy.zeros((nFibers, self.detector.config['ccdSize'][1]), dtype='f4')
+        waveArr[:] = numpy.nan
+        for i in range(nFibers):
+            rows, waves = self.psf.wavesForRows([f_i[i]])
+            waveArr[i][rows] = waves[0]
+
+        return waveArr
+
+def fiberInfo(self):
+    """ Return a single numpy array containing what we know about the fibers. """
+
+    nFibers = len(self.fibers)
+    s_i = sorted(self.fibers)
+
+    dtype = numpy.dtype([('id','i2')])
 
