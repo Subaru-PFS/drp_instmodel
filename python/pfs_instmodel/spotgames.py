@@ -504,12 +504,13 @@ def spotShowImages(im, fftim, iim, imbox, fig, plotids, resClip=0,
         #    residIm = numpy.clip(iim,-resClip,resClip)
         #else:
         #    residIm = iim
-        residIm = iim
+        residIm = iim.astype('f8') - im
+        residIm = numpy.clip(residIm, 0.0, residIm.max())/residIm.max()
 
-        im3 = plt_iim.imshow(residIm, extent=imbox, vmin=-resClip, vmax=resClip)
+        im3 = plt_iim.imshow(residIm, extent=imbox) # , vmin=-resClip, vmax=resClip)
         ticks = numpy.sort(numpy.append(numpy.linspace(-resClip,resClip,4),[0]))
         print "setting ticks to %s" % (ticks)
-        fig.colorbar(im3, ticks=ticks)
+        # fig.colorbar(im3, ticks=ticks)
         l0,l1 = plt_iim.get_xlim()
         plt_iim.vlines(0,l0,l1,'r', alpha=0.3)
         plt_iim.hlines(0,l0,l1,'r', alpha=0.3)
@@ -526,8 +527,8 @@ def spotShowImages(im, fftim, iim, imbox, fig, plotids, resClip=0,
 
     return plt_im, plt_fft, plt_iim
 
-def spotShow(im, scale=10, binning=2):
-    fig = plt.figure('spot')
+def spotShow(im, scale=10, binning=2, figName='spot'):
+    fig = plt.figure(figName)
     sgs = gridspec.GridSpec(3,3, hspace=0.1, wspace=0.1)
 
     im = im/im.sum()
@@ -728,3 +729,58 @@ def plot2bins(spot, bin1, bin2, trimmedSize=None,
                      shiftBy=shiftBy, figname=figname, 
                      unbinnedScale=unbinnedScale,
                      shiftFunc=shiftFunc,maxFreq=maxFreq)
+
+
+def spotgrid(spots, waves, fibers, trimRadius=75, figName='spot grid', vmax=0.6):
+    """ Display a grid of unbinned psf spots.
+
+    Currently also displays one columns of binned spots.
+    """
+
+    fig = plt.figure(figName)
+
+    rows = len(waves)
+    cols = len(fibers)+1
+    for w_i, w in enumerate(waves):
+        for f_i, f in enumerate(fibers):
+            sidx = numpy.where((spots['wavelength'] == w) & (spots['fiberIdx'] == f))
+            p = fig.add_subplot(rows, cols, (rows-w_i-1)*cols+f_i+1)
+            spotIm = spots['spot'][sidx[0][0]] / spots['spot'].max()
+            spotCtr = (spotIm.shape[0]+1)/2
+            trimmedSpot = spotIm[spotCtr-trimRadius:spotCtr+trimRadius,
+                                 spotCtr-trimRadius:spotCtr+trimRadius]
+            p.imshow(trimmedSpot,
+                     vmax=vmax)
+            if w_i != 0:
+                p.xaxis.set_visible(False)
+            else:
+                p.set_xlabel('1um pixels')
+            if f_i != 0:
+                p.yaxis.set_visible(False)
+
+            if w_i == rows-1:
+                p.set_title('fiber %d' % (f))
+
+            if f_i == 0:
+                p.set_ylabel('%dA' % (w))
+            
+            if f_i == cols-2:
+                p = fig.add_subplot(rows, cols, (rows-w_i-1)*cols+f_i+2)
+                newWidth = (trimRadius*2+1)/15
+                print("shape: %s; trying to bin to %d (needs %d)" 
+                      % (trimmedSpot.shape, newWidth, newWidth*15))
+
+                bim = pfs_tools.rebin(trimmedSpot, newWidth, newWidth)
+                bim /= bim.max()
+                p.imshow(bim,
+                         vmax=vmax)
+                p.yaxis.set_visible(False)
+                if w_i == 0:
+                    p.set_xlabel('15um pixels')
+                else:
+                    p.xaxis.set_visible(False)
+                if w_i == rows-1:
+                    p.set_title('fiber %d' % (f))
+
+                    
+    plt.tight_layout()
