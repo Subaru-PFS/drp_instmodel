@@ -16,7 +16,7 @@ class Detector(object):
          * camera throughput (kinda have).
     """
 
-    def __init__(self, detectorName):
+    def __init__(self, detectorName, dtype='u2'):
         """ Need to work out how to specify & pass in our properties. Use a "struct" for now. """
 
         # Map self.band to a filename using some mapper. For now, hardcode
@@ -25,21 +25,22 @@ class Detector(object):
         
         self.band = detectorName
         self.config = pfs_tools.configFile.readfile(filepath)
+        self.dtype = dtype
 
     def makeEmptyExposure(self):
-        return exposure.Exposure(self, dtype='u2')
+        return exposure.Exposure(self, dtype=self.dtype)
 
     def simBias(self, shape=None):
         """ Return a bias image based on our properties. """
         
-        exp = self.makeEmptyExposure(doNew=True)
+        exp = self.makeEmptyExposure()
 
         if not shape:
             shape = self.config['ccdSize']
 
         bias = numpy.random.normal(self.config['bias'],
                                    self.config['readNoise'],
-                                   shape).astype('u2')
+                                   shape).astype(self.dtype)
         ivar = bias*0 + 1/self.config['readNoise']**2
         exp.setImage(bias, ivar)
 
@@ -52,7 +53,7 @@ class Detector(object):
 
         bias = numpy.random.normal(self.config['bias'],
                                    self.config['readNoise'],
-                                   shape).astype('u2')
+                                   shape).astype(self.dtype)
         ivar = bias*0 + 1/self.config['readNoise']**2
 
         exp.addFlux(bias, addPlane=keepParts)
