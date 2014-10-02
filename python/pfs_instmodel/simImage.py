@@ -21,8 +21,12 @@ class SimImage(object):
         self.detector = pfsDet.Detector(band)
         self.sky = sky if sky else pfsSky.StaticSkyModel(band)
         self.psf = psf if psf else pfsPsf.SplinedPsf(self.detector, spotID=simID)
-        self.image = None
+        self.exposure = None
         self.fibers = {}
+
+    @property
+    def image(self):
+        return self.exposure.image
 
     def addFibers(self, fibers, spectra, waveRange=None, everyNthPsf=1, doReadout=True):
         """ Add images of the given fibers. 
@@ -53,19 +57,19 @@ class SimImage(object):
         the following 
           * 
         """
-        if self.image is None:
+        if self.exposure is None:
             self.exposure = self.detector.makeEmptyExposure()
-            self.image = self.exposure.image
 
         for i, fiber in enumerate(fibers):
-            self.psf.fiberImage(fiber, spectra[i], outImg=self.image,
-                                waveRange=waveRange, everyNthPsf=everyNthPsf)
-            self.fibers[fiber] = dict(spectrum=spectra[i])
+            parts = self.psf.fiberImage(fiber, spectra[i], outExp=self.exposure,
+                                        waveRange=waveRange, everyNthPsf=everyNthPsf)
+            self.fibers[fiber] = dict(spectrum=spectra[i],
+                                      geometry=parts[3])
 
         if doReadout:
             self.detector.readout(self.exposure)
             
-        return self.image
+        return self.exposure
 
     def waveImage(self):
         """ """
