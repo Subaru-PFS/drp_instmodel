@@ -37,6 +37,7 @@ class SplinedPsf(psf.Psf):
         self.coeffs = []
         self.xcCoeffs = []
         self.ycCoeffs = []
+        self.spotID = spotID
 
         if spotType:
             self.loadFromSpots(spotType, spotID)
@@ -281,17 +282,21 @@ class SplinedPsf(psf.Psf):
 
         # pixels
         outImgOffset = fiberImageOffset / self.detector.config['pixelScale']
+        print("fiber offset: pix=%s mm=%s" % (outImgOffset, fiberImageOffset))
 
         # Adjust offset by fractional detector pixel
         fiberImageOffset -= (outImgOffset - outImgOffset.astype('i4')) * self.detector.config['pixelScale']
         outImgOffset = outImgOffset.astype('i4')
-        
-        if outImg is None:
+        print("net fiber offset: pix=%s mm=%s" % (outImgOffset, fiberImageOffset))
+      
+        if outExp is None:
             outExp = self.detector.simBias()
             outImg = outExp.image
 
         # construct the oversampled fiber image
-        lasty = 0
+        geometry = numpy.zeros(len(pixelWaves), dtype=[('xc','f4'),('yc','f4'),
+                                                       ('intx','i4'),('inty','i4'),
+                                                       ('wavelength','f4'),('flux','f4')])
         for i in range(len(pixelWaves)):
             specWave = pixelWaves[i]
             specFlux = pixelFlux[i]
