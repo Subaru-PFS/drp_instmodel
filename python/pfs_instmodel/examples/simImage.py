@@ -13,7 +13,7 @@ import pfs_instmodel.spectrum as pfsSpectrum
 reload(pfsSpectrum)
 
 def makeSim(band, fieldName, fiberFilter=None, everyNthPsf=50,
-            frd=None, focus=None, date=None):
+            frd=None, focus=None, date=None, psf=None):
     """ Construct a simulated image. 
 
     Parameters
@@ -44,7 +44,7 @@ def makeSim(band, fieldName, fiberFilter=None, everyNthPsf=50,
     
     simID = dict(band=band, frd=frd, focus=focus, date=date)
 
-    sim = simImage.SimImage(band, simID=simID)
+    sim = simImage.SimImage(band, simID=simID, psf=psf)
     skyModel = pfsSky.StaticSkyModel(band) # plus field info....
     flatSpectrum = pfsSpectrum.FlatSpectrum(sim.detector, gain=10.0)
     #combSpectrum = pfsSpectrum.CombSpectrum(spacing=50, 
