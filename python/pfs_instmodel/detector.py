@@ -46,7 +46,7 @@ class Detector(object):
 
         return exp
 
-    def readout(self, exp, keepParts=False):
+    def readout(self, exp, keepBias=False):
         """ 'Readout' an exposure: add in read noise, bad columns, hot pixels, etc. """
 
         shape = exp.shape
@@ -56,7 +56,7 @@ class Detector(object):
                                    shape).astype(self.dtype)
         ivar = bias*0 + 1/self.config['readNoise']**2
 
-        exp.addFlux(bias, addPlane=keepParts)
+        exp.addFlux(bias, addPlane=('bias' if keepBias else None))
 
     def getResponseSpline(self):
         """ Read in JEG's preliminary detector response.
