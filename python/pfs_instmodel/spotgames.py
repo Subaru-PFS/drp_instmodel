@@ -132,9 +132,9 @@ def imextent(im, scale=1.0, doCenter=False):
 def distmap(arr, x0=None, y0=None):
     """ return the pixel distance map for a given array. """
 
-    if x0 == None:
+    if x0 is None:
         x0 = (arr.shape[1]-1)/2.0
-    if y0 == None:
+    if y0 is None:
         y0 = (arr.shape[0]-1)/2.0
     
     yd = numpy.linspace(0,arr.shape[0]-1,arr.shape[0]) - y0
@@ -149,13 +149,19 @@ def shiftSpot1d(spot, dx, dy, kernels=None, kargs=None):
     
     if not kargs:
         kargs = {}
-    if kernels == None:
+    if kernels is None:
         xkernel = make1dKernel(offset=dx, **kargs)[1]
         ykernel = make1dKernel(offset=dy, **kargs)[1]
         kernels = (xkernel, ykernel)
 
-    sspot = scipy.ndimage.convolve1d(spot, ykernel, axis=0)
-    sspot = scipy.ndimage.convolve1d(sspot, xkernel, axis=1)
+    if dy != 0:
+        sspot = scipy.ndimage.convolve1d(spot, ykernel, axis=0)
+    else:
+        sspot = spot
+
+    if dx != 0:
+        sspot = scipy.ndimage.convolve1d(sspot, xkernel, axis=1)
+
     return sspot, kernels
     
 def shiftSpot2d(spot, dx, dy, kernels=None, kargs=None):
@@ -163,7 +169,7 @@ def shiftSpot2d(spot, dx, dy, kernels=None, kargs=None):
 
     if not kargs:
         kargs = {}
-    if kernels == None:
+    if kernels is None:
         xkernel = make1dKernel(offset=dx, **kargs)[1]
         ykernel = make1dKernel(offset=dy, **kargs)[1]
         kernel = numpy.outer(ykernel, xkernel)
@@ -186,7 +192,7 @@ def shiftSpotSpline(spot, dx, dy, kernels=None, kargs=None):
 def lanczosWindow(x, n):
     if n > 0: 
         w = numpy.sinc(x/n)
-        w[abs(x)>n] = 0
+        w[abs(x) > n] = 0
     else:
         w = x*0 + 1
     return w
@@ -211,7 +217,7 @@ def sincKernel(offset=0.0, padding=0, window=lanczosWindow, n=3, doNorm=True):
     x = numpy.linspace(left, right, cnt)
     y = numpy.sinc(x)
     
-    if window and n>0:
+    if window and n > 0:
         w = window(x, n=n)
         y *= w
     
