@@ -3,6 +3,7 @@ import gzip
 import os
 import re
 import sys
+import time
 
 import numpy
 import scipy.signal
@@ -98,7 +99,8 @@ def clearSpotCache():
 
 def readSpotFile(pathSpec, doConvolve=None, doRebin=False, 
                  doNorm=True, 
-                 doSwapaxes=True,
+                 doSwapaxes=True, doTrimSpots=True,
+                 oversample=4,
                  verbose=False, clearCache=False):
     """ Directly read some recent version of JEGs spots.
 
@@ -201,6 +203,20 @@ def readSpotFile(pathSpec, doConvolve=None, doRebin=False,
     fiberIDs = getFiberIds(headerDict, headerVersion)
         
     data = numpy.fromstring(rawData, dtype='(%d,%d)u2' % (xsize,ysize), count=nimage).astype('f4')
+    if doTrimSpots:
+        data = trimSpots(data)
+        xsize, ysize = data.shape[1:]
+        headerDict['XSIZE'] = xsize
+        headerDict['YSIZE'] = ysize
+
+    if oversample > 1:
+        data = oversampleSpots(data, oversample)
+        xsize, ysize = data.shape[1:]
+        headerDict['XSIZE'] = xsize
+        headerDict['YSIZE'] = ysize
+        headerDict['XPIX'] /= oversample
+        headerDict['YPIX'] /= oversample
+
     fiberImage = makeFiberImage()
 
     spots = []
@@ -253,9 +269,55 @@ def readSpotFile(pathSpec, doConvolve=None, doRebin=False,
     # Now clean up... later steps expect to have fiber IDs and wavelengths in order
     arr = numpy.sort(tarr, order=('fiberIdx','wavelength'))
 
-    _spotCache[path] = arr
+    _spotCache[path] = (arr, headerDict)
 
     return arr, headerDict
+
+def trimSpots(spots):
+    """ Return a spot array with the outer 0-level pixels trimmed off. """
+
+    startWidth = spots.shape[-1]
+    nz = numpy.where(spots > 0)
+    mn = min(nz[1].min(), nz[2].min())
+    mx = max(nz[1].max(), nz[2].max())
+
+    mxt = startWidth - mx
+    trimPix = min(mn, mxt)
+
+    print("trimming spots from %d to %d pixels" % (startWidth, startWidth-trimPix*2)) 
+    nspots = spots[:,trimPix:startWidth-trimPix,trimPix:startWidth-trimPix]
+    return nspots
+
+def oversampleSpots(spots, factor):
+    """ Oversample the given spots by factor. """
+
+    if factor == 1:
+        return spots
+
+    assert spots.shape[1] == spots.shape[2]
+
+    t0 = time.time()
+    print("oversampling %s (%d bytes) by %d" % (spots.shape, 
+                                                spots.nbytes,
+                                                factor))
+
+    newWidth = spots.shape[1]*factor
+    newSpots = numpy.zeros(shape=(spots.shape[0], newWidth, newWidth),
+                           dtype=spots.dtype)
+
+    ix1 = (numpy.arange(newWidth,dtype='f4')/factor).astype('i4')
+    ix = numpy.tile(ix1, (newWidth,1))
+    ixy = (ix, ix.T)
+
+    for i in range(spots.shape[0]):
+        newSpots[i,:,:] = spots[i][ixy] / (factor*factor)
+
+    t1 = time.time()
+    print("oversampled to %s (%d bytes) in %0.4fs" % (newSpots.shape, 
+                                                      newSpots.nbytes,
+                                                      t1-t0))
+
+    return newSpots
 
 def writeSpotFITS(spotDir, data):
 #    raise NotImplementedError("writeSpotFITS() no longer needed or tested")
