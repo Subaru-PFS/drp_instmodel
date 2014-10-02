@@ -277,7 +277,7 @@ class SplinedPsf(psf.Psf):
         fiberImage = numpy.zeros((fiHeight, fiWidth), dtype='f4')
 
         # mm
-        fiberImageOffset = numpy.asarray((xCenters.min(), yCenters.min()))
+        fiberImageOffset = numpy.asarray((yCenters.min(), xCenters.min()))
 
         # pixels
         outImgOffset = fiberImageOffset / self.detector.config['pixelScale']
@@ -301,8 +301,8 @@ class SplinedPsf(psf.Psf):
             # in mm
             xc = xCenters[i]
             yc = yCenters[i]
-            xoffset = xc - fiberImageOffset[0]
-            yoffset = yc - fiberImageOffset[1]
+            xoffset = xc - fiberImageOffset[1]
+            yoffset = yc - fiberImageOffset[0]
 
             # pix offset
             xPixOffset = xoffset / pixelScale
@@ -326,11 +326,12 @@ class SplinedPsf(psf.Psf):
             if spot.sum() < 1:
                 continue
             
-            self.placeSubimage(fiberImage, spot, intx, inty)
-                        
+            self.placeSubimage(fiberImage, spot, (inty, intx))
+            geometry[i] = (xc,yc,intx,inty,specWave,specFlux)
+
             # bin psf to ccd pixels, shift by fractional pixel only.
             #psf = self.scalePsf(rawPsf, -fracx, -fracy, doDetails=doDetails)
-            #self.placeSubimage(outImg, spot, intx, inty)
+            #self.placeSubimage(outImg, spot, (inty, intx))
 
         # transfer flux from oversampled fiber image to final resolution output image
         resampledFiber = self.addOversampledImage(fiberImage, outImg, outImgOffset, outImgSpotPixelScale)
@@ -348,21 +349,42 @@ class SplinedPsf(psf.Psf):
 
         return resampled
     
-    def placeSubimage(self, img, subImg, xc, yc):
-        parentx, childx = self.trimSpan((0, img.shape[1]-1),
-                                        (0, subImg.shape[1]-1),
-                                        xc)
-        
-        parenty, childy = self.trimSpan((0, img.shape[0]-1),
-                                        (0, subImg.shape[0]-1),
-                                        yc)
+    def placeSubimage(self, outImg, subImg, subOffset):
+        parentIdx, childIdx = self.trimRect(outImg, subImg, subOffset)
 
         try:
-            img[parenty, parentx] += numpy.require(subImg[childy, childx], 
-                                                   dtype=img.dtype)
-        except ValueError, e:
-            print "failed to place child at (%d,%d): %s" % (xc,yc, e)
+            outImg[parentIdx] += subImg[childIdx]
+            # exp.addFlux(subImg[childy, childx], outSlice=(parenty, parentx), addNoise=True)
+        except Exception, e:
+            print "failed to place child at %s: %s" % (subOffset, e)
     
+    def trimRect(self, parent, child, childOffset=(0,0)):
+        """ Given two images and an offset of the second, return the intersecting rectangles. 
+
+
+        Arguments
+        ---------
+        parent, child : 2-d ndarray
+        childOffset : offset of child on parent.
+
+        Returns
+        -------
+        (parenty, parentx) - A pair of slice() objects.
+        (childy, childx)   - A pair of slice() objects.
+
+        """
+
+        parentx, childx = self.trimSpan((0, parent.shape[1]-1),
+                                        (0, child.shape[1]-1),
+                                        childOffset[1])
+        
+        parenty, childy = self.trimSpan((0, parent.shape[0]-1),
+                                        (0, child.shape[0]-1),
+                                        childOffset[0])
+
+
+        return (parenty, parentx), (childy, childx)
+
     def trimSpan(self, _parent, _child, childOffset=None):
         """ Return the final overlapping span as slices. We NEED to adopt some point/span/rect system. """ 
 
