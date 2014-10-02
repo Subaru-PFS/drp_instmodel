@@ -451,7 +451,7 @@ class SplinedPsf(psf.Psf):
         newimage = scipy.signal.convolve2d(image, kernel, mode='same')
         return newimage
 
-    def loadFromSpots(self, spotType='jeg', spotIDs=None):
+    def loadFromSpots(self, spotType='jeg', spotIDs=None, spotArgs=None):
         """ Generate ourself from a semi-digested pfs_instdata spot file. 
 
         """
@@ -460,7 +460,9 @@ class SplinedPsf(psf.Psf):
         if spotType == 'jeg':
             import jegSpots
 
-            rawSpots, spotInfo = jegSpots.readSpotFile(spotIDs, verbose=True)
+            if spotArgs is None:
+                spotArgs = dict()
+            rawSpots, spotInfo = jegSpots.readSpotFile(spotIDs, verbose=True, **spotArgs)
             assert spotInfo['XPIX'] == spotInfo['YPIX']
 
             self.wave = rawSpots['wavelength']
