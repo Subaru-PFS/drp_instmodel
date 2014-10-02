@@ -1,5 +1,4 @@
 import numpy
-from astropy.io import fits as pyfits
 
 class Exposure(object):
     def __init__(self, detector, doNew=True, dtype='u2'):
@@ -35,27 +34,30 @@ class Exposure(object):
     def shape(self):
         return self._image.shape
     
-    def addFlux(self, im, ivar=None, mask=None, addPlane=None):
+    def addFlux(self, addIm, outSlice=None, addNoise=True, addPlane=None):
         """ Add some flux to ourselves.
 
-        addPlane - optionally track the new flux as a separate image plane. This is
-                   mostly for simulations, where we want to save the components of an 
-                   image individually.
         """
         
-        self._image += im
-        if ivar:
-            self._ivar += ivar
-        if mask:
-            self._mask += mask
-        if addPlane:
-            assert isinstance(addPlane, basestring), "addPlane argument must be a string"
-            if hasattr(self.planes, addPlane):
-                raise KeyError("plane named %s already exists" % (addPlane))
+        if outSlice is not None:
+            outIm = self._image[outSlice]
+        else:
+            outIm = self._image
 
-            # Go back and be fancy with properties -- CPL
-            setattr(self, addPlane, im)
-        
+        self._addFlux(outIm, addIm, addNoise=addNoise, addPlane=addPlane)
+
+    def _addFlux(self, outIm, inIm, addNoise=True, addPlane=None):
+        outIm += inIm
+
+        if addNoise:
+            noise = numpy.rint(numpy.sqrt(inIm) * numpy.random.normal(size=inIm.shape)).astype('i4')
+
+            # Do we need a soft bias?
+            w = numpy.where((outIm + noise) < 0)
+            outIm += noise
+            outIm[w] = 0
+
+
     def setImage(self, im, ivar):
         # assert im.shape == self._image.shape, "cannot overwrite with image of new shape"
         
