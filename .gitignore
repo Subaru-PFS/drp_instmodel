@@ -2,3 +2,5 @@ doc/build
 *.fits
 *.gz
 *.fz
+.ipynb_checkpoints/
+.DS_Store/

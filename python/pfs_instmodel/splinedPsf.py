@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import os
+import time
 from astropy.io import fits as pyfits
 import numpy
 
@@ -231,12 +232,13 @@ class SplinedPsf(psf.Psf):
         
         return pixelWaves, centers
 
-    def fiberImage(self, fiber, spectrum, outImg=None, waveRange=None, everyNthPsf=1, returnUnbinned=False):
+    def fiberImage(self, fiber, spectrum, outExp=None, waveRange=None, 
+                   everyNthPsf=1, returnUnbinned=False):
         """ Return an interpolated image of a fiber """
 
         # Evaluate at highest resolution
         pixelScale = self.spotScale
-        everyNthPsf *= int(self.detector.config['pixelScale'] / self.spotScale)
+        everyNthPsf *= int(self.detector.config['pixelScale'] / pixelScale)
         
         if waveRange is None:
             waveRange = self.wave.min(), self.wave.max()
@@ -316,11 +318,10 @@ class SplinedPsf(psf.Psf):
             # Keep the shift to the smallest fraction possible, or rather keep the integer steps 
             # exactly +/- 1.
             inty = round(yPixOffset)
-            fracy = yPixOffset - inty
-
             intx = round(xPixOffset)
 
-            lasty = inty
+            fracy = yPixOffset - inty
+            fracx = xPixOffset - intx
 
             # Assume we are well enough oversampled to ignore fractional pixel shifts.
             spot = specFlux * rawPsf
@@ -328,8 +329,8 @@ class SplinedPsf(psf.Psf):
                 print("%5d %6.1f (%3.3f, %3.3f) %0.2f %0.2f %0.2f" % (i, specWave, xc, yc, 
                                                                       rawPsf.sum(), spot.sum(), specFlux))
 
-            if spot.sum() < 1:
-                continue
+            #if spot.sum() < 1:
+            #    continue
             
             self.placeSubimage(fiberImage, spot, (inty, intx))
             geometry[i] = (xc,yc,intx,inty,specWave,specFlux)
@@ -339,18 +340,24 @@ class SplinedPsf(psf.Psf):
             #self.placeSubimage(outImg, spot, (inty, intx))
 
         # transfer flux from oversampled fiber image to final resolution output image
-        resampledFiber = self.addOversampledImage(fiberImage, outImg, outImgOffset, outImgSpotPixelScale)
+        resampledFiber = self.addOversampledImage(fiberImage, outExp, outImgOffset, outImgSpotPixelScale)
 
         if returnUnbinned:
-            return outImg, minRow, minCol, fiberImage, resampledFiber
+            return outExp, minRow, minCol, geometry, fiberImage, resampledFiber
         else:
-            return outImg, minRow, minCol
+            return outExp, minRow, minCol, geometry
 
-    def addOversampledImage(self, inImg, outImg, outOffset, outScale):
+    def addOversampledImage(self, inImg, outExp, outOffset, outScale):
         """ Add the outScale-oversampled inImg to outImg at the given offset. """
 
         resampled = pfs_tools.rebin(inImg, inImg.shape[0]/outScale, inImg.shape[1]/outScale)
-        self.placeSubimage(outImg, resampled, *outOffset)
+
+        outImg = outExp.image
+        parentIdx, childIdx = self.trimRect(outImg, resampled, outOffset)
+        try:
+            outExp.addFlux(resampled[childIdx], outSlice=parentIdx, addNoise=True)
+        except Exception, e:
+            print "failed to place child at %s): %s" % (outOffset, e)
 
         return resampled
     
