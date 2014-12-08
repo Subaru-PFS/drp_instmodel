@@ -26,7 +26,7 @@ OFFSETS :
 
 """
 
-def getDataPath(date, band, frd, focus=0, spotDir=None):
+def getDataPath(date='2013-04-18', band=None, frd=23, focus=0, spotDir=None):
     """ Given """
     if not spotDir:
         spotDir = os.path.join(os.environ['PFS_INSTDATA_DIR'], 'data/spots/jeg')
@@ -100,7 +100,7 @@ def clearSpotCache():
 def readSpotFile(pathSpec, doConvolve=None, doRebin=False, 
                  doNorm=True, 
                  doSwapaxes=True, doTrimSpots=True,
-                 oversample=4,
+                 oversample=1,
                  verbose=False, clearCache=False):
     """ Directly read some recent version of JEGs spots.
 
@@ -241,27 +241,31 @@ def readSpotFile(pathSpec, doConvolve=None, doRebin=False,
             spot = spot[:-1,:-1]
             spot = pfs_tools.rebin(spot, 85,85)
 
+        # Rotate x-up mechanical view to y-up detector view (dispersing along columns)
+        spot = numpy.swapaxes(spot,0,1)
+        xc, yc = yc, xc
+
+        rawSpot = spot.copy()
+
         rawSum = spot.sum()
         if doNorm:
             # Normalize the flux of each spot, w.r.t. the brightest spot.
             spot /= maxFlux
         
-        # Rotate x-up mechanical view to y-up detector view (dispersing along columns)
-        spot = numpy.swapaxes(spot,0,1)
-        xc, yc = yc, xc
-        spots.append((fiberIdx, wavelength, xc, yc, spot))
+        spots.append((fiberIdx, wavelength, xc, yc, rawSpot, spot))
         if verbose:
             print("spot  %d (%d, %0.2f) at (%0.1f %0.1f), max=%0.2f sum=%0.2f, rawSum=%0.2f" % 
                   (i, fiberIdx, wavelength, xc, yc, 
                    spot.max(), spot.sum(), rawSum))
         if fiberIdx != 0:
-            symSpots.append((-fiberIdx, wavelength, -xc, yc, spot[::-1,:]))
+            symSpots.append((-fiberIdx, wavelength, -xc, yc, rawSpot[::-1,:], spot[::-1,:]))
 
     allSpots = spots + symSpots    
     spotw = spots[0][-1].shape[0]
     spotDtype = numpy.dtype([('fiberIdx','i2'),
                              ('wavelength','f4'),
                              ('spot_xc','f4'), ('spot_yc','f4'),
+                             ('rawspot', '(%d,%d)u2' % (spotw,spotw)),
                              ('spot', '(%d,%d)f4' % (spotw,spotw))])
 
     tarr = numpy.array(allSpots, dtype=spotDtype)
