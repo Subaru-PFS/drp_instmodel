@@ -127,18 +127,6 @@ def expandRangeArg(arg):
         # print "after %s, r=%s" % (r, fullRange)
     return fullRange
 
-def saveSim(sim, outputFile):
-    from astropy.io import fits 
-
-    fits.writeto(outputFile, sim.image, checksum=True, clobber=True)
-
-    waveImage = sim.waveImage()
-    fits.append(outputFile, waveImage, checksum=True, clobber=True)
-
-    # For Stella v.0.x, provide waves with 0s in place of nans, in a separate file.
-    waveImage[numpy.isnan(waveImage)] = 0
-    fits.writeto('WAVE-'+outputFile, waveImage)
-
 def main(args=None):
     """ called by __main__, or pass in a string as if it were a command line. 
 
@@ -186,7 +174,7 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
                   fiberFilter=fibers, everyNthPsf=args.everyNth,
                   frd=args.frd, focus=args.focus, date=args.date)
     if args.output:
-        saveSim(sim, args.output)
+        sim.writeTo(args.output, addNoise=not args.noNoise)
     if args.ds9:
         displayImage(sim.image)
     return sim
