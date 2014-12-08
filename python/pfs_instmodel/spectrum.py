@@ -90,7 +90,7 @@ class FlatSpectrum(Spectrum):
         return wave, pfs_tools.blackbody(wave, 3800.0) * self.scale
 
 class CombSpectrum(Spectrum):
-    def __init__(self, spacing=50, gain=1000.0):
+    def __init__(self, spacing=50, gain=10000.0):
         """ Create a spectrum which will return a flux of gain at every ~spacing AA, 0 elsewhere. 
 
         Actually, return a comb spectrum with non-zero values at the full range endpoints and at as
