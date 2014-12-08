@@ -1,19 +1,18 @@
 #!/usr/bin/env python
 
 import argparse
-import numpy
 import os
 import re
 
 import pfs_tools.par
-import pfs_instmodel.splinedPsf as simPsf
 import pfs_instmodel.simImage as simImage
 import pfs_instmodel.sky as pfsSky
 import pfs_instmodel.spectrum as pfsSpectrum
 reload(pfsSpectrum)
 
 def makeSim(band, fieldName, fiberFilter=None, everyNthPsf=50,
-            frd=None, focus=None, date=None, psf=None):
+            frd=23, focus=0, date='2013-04-18', psf=None, dtype='u2',
+            addNoise=True, combSpacing=50):
     """ Construct a simulated image. 
 
     Parameters
@@ -44,15 +43,15 @@ def makeSim(band, fieldName, fiberFilter=None, everyNthPsf=50,
     
     simID = dict(band=band, frd=frd, focus=focus, date=date)
 
-    sim = simImage.SimImage(band, simID=simID, psf=psf)
+    sim = simImage.SimImage(band, simID=simID, psf=psf, dtype=dtype)
     skyModel = pfsSky.StaticSkyModel(band) # plus field info....
     flatSpectrum = pfsSpectrum.FlatSpectrum(sim.detector, gain=10.0)
-    #combSpectrum = pfsSpectrum.CombSpectrum(spacing=50, 
-    #                                        gain=10000.0/(sim.detector.config['pixelScale']/sim.psf.spotScale)**2)
-    combSpectrum = pfsSpectrum.CombSpectrum(spacing=50, 
-                                            gain=10000.0)
+    combSpectrum = pfsSpectrum.CombSpectrum(spacing=combSpacing, 
+                                            gain=20000.0)
     
     field = loadField(fieldName)
+
+    print("addNoise=%s" % (addNoise))
 
     fibers = []
     spectra = []
@@ -164,6 +163,9 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
     parser.add_argument('--frd', action='store', default=23, type=int)
     parser.add_argument('--date', action='store', default='2013-04-18')
     parser.add_argument('--everyNth', action='store', type=int, default=50)
+    parser.add_argument('--dtype', action='store', default='u2')
+    parser.add_argument('--noNoise', action='store_true')
+    parser.add_argument('--combSpacing', action='store', type=float, default=50)
     parser.add_argument('-d', '--ds9', action='store_true', default=False)
 
     args = parser.parse_args(args)
@@ -172,7 +174,10 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
 
     sim = makeSim(args.band, fieldName=args.field, 
                   fiberFilter=fibers, everyNthPsf=args.everyNth,
-                  frd=args.frd, focus=args.focus, date=args.date)
+                  frd=args.frd, focus=args.focus, date=args.date,
+                  dtype=args.dtype,
+                  addNoise=not args.noNoise,
+                  combSpacing=args.combSpacing)
     if args.output:
         sim.writeTo(args.output, addNoise=not args.noNoise)
     if args.ds9:

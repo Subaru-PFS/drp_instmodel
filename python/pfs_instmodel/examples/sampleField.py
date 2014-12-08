@@ -21,9 +21,10 @@ def keepOdd(input):
             yield i
 
 bundledField = [i for i in keepInBundle(fullField())]
-centerRange = [i for i in keepInBundle(range(-5,6))]
-edgeRange = [i for i in keepInBundle(range(-fiberLim,-fiberLim+10))]
+centerRange = [i for i in keepInBundle(range(-5,3))]
+edgeRange = [i for i in keepInBundle(range(-fiberLim,-fiberLim+8))]
 centerAndEdge = centerRange + edgeRange
+sampledRange = centerRange + edgeRange + [i for i in keepInBundle(range(-150,-146))]
 
 # Minimal sanity test field.
 quickfield = ([PROBE(i,0.0,1.0,100.0,200.0,'SIMCOMB') for i in range(-300,-298)] +
@@ -67,5 +68,24 @@ edgeFlatx2 = [PROBE(i,0.0,1.0,100.0,200.0,'SIMFLAT') for i in keepOdd(edgeRange)
 edgeSkyx2  = [PROBE(i,0.0,1.0,100.0,200.0,'SKY') for i in keepOdd(edgeRange)]
 
 quickComb = [PROBE(i,0.0,1.0,100.0,200.0,'SIMCOMB') for i in (-fiberLim, 0, fiberLim+1)]
+
+cpl = ([PROBE(i,0.0,1.0,100.0,200.0,'SIMFLAT') for i in range(0,3)] +
+       [PROBE(i,0.0,1.0,100.0,200.0,'SKY') for i in range(4,6)] +
+       [PROBE(i,0.0,1.0,100.0,200.0,'SIMCOMB') for i in range(7,8)])
+cpl2 = ([PROBE(i,0.0,1.0,100.0,200.0,'SIMFLAT') for i in range(0,2)] +
+        [PROBE(i,0.0,1.0,100.0,200.0,'SKY') for i in range(4,5)] +
+        [PROBE(i,0.0,1.0,100.0,200.0,'SIMCOMB') for i in range(7,8)])
+
+cpl3 = ([PROBE(i,0.0,1.0,100.0,200.0,'SIMCOMB') for i in range(0,2)])
+
+oneFlat = (PROBE(0,0.0,1.0,100.0,200.0,'SIMFLAT'),)
+
+sampledComb = [PROBE(i,0.0,1.0,100.0,200.0,'SIMCOMB') for i in sampledRange]
+sampledFlat = [PROBE(i,0.0,1.0,100.0,200.0,'SIMFLAT') for i in sampledRange]
+sampledSky  = [PROBE(i,0.0,1.0,100.0,200.0,'SKY') for i in sampledRange]
+sampledCombx2 = [PROBE(i,0.0,1.0,100.0,200.0,'SIMCOMB') for i in keepOdd(sampledRange)]
+sampledCombx2[-1] = PROBE(i,0.0,1.0,100.0,200.0,'SIMFLAT')
+sampledFlatx2 = [PROBE(i,0.0,1.0,100.0,200.0,'SIMFLAT') for i in keepOdd(sampledRange)]
+sampledSkyx2  = [PROBE(i,0.0,1.0,100.0,200.0,'SKY') for i in keepOdd(sampledRange)]
 
 empty = []
