@@ -206,11 +206,14 @@ def lanczos3(x):
 def lanczos4(x):
     return lanczosWindow(x, 4)
     
-def sincKernel(offset=0.0, padding=0, window=lanczosWindow, n=3, doNorm=True):
+def sincKernel(offset=0.0, padding=0, window=lanczosWindow, n=3, doNorm=True, rad=None):
     if offset < -1 or offset > 1:
         raise ValueError("sinc offset must be in [-1,1], not %0.4f" % (offset))
-        
-    cnt = 2*(n+padding) + 1
+
+    if rad is not None:
+        cnt = 2*rad + 1
+    else:
+        cnt = 2*(n+padding) + 1
     left = offset - n - padding
     right = offset + n + padding
 
@@ -226,10 +229,10 @@ def sincKernel(offset=0.0, padding=0, window=lanczosWindow, n=3, doNorm=True):
         
     return x, y
     
-def make1dKernel(n=3, offset=0.0, padding=0, doNorm=True):
+def make1dKernel(n=3, offset=0.0, padding=0, window=lanczosWindow, doNorm=True, rad=None):
     """ Construct a centered 1-d lanczos-windowed sinc kernel. """
 
-    x, y = sincKernel(n=n, offset=-offset, padding=padding)
+    x, y = sincKernel(n=n, offset=-offset, window=window, padding=padding, rad=rad)
     
     if doNorm:
         y /= numpy.sum(y)
@@ -474,20 +477,24 @@ def gatherPoo2(spot, bin, splines=None, pad=0, applyPixelResp=False, kargs=None)
             
 def spotShowImages(im, fftim, iim, imbox, fig, plotids, resClip=0, 
                    pixLims=None,pixscale=0.015,
-                   showAliasAt=None, colorbars=(),):
+                   showAliasAt=None, colorbars=(),plotResiduals=True):
 
-    if im != None:
-        plt_im = fig.add_subplot(plotids[0])
-        plt_im.xaxis.set_visible(False)
-        #plt_im.imshow(plotutils.asinh(im, non_linear=0.0001, scale_max=0.2),extent=imbox)
-        plt_im.imshow(im, extent=imbox, interpolation='nearest')
-        plt_im.set_ylabel('%g um pixels' % (1000*pixscale))
+    plt_im = fig.add_subplot(plotids[0])
+    plt_im.xaxis.set_visible(False)
+    #plt_im.imshow(plotutils.asinh(im, nonLinear=0.0001, scaleMax=0.02),extent=imbox)
+    nonLinear = im.min()+im.ptp()*0.001
+    plt_im.imshow(plotutils.asinh(im, nonLinear=nonLinear),
+                  extent=imbox, interpolation='nearest')
+    plt_im.set_ylabel('%g um pixels' % (1000*pixscale))
 
-        l0,l1 = plt_im.get_xlim()
-        plt_im.vlines(0,l0,l1,'r', alpha=0.3)
-        plt_im.hlines(0,l0,l1,'r', alpha=0.3)
-    else:
-        plt_im = None
+    l0,l1 = plt_im.get_xlim()
+    plt_im.vlines(0,l0,l1,'r', alpha=0.3)
+    plt_im.hlines(0,l0,l1,'r', alpha=0.3)
+    print("im range: %g %g" % (im.min(), im.max()))
+
+    contours = [im.min(), im.max()*0.01,im.max()*0.1]
+    plt.contour(im,
+                levels=contours, colors='b', extent=imbox)
 
     if fftim != None:
         plt_fft = fig.add_subplot(plotids[1])
@@ -506,17 +513,22 @@ def spotShowImages(im, fftim, iim, imbox, fig, plotids, resClip=0,
     if iim != None:
         plt_iim = fig.add_subplot(plotids[2])
         plt_iim.xaxis.set_visible(False)
-        #if resClip:
-        #    residIm = numpy.clip(iim,-resClip,resClip)
-        #else:
-        #    residIm = iim
-        residIm = iim.astype('f8') - im
-        residIm = numpy.clip(residIm, 0.0, residIm.max())/residIm.max()
 
-        im3 = plt_iim.imshow(residIm, extent=imbox) # , vmin=-resClip, vmax=resClip)
+        if plotResiduals:
+            residIm = (im - numpy.absolute(iim))
+            im3 = plt_iim.imshow(residIm, extent=imbox) # , vmin=-resClip, vmax=resClip)
+        else:
+            residIm = numpy.absolute(iim)
+            im3 = plt_iim.imshow(plotutils.asinh(residIm, nonLinear=nonLinear), extent=imbox,) # , vmin=-resClip, vmax=resClip)
+            plt.contour(im,
+                        levels=contours, colors='b', extent=imbox)
+        print("imr range: %g %g" % (residIm.min(), residIm.max()))
+            
         ticks = numpy.sort(numpy.append(numpy.linspace(-resClip,resClip,4),[0]))
         print "setting ticks to %s" % (ticks)
         # fig.colorbar(im3, ticks=ticks)
+        fig.colorbar(im3)
+
         l0,l1 = plt_iim.get_xlim()
         plt_iim.vlines(0,l0,l1,'r', alpha=0.3)
         plt_iim.hlines(0,l0,l1,'r', alpha=0.3)
@@ -533,29 +545,39 @@ def spotShowImages(im, fftim, iim, imbox, fig, plotids, resClip=0,
 
     return plt_im, plt_fft, plt_iim
 
-def spotShow(im, scale=10, binning=2, figName='spot'):
+def spotShow(im, scale=10, binning=2, figName='spot',
+             plotResiduals=True):
+    
     fig = plt.figure(figName)
     sgs = gridspec.GridSpec(3,3, hspace=0.1, wspace=0.1)
 
-    im = im/im.sum()
-    fftx, ffty, fftim = imfreq1d(im, sampling=1.0/scale)
+    im1 = im/im.max() + 1e-6
+    fftx, ffty, fftim = imfreq1d(im1, sampling=1.0/scale)
+    print "x,y,im: ", fftx.shape, ffty.shape, fftim.shape
     iim = freq2im(fftim, doAbs=False)
-    imbox = imextent(im, scale=scale, doCenter=True)
-    spotShowImages(im, fftim, iim, imbox, fig, [sgs[0,0],sgs[0,1],sgs[0,2]])
+    imbox = imextent(im1, scale=scale, doCenter=True)
+    spotShowImages(im1, fftim, iim, imbox, fig, [sgs[0,0],sgs[0,1],sgs[0,2]],
+                   plotResiduals=plotResiduals)
 
     p1 = fig.add_subplot(sgs[6:])
     p1.plot(fftx/scale, numpy.abs(ffty))
     p1.set_yscale('log')
 
-    im = pfs_tools.rebin(im, 
-                         im.shape[0]/binning,
-                         im.shape[0]/binning)
+    im2 = pfs_tools.rebin(im1, 
+                          im.shape[0]/binning,
+                          im.shape[0]/binning)
     binnedScale = float(scale)/binning
-    im = im/im.sum()
-    fftx, ffty, fftim = imfreq1d(im, sampling=1.0/binnedScale)
+
+    im2 /= (binning*binning)
+    im2 = im2/im2.max() + 1e-6
+    fftx, ffty, fftim = imfreq1d(im2, sampling=1.0/binnedScale)
+    print "x,y,im: ", fftx.shape, ffty.shape, fftim.shape
+    #fftim[im2.shape[0]/2, im2.shape[1]/binning] = 0
     iim = freq2im(fftim, doAbs=False)
-    imbox = imextent(im, scale=binnedScale, doCenter=True)
-    spotShowImages(im, fftim, iim, imbox, fig, [sgs[1,0],sgs[1,1],sgs[1,2]])
+    imbox = imextent(im2, scale=binnedScale, doCenter=True)
+    spotShowImages(im2, fftim, iim, imbox, fig, [sgs[1,0],sgs[1,1],sgs[1,2]],
+                   plotResiduals=plotResiduals)
+
     p1.plot(fftx/binnedScale, numpy.abs(ffty))
 
     fig.show()
@@ -790,3 +812,48 @@ def spotgrid(spots, waves, fibers, trimRadius=75, figName='spot grid', vmax=0.6)
 
                     
     plt.tight_layout()
+
+def plotSpot(spot, figname='spot'):
+    fig = plt.figure(figname)
+    sgs = gridspec.GridSpec(2,2)
+
+    cp0 = plt.subplot(sgs[0,0])
+    cp0.contour(spot)
+
+    sp0 = plt.subplot(sgs[0,1])
+    sp0.imshow(spot)
+
+
+from mpl_toolkits.mplot3d import Axes3D
+from matplotlib import cm
+
+def stretchSpan(span, factor=1.5):
+    mn = span.min()
+    rng = numpy.ptp(span)
+    off = mn + float(rng)/2
+    
+    span -= off
+    span *= factor
+    span += off
+    
+    print span
+    return span
+    
+def plotProj(x,y,z,figname=None,figsize=None):
+    fig = plt.figure(figname, figsize=figsize)
+    ax = fig.gca(projection='3d')
+    X, Y, Z = x,y,z
+    ax.plot_surface(X, Y, Z, rstride=2, cstride=2, alpha=0.1)
+    xr = stretchSpan(x.flat[[0,-1]], 1.5)
+    yr = stretchSpan(y.flat[[0,-1]], 1.5)
+    zr = stretchSpan(numpy.array([z.min(), z.max()]), 1.5)
+    cset = ax.contour(X, Y, Z, zdir='z', offset=zr[0], cmap=cm.coolwarm)
+    cset = ax.contour(X, Y, Z, zdir='x', offset=xr[0], cmap=cm.coolwarm)
+    cset = ax.contour(X, Y, Z, zdir='y', offset=yr[1], cmap=cm.coolwarm)
+
+    ax.set_xlabel('X')
+    ax.set_xlim(xr)
+    ax.set_ylabel('Y')
+    ax.set_ylim(yr)
+    ax.set_zlabel('Z')
+    ax.set_zlim(zr)
