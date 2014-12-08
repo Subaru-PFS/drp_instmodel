@@ -200,6 +200,12 @@ class SplinedPsf(psf.Psf):
                 for iy in range(self.imshape[1]):
                     newImages[:, iy, ix] = self.coeffs[iy, ix](fibers, interpWaves).flat
 
+        lo_w = numpy.where(newImages < 0)
+        if len(lo_w[0]) > 0:
+            minpix = newImages[lo_w].min()
+            print("%d/%d low PSF pixels, min=%f" % (len(lo_w[0]), newImages.size, minpix))
+            newImages += minpix
+
         # OK, optionally replicate the sparsely sampled PSF grid into the full one.
         if everyNthPsf > 1:
             newImageList = []
@@ -292,8 +298,7 @@ class SplinedPsf(psf.Psf):
         print("net fiber offset: pix=%s mm=%s" % (outImgOffset, fiberImageOffset))
       
         if outExp is None:
-            outExp = self.detector.simBias()
-            outImg = outExp.image
+            outExp = self.detector.makeExposure()
 
         # construct the oversampled fiber image
         geometry = numpy.zeros(len(pixelWaves), dtype=[('xc','f4'),('yc','f4'),
@@ -329,6 +334,7 @@ class SplinedPsf(psf.Psf):
                 print("%5d %6.1f (%3.3f, %3.3f) %0.2f %0.2f %0.2f" % (i, specWave, xc, yc, 
                                                                       rawPsf.sum(), spot.sum(), specFlux))
 
+            # This is unaccountably expensive.
             #if spot.sum() < 1:
             #    continue
             
@@ -352,8 +358,7 @@ class SplinedPsf(psf.Psf):
 
         resampled = pfs_tools.rebin(inImg, inImg.shape[0]/outScale, inImg.shape[1]/outScale)
 
-        outImg = outExp.image
-        parentIdx, childIdx = self.trimRect(outImg, resampled, outOffset)
+        parentIdx, childIdx = self.trimRect(outExp, resampled, outOffset)
         try:
             outExp.addFlux(resampled[childIdx], outSlice=parentIdx, addNoise=True)
         except Exception, e:
