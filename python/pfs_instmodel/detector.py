@@ -27,37 +27,47 @@ class Detector(object):
         self.config = pfs_tools.configFile.readfile(filepath)
         self.dtype = dtype
 
-    def makeEmptyExposure(self):
-        return exposure.Exposure(self, dtype=self.dtype)
+    def makeExposure(self, addBias=True, dtype=None):
 
-    def simBias(self, shape=None):
-        """ Return a bias image based on our properties. """
-        
-        exp = self.makeEmptyExposure()
-
-        if not shape:
-            shape = self.config['ccdSize']
-
-        bias = numpy.random.normal(self.config['bias'],
-                                   self.config['readNoise'],
-                                   shape).astype(self.dtype)
-        ivar = bias*0 + 1/self.config['readNoise']**2
-        exp.setImage(bias, ivar)
+        if dtype is None:
+            dtype = self.dtype
+        exp = exposure.Exposure(self, dtype=dtype)
 
         return exp
 
-    def readout(self, exp, keepBias=False):
-        """ 'Readout' an exposure: add in read noise, bad columns, hot pixels, etc. """
+    def getBias(self, exp=None):
+        """ Return a bias plane. """
 
-        shape = exp.shape
+        dtype = exp.dtype if exp else 'u2'
 
         bias = numpy.random.normal(self.config['bias'],
                                    self.config['readNoise'],
-                                   shape).astype(self.dtype)
-        ivar = bias*0 + 1/self.config['readNoise']**2
+                                   self.config['ccdSize']).astype(dtype)
+        return bias
 
-        exp.addFlux(bias, addPlane=('bias' if keepBias else None))
+    def addBias(self, exp):
+        """ Add our bias to the given exposure. """
 
+        bias = self.getBias(exp)
+        exp.addPlane('bias', bias)
+
+        return bias
+
+    def readout(self, exp, flux):
+        """ 'Readout' an exposure: add bad columns, hot pixels, etc. """
+
+        bias = self.addBias(exp)
+
+        rimage = numpy.rint(flux) + bias
+
+        saturatedPixels = (rimage > 65535)
+        lowPixels = (rimage < 0)
+
+        rimage = rimage.astype('u2')
+        rimage[saturatedPixels] = 65535
+        rimage[lowPixels] = 0
+        exp.pixelImage = rimage
+        
     def getResponseSpline(self):
         """ Read in JEG's preliminary detector response.
 
