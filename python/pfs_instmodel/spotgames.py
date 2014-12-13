@@ -25,7 +25,7 @@ def radToImageIndices(rad, sampling=1.0, offset=None):
     x = radToIndices(rad, sampling=sampling)
     xx, yy = numpy.meshgrid(x, x)
 
-    if offset != None:
+    if offset is not None:
         xx += offset[0]
         yy += offset[1]
         
@@ -288,7 +288,7 @@ def poo(arr, dx, dy, splines=None, binFactor=10, padTo=0, applyPixelResp=False, 
     # Put the rest of this in loop....
     
     # interpolation-shift the binned reference image
-    if splines == None:
+    if splines is None:
         splines = 'shift1d'
     splineFuncs = dict(shift2d=shiftSpot2d,
                        shift1d=shiftSpot1d,
@@ -496,7 +496,7 @@ def spotShowImages(im, fftim, iim, imbox, fig, plotids, resClip=0,
     plt.contour(im,
                 levels=contours, colors='b', extent=imbox)
 
-    if fftim != None:
+    if fftim is not None:
         plt_fft = fig.add_subplot(plotids[1])
         #plt_fft.yaxis.set_visible(False)
         plt_fft.xaxis.set_visible(False)
@@ -510,7 +510,7 @@ def spotShowImages(im, fftim, iim, imbox, fig, plotids, resClip=0,
     else:
         plt_fft = None
 
-    if iim != None:
+    if iim is not None:
         plt_iim = fig.add_subplot(plotids[2])
         plt_iim.xaxis.set_visible(False)
 
@@ -538,7 +538,7 @@ def spotShowImages(im, fftim, iim, imbox, fig, plotids, resClip=0,
 
     if pixLims:
         for i,p in enumerate([plt_im,plt_fft,plt_iim]):
-            if pixLims[i] and p != None:
+            if pixLims[i] and p is not None:
                 p.set_xlim(-pixLims[i],pixLims[i],auto=False)
                 p.set_ylim(-pixLims[i],pixLims[i],auto=False)
 
@@ -636,7 +636,7 @@ def frdShow(frds,
         p1.plot(x, dline, '+-%s' % (colors[i-1]))
 
     p1.set_autoscaley_on(False)
-    if yrange != None:
+    if yrange is not None:
         p1.set_ylim(*yrange)
 
     p1.plot(x, refSpot[midline,:]/normScale, '-', color='gray', alpha=0.5,
@@ -671,7 +671,7 @@ def spotShow2(spot0, scale1, scale2, figname='spot',
     spot1 = spot1/spot1.sum()
     spot2 = spot2/spot2.sum()
 
-    if shiftBy != None:
+    if shiftBy is not None:
         placedSpot1, shiftedSpot1, kernels = shiftSpotBy(spot0, shiftBy, scale1,
                                                          shiftFunc=shiftFunc, 
                                                          applyPixelResp=applyPixelResp,
@@ -696,7 +696,7 @@ def spotShow2(spot0, scale1, scale2, figname='spot',
     imbox2 = imextent(spot2, scale=scale2, doCenter=True)
     imlims = [-plotWidth*scale2, plotWidth*scale2] # imextent(spot1, scale=scale1, doCenter=True)
 
-    if shiftBy != None:
+    if shiftBy is not None:
         placedSpot2, shiftedSpot2, kernels = shiftSpotBy(spot0, shiftBy, scale2,
                                                          shiftFunc=shiftFunc,
                                                          applyPixelResp=applyPixelResp,
