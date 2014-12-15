@@ -12,6 +12,7 @@ import scipy.interpolate as spInterp
 import psf
 import pfs_tools
 from pfs_tools import pydebug
+import spotgames
 
 class SplinedPsf(psf.Psf):
     def __init__(self, detector, spotType='jeg', spotID=None):
@@ -239,7 +240,8 @@ class SplinedPsf(psf.Psf):
         return pixelWaves, centers
 
     def fiberImage(self, fiber, spectrum, outExp=None, waveRange=None, 
-                   everyNthPsf=1, returnUnbinned=False):
+                   everyNthPsf=1, returnUnbinned=False,
+                   shiftPsfs=True):
         """ Return an interpolated image of a fiber """
 
         # Evaluate at highest resolution
@@ -321,18 +323,23 @@ class SplinedPsf(psf.Psf):
             yPixOffset = yoffset / pixelScale
 
             # Keep the shift to the smallest fraction possible, or rather keep the integer steps 
-            # exactly +/- 1.
-            inty = round(yPixOffset)
-            intx = round(xPixOffset)
+            # exact.
+            inty = int(yPixOffset)
+            intx = int(xPixOffset)
 
             fracy = yPixOffset - inty
             fracx = xPixOffset - intx
 
-            # Assume we are well enough oversampled to ignore fractional pixel shifts.
-            spot = specFlux * rawPsf
+            if shiftPsfs:
+                shiftedPsf, kernels = spotgames.shiftSpot1d(rawPsf, fracx, 0)
+                spot = specFlux * shiftedPsf
+            else:
+                spot = specFlux * rawPsf
+                
             if i % 1000 == 0 or i > len(pixelWaves)-2:
-                print("%5d %6.1f (%3.3f, %3.3f) %0.2f %0.2f %0.2f" % (i, specWave, xc, yc, 
-                                                                      rawPsf.sum(), spot.sum(), specFlux))
+                print("%5d %6.1f (%3.3f, %3.3f) %0.2f %0.2f %0.2f shift=%s" % (i, specWave, xc, yc, 
+                                                                               rawPsf.sum(), spot.sum(), specFlux,
+                                                                               shiftPsfs))
 
             # This is unaccountably expensive.
             #if spot.sum() < 1:
