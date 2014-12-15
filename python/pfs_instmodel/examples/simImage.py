@@ -12,7 +12,7 @@ reload(pfsSpectrum)
 
 def makeSim(band, fieldName, fiberFilter=None, everyNthPsf=50,
             frd=23, focus=0, date='2013-04-18', psf=None, dtype='u2',
-            addNoise=True, combSpacing=50):
+            addNoise=True, combSpacing=50, shiftPsfs=True):
     """ Construct a simulated image. 
 
     Parameters
@@ -84,7 +84,8 @@ def makeSim(band, fieldName, fiberFilter=None, everyNthPsf=50,
 
     sim.addFibers(fibers,
                   spectra=spectra,
-                  everyNthPsf=everyNthPsf)
+                  everyNthPsf=everyNthPsf,
+                  shiftPsfs=shiftPsfs)
     return sim
 
 def displayImage(img):
@@ -165,6 +166,7 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
     parser.add_argument('--everyNth', action='store', type=int, default=50)
     parser.add_argument('--dtype', action='store', default='u2')
     parser.add_argument('--noNoise', action='store_true')
+    parser.add_argument('--shiftPsfs', action='store_true')
     parser.add_argument('--combSpacing', action='store', type=float, default=50)
     parser.add_argument('-d', '--ds9', action='store_true', default=False)
 
@@ -177,7 +179,8 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
                   frd=args.frd, focus=args.focus, date=args.date,
                   dtype=args.dtype,
                   addNoise=not args.noNoise,
-                  combSpacing=args.combSpacing)
+                  combSpacing=args.combSpacing,
+                  shiftPsfs=args.shiftPsfs)
     if args.output:
         sim.writeTo(args.output, addNoise=not args.noNoise)
     if args.ds9:

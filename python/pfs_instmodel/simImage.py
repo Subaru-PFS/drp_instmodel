@@ -28,7 +28,9 @@ class SimImage(object):
     def image(self):
         return self.exposure.image
 
-    def addFibers(self, fibers, spectra, waveRange=None, everyNthPsf=1):
+    def addFibers(self, fibers, spectra, waveRange=None,
+                  everyNthPsf=1,
+                  shiftPsfs=True):
         """ Add images of the given fibers. 
 
         Parameters
@@ -59,7 +61,8 @@ class SimImage(object):
         """
         for i, fiber in enumerate(fibers):
             parts = self.psf.fiberImage(fiber, spectra[i], outExp=self.exposure,
-                                        waveRange=waveRange, everyNthPsf=everyNthPsf)
+                                        waveRange=waveRange, everyNthPsf=everyNthPsf,
+                                        shiftPsfs=shiftPsfs)
             self.fibers[fiber] = dict(spectrum=spectra[i],
                                       geometry=parts[3])
 
