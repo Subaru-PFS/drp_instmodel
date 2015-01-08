@@ -12,7 +12,7 @@ class Psf(object):
         ims, ids, ctrs =  self.psfsAt([fiber], [wave])
         return ims[0]
     
-    def fiberImages(self, fibers, spectra=None, outImg=None, waveRange=None, everyNthPsf=1):
+    def fiberImages(self, fibers, spectra=None, outImg=None, waveRange=None):
         """ Return and/or place an image of the given spectra through the given fibers. 
 
         Parameters
@@ -30,7 +30,7 @@ class Psf(object):
             spectra = [None] * len(fibers)
         for i, fiber in enumerate(fibers):
             self.fiberImage(fiber, spectra[i], outImg=outImg, 
-                            waveRange=waveRange, everyNthPsf=everyNthPsf)
+                            waveRange=waveRange)
 
         return outImg
 

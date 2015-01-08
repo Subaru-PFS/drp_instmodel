@@ -10,7 +10,7 @@ import pfs_instmodel.sky as pfsSky
 import pfs_instmodel.spectrum as pfsSpectrum
 reload(pfsSpectrum)
 
-def makeSim(band, fieldName, fiberFilter=None, everyNthPsf=50,
+def makeSim(band, fieldName, fiberFilter=None,
             frd=23, focus=0, date='2013-04-18', psf=None, dtype='u2',
             addNoise=True, combSpacing=50, shiftPsfs=True):
     """ Construct a simulated image. 
@@ -24,8 +24,6 @@ def makeSim(band, fieldName, fiberFilter=None, everyNthPsf=50,
        The name of the field definition with the fiber locations and targeting.
     fiberFilter : list of integers, optional
        Only process the given fiber IDs.
-    everyNthPsf : int, optional
-       How many (sub-)pixels we can use the same PSF on.
 
     Returns
     -------
@@ -84,7 +82,6 @@ def makeSim(band, fieldName, fiberFilter=None, everyNthPsf=50,
 
     sim.addFibers(fibers,
                   spectra=spectra,
-                  everyNthPsf=everyNthPsf,
                   shiftPsfs=shiftPsfs)
     return sim
 
@@ -163,7 +160,6 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
     parser.add_argument('--focus', action='store', default=0, type=int)
     parser.add_argument('--frd', action='store', default=23, type=int)
     parser.add_argument('--date', action='store', default='2013-04-18')
-    parser.add_argument('--everyNth', action='store', type=int, default=50)
     parser.add_argument('--dtype', action='store', default='u2')
     parser.add_argument('--noNoise', action='store_true')
     parser.add_argument('--shiftPsfs', action='store_true')
@@ -175,7 +171,7 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
     fibers = expandRangeArg(args.fibers)
 
     sim = makeSim(args.band, fieldName=args.field, 
-                  fiberFilter=fibers, everyNthPsf=args.everyNth,
+                  fiberFilter=fibers,
                   frd=args.frd, focus=args.focus, date=args.date,
                   dtype=args.dtype,
                   addNoise=not args.noNoise,

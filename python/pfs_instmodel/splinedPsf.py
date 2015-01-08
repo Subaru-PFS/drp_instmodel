@@ -155,7 +155,7 @@ class SplinedPsf(psf.Psf):
 
         return rows, waves
     
-    def psfsAt(self, fibers, waves=None, everyNthPsf=1, usePsfs=None):
+    def psfsAt(self, fibers, waves=None, usePsfs=None):
         """ Return a stack of PSFs, instantiated on a rectangular grid.
 
         Parameters
@@ -164,9 +164,6 @@ class SplinedPsf(psf.Psf):
            the fiber IDs we want PSFs for
         waves : array_like, AA, optional
            the wavelengths we want PSFs as. If not set, uses the native wavelength grid.
-        everyNthPsf : bool, optional
-           how many wavelengths get the same PSF -- this is a performance optimization.  The
-           default is for each wavelength to get its own PSF.
         usePsfs : array_like , optional
            
         Returns
@@ -178,17 +175,13 @@ class SplinedPsf(psf.Psf):
         psfPos : array
            the (x,y) positions the PSF images should be centered on.
 
-        Notes
-        -----
-        The everyNthPsf arg should be waveSpacing (and fiberSpacing) or something.
-        
         """
 
         if waves is None:
             waves = numpy.unique(self.wave)
             
         waveSign = 1 if waves[-1] > waves[0] else -1
-        interpWaves = waves[::waveSign*everyNthPsf]
+        interpWaves = waves[::waveSign]
         
         centers = [(x,y) for x in fibers for y in waves]
         if usePsfs is not None:
@@ -207,19 +200,9 @@ class SplinedPsf(psf.Psf):
             print("%d/%d low PSF pixels, min=%f" % (len(lo_w[0]), newImages.size, minpix))
             newImages += minpix
 
-        # OK, optionally replicate the sparsely sampled PSF grid into the full one.
-        if everyNthPsf > 1:
-            newImageList = []
-            for w_i in range(len(interpWaves)):
-                for i_i in range(0, everyNthPsf):
-                    newImageList.append(newImages[w_i])
-            finalImages = newImageList[:len(waves)+1]
-        else:
-            finalImages = newImages
-
-        print "psfsAt: fibers %s, for %d waves and useNthPsf=%d, returned %d unique psfs" % (fibers, len(waves),
-                                                                                             everyNthPsf,
-                                                                                             len(interpWaves))
+        finalImages = newImages
+        print "psfsAt: fibers %s, for %d waves, returned %d unique psfs" % (fibers, len(waves),
+                                                                            len(interpWaves))
         return finalImages, centers, self.traceCenters(fibers, waves)
 
 
@@ -240,13 +223,12 @@ class SplinedPsf(psf.Psf):
         return pixelWaves, centers
 
     def fiberImage(self, fiber, spectrum, outExp=None, waveRange=None, 
-                   everyNthPsf=1, returnUnbinned=False,
+                   returnUnbinned=False,
                    shiftPsfs=True):
         """ Return an interpolated image of a fiber """
 
         # Evaluate at highest resolution
         pixelScale = self.spotScale
-        everyNthPsf *= int(self.detector.config['pixelScale'] / pixelScale)
         
         if waveRange is None:
             waveRange = self.wave.min(), self.wave.max()
@@ -268,8 +250,8 @@ class SplinedPsf(psf.Psf):
         pixelFlux = spectrum(pixelWaves)
 
         # Get the PSFs and their locations on the oversampled pixels.
-        fiberPsfs, psfIds, centers = self.psfsAt([fiber], pixelWaves, 
-                                                 everyNthPsf=everyNthPsf)
+        fiberPsfs, psfIds, centers = self.psfsAt([fiber], pixelWaves)
+
         xCenters, yCenters = [c[0] for c in centers]
         
         psfToSpotRatio = self.detector.config['pixelScale'] / pixelScale

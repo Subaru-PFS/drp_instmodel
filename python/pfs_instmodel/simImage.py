@@ -13,8 +13,7 @@ _______
                                 numpy.arange(5) + 100,
                                 numpy.arange(5) + 290])
 >>> irImage = irPsf.fiberImages(fibers,
-                                spectra=[irSky]*len(fibers),
-                                everyNthPsf=50)
+                                spectra=[irSky]*len(fibers))
 """
 class SimImage(object):
     def __init__(self, band, sky=None, psf=None, simID=None, dtype='i4'):
@@ -29,7 +28,6 @@ class SimImage(object):
         return self.exposure.image
 
     def addFibers(self, fibers, spectra, waveRange=None,
-                  everyNthPsf=1,
                   shiftPsfs=True):
         """ Add images of the given fibers. 
 
@@ -41,8 +39,6 @@ class SimImage(object):
             the spectra for the given fibers.
         waveRange : (minWave, maxWave), optional
             limit the spectra to the given inclusive wavelength range.
-        everyNthPsf : int, optional
-            only require the PSFs to vary on every Nth pixel. default=1
 
         Returns
         ------
@@ -61,7 +57,7 @@ class SimImage(object):
         """
         for i, fiber in enumerate(fibers):
             parts = self.psf.fiberImage(fiber, spectra[i], outExp=self.exposure,
-                                        waveRange=waveRange, everyNthPsf=everyNthPsf,
+                                        waveRange=waveRange,
                                         shiftPsfs=shiftPsfs)
             self.fibers[fiber] = dict(spectrum=spectra[i],
                                       geometry=parts[3])

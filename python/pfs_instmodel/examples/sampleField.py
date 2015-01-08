@@ -72,7 +72,7 @@ quickComb = [PROBE(i,0.0,1.0,100.0,200.0,'SIMCOMB') for i in (-fiberLim, 0, fibe
 cpl = ([PROBE(i,0.0,1.0,100.0,200.0,'SIMFLAT') for i in range(0,3)] +
        [PROBE(i,0.0,1.0,100.0,200.0,'SKY') for i in range(4,6)] +
        [PROBE(i,0.0,1.0,100.0,200.0,'SIMCOMB') for i in range(7,8)])
-cpl2 = ([PROBE(i,0.0,1.0,100.0,200.0,'SIMFLAT') for i in range(0,2)] +
+cpl2 = ([PROBE(i,0.0,1.0,100.0,200.0,'SIMFLAT') for i in range(0,1)] +
         [PROBE(i,0.0,1.0,100.0,200.0,'SKY') for i in range(4,5)] +
         [PROBE(i,0.0,1.0,100.0,200.0,'SIMCOMB') for i in range(7,8)])
 
