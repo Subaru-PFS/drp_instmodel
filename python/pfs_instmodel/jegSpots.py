@@ -272,7 +272,8 @@ def readSpotFile(pathSpec, doConvolve=None, doRebin=False,
 
     # Now clean up... later steps expect to have fiber IDs and wavelengths in order
     arr = numpy.sort(tarr, order=('fiberIdx','wavelength'))
-
+    assert(numpy.all(arr['spot'] > 0)), "spots must be positive")
+    
     _spotCache[path] = (arr, headerDict)
 
     return arr, headerDict
