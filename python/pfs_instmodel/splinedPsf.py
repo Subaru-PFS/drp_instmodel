@@ -83,8 +83,8 @@ class SplinedPsf(psf.Psf):
         fiberIdx = numpy.argsort(fibers)
         waveIdx = numpy.argsort(waves)
 
-        x = self.xcCoeffs(fibers[fiberIdx], waves[waveIdx])
-        y = self.ycCoeffs(fibers[fiberIdx], waves[waveIdx])
+        x = self.evalSpline(self.xcCoeffs, fibers[fiberIdx], waves[waveIdx])
+        y = self.evalSpline(self.ycCoeffs, fibers[fiberIdx], waves[waveIdx])
 
         return (x[fiberIdx][:, waveIdx], 
                 y[fiberIdx][:, waveIdx])
@@ -119,16 +119,16 @@ class SplinedPsf(psf.Psf):
             waveRange = self.wave.min(), self.wave.max()
 
         # Assume that the full spectrum fits on the detector.
-        minY, maxY = self.ycCoeffs(fibers, waveRange)[0]
+        minY, maxY = self.evalSpline(self.ycCoeffs, fibers, waveRange)[0]
         doReorder = minY > maxY
         if doReorder:
             minY, maxY = maxY, minY
         if minY < 0:
-            print("one of wavelengths %s maps below the deector (%0.5f mm)" % (waveRange, minY))
+            print("one of wavelengths %s maps below the detector (%0.5f mm)" % (waveRange, minY))
         if maxY > self.detector.config['ccdSize'][1]:
-            print("one of wavelengths %s maps above the deector (%0.5f mm)" % (waveRange, maxY))
+            print("one of wavelengths %s maps above the detector (%0.5f mm)" % (waveRange, maxY))
         
-        minRow = int(minY/pixelScale)
+        minRow = int((minY+1)/pixelScale)
         maxRow = int(maxY/pixelScale)
 
         if rows is None:
@@ -136,11 +136,11 @@ class SplinedPsf(psf.Psf):
 
         # Invert the spline into a row->wave map. 
         # Just use a linear interpolation based on the evaluation near the pixels.
-        allWaves = numpy.linspace(waveRange[0], waveRange[1], maxRow-minRow)
+        allWaves = numpy.linspace(waveRange[0], waveRange[1], maxRow-minRow+1)
 
         waves = []
         for f in fibers:
-            allWaveRows = self.ycCoeffs([f], allWaves)[0] / pixelScale
+            allWaveRows = self.evalSpline(self.ycCoeffs, [f], allWaves)[0] / pixelScale
 
             if doReorder:
                 allWaveRows0 = allWaveRows[::-1]
@@ -150,7 +150,7 @@ class SplinedPsf(psf.Psf):
                 allWaves0 = allWaves
                 
             waveFunc = spInterp.interp1d(allWaveRows0, allWaves0, 'linear', bounds_error=False)
-            fiberWaves = waveFunc(rows[1:])
+            fiberWaves = waveFunc(rows)
             waves.append(fiberWaves)
 
         return rows, waves
@@ -192,12 +192,12 @@ class SplinedPsf(psf.Psf):
                                            self.imshape[1]))
             for ix in range(self.imshape[0]):
                 for iy in range(self.imshape[1]):
-                    newImages[:, iy, ix] = self.coeffs[iy, ix](fibers, interpWaves).flat
+                    newImages[:, iy, ix] = self.evalSpline(self.coeffs[iy, ix], fibers, interpWaves).flat
 
-        lo_w = numpy.where(newImages < 0)
-        if len(lo_w[0]) > 0:
+        lo_w = newImages < 0
+        if numpy.any(lo_w):
             minpix = newImages[lo_w].min()
-            print("%d/%d low PSF pixels, min=%f" % (len(lo_w[0]), newImages.size, minpix))
+            print("%d/%d low PSF pixels, min=%f" % (lo_w.sum(), newImages.size, minpix))
             newImages += minpix
 
         finalImages = newImages
@@ -232,8 +232,8 @@ class SplinedPsf(psf.Psf):
         
         if waveRange is None:
             waveRange = self.wave.min(), self.wave.max()
-        minX, maxX = self.xcCoeffs([fiber], waveRange)[0]
-        minY, maxY = self.ycCoeffs([fiber], waveRange)[0]
+        minX, maxX = self.evalSpline(self.xcCoeffs, [fiber], waveRange)[0]
+        minY, maxY = self.evalSpline(self.ycCoeffs, [fiber], waveRange)[0]
 
         minRow = minY/pixelScale
         maxRow = maxY/pixelScale
@@ -498,19 +498,50 @@ class SplinedPsf(psf.Psf):
         xx = numpy.unique(self.fiber)
         yy = numpy.unique(self.wave)
 
+        splineType = spInterp.RectBivariateSpline
         coeffs = numpy.zeros(imshape, dtype='O')
         for ix in range(imshape[0]):
             for iy in range(imshape[1]):
-                coeffs[iy, ix] = spInterp.RectBivariateSpline(xx, yy,
-                                                              self.spots[:, iy, ix].reshape(len(xx), len(yy)))
+                coeffs[iy, ix] = self.buildSpline(splineType,
+                                                  xx, yy, self.spots[:, iy, ix].reshape(len(xx), len(yy)))
         self.coeffs = coeffs
 
         # Shift offsets to origin.
         self.xc = rawSpots['spot_xc'] + self.detector.config['ccdSize'][1] * self.detector.config['pixelScale'] / 2
         self.yc = rawSpots['spot_yc'] + self.detector.config['ccdSize'][0] * self.detector.config['pixelScale'] / 2
 
-        self.xcCoeffs = spInterp.RectBivariateSpline(xx, yy, self.xc.reshape(len(xx), len(yy)))
-        self.ycCoeffs = spInterp.RectBivariateSpline(xx, yy, self.yc.reshape(len(xx), len(yy)))
+        self.xcCoeffs = self.buildSpline(splineType,
+                                         xx, yy, self.xc.reshape(len(xx), len(yy)))
+        self.ycCoeffs = self.buildSpline(splineType,
+                                         xx, yy, self.yc.reshape(len(xx), len(yy)))
+
+    def buildSpline(self, splineType, x, y, z):
+        if splineType is spInterp.RectBivariateSpline:
+            return splineType(x, y, z)
+        elif splineType is spInterp.RegularGridInterpolator:
+            return splineType((x, y), z, method='linear')
+        else:
+            raise RuntimeError('evalSpline: unknown spline type: %s' % (splineType))
+
+    def evalSpline(self, spline, x, y):
+        if spline.__class__ is spInterp.RectBivariateSpline:
+            return spline(x, y)
+        elif spline.__class__ is spInterp.RegularGridInterpolator:
+            x = numpy.asarray(x).flatten()
+            y = numpy.asarray(y).flatten()
+            xx,yy = numpy.meshgrid(x, y, indexing='ij')
+    
+            zz = numpy.array((xx,yy)).T.reshape(x.shape[0]*y.shape[0], 2)
+    
+            return numpy.atleast_2d(spline(zz))
+        else:
+            raise RuntimeError('evalSpline: unknown spline type: %s' % (spline))
+        
+
+    def spotGridImage(self):
+        """ Return an array showing the rawspots in their given locations. """
+
+        pass
         
     def setConstantSpot(self, spot, spotScale):
         """ Set ourself to use a single PSF over the whole focal plane. Uses the existing .fiber and .wave maps. """
