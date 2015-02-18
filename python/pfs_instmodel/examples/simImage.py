@@ -41,7 +41,7 @@ def makeSim(band, fieldName, fiberFilter=None,
     
     simID = dict(band=band, frd=frd, focus=focus, date=date)
 
-    sim = simImage.SimImage(band, simID=simID, psf=psf, dtype=dtype)
+    sim = simImage.SimImage(band, simID=simID, psf=psf, dtype=dtype, addNoise=addNoise)
     skyModel = pfsSky.StaticSkyModel(band) # plus field info....
     flatSpectrum = pfsSpectrum.FlatSpectrum(sim.detector, gain=10.0)
     combSpectrum = pfsSpectrum.CombSpectrum(spacing=combSpacing, 
@@ -162,7 +162,7 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
     parser.add_argument('--date', action='store', default='2013-04-18')
     parser.add_argument('--dtype', action='store', default='u2')
     parser.add_argument('--noNoise', action='store_true')
-    parser.add_argument('--shiftPsfs', action='store_true')
+    parser.add_argument('--shiftPsfs', action='store_false')
     parser.add_argument('--combSpacing', action='store', type=float, default=50)
     parser.add_argument('-d', '--ds9', action='store_true', default=False)
 

@@ -27,11 +27,11 @@ class Detector(object):
         self.config = pfs_tools.configFile.readfile(filepath)
         self.dtype = dtype
 
-    def makeExposure(self, addBias=True, dtype=None):
+    def makeExposure(self, addBias=True, addNoise=True, dtype=None):
 
         if dtype is None:
             dtype = self.dtype
-        exp = exposure.Exposure(self, dtype=dtype)
+        exp = exposure.Exposure(self, dtype=dtype, addNoise=addNoise)
 
         return exp
 

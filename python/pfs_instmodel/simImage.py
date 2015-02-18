@@ -16,11 +16,11 @@ _______
                                 spectra=[irSky]*len(fibers))
 """
 class SimImage(object):
-    def __init__(self, band, sky=None, psf=None, simID=None, dtype='i4'):
+    def __init__(self, band, sky=None, psf=None, simID=None, addNoise=True, dtype='i4'):
         self.detector = pfsDet.Detector(band)
         self.sky = sky if sky else pfsSky.StaticSkyModel(band)
         self.psf = psf if psf else pfsPsf.SplinedPsf(self.detector, spotID=simID)
-        self.exposure = self.detector.makeExposure(dtype=dtype)
+        self.exposure = self.detector.makeExposure(dtype=dtype, addNoise=addNoise)
         self.fibers = {}
 
     @property
@@ -81,16 +81,13 @@ class SimImage(object):
     def writeTo(self, outputFile, addNoise=True):
         import fitsio
 
-        print("output to %s, addNoise=%s" % (outputFile, addNoise))
+        print("output to %s, addNoise=%s, dtype=self.exposure" % (outputFile, addNoise))
 
         self.exposure.writeto(outputFile, addNoise=addNoise)
         
         waveImage = self.waveImage()
         fitsio.write(outputFile, waveImage, extname='wavelengths', compress='RICE')
         
-        # For Stella v.0.x, provide waves with 0s in place of nans, in a separate file.
-        waveImage[numpy.isnan(waveImage)] = 0
-        fitsio.write('WAVE-'+outputFile, waveImage, clobber=True)
 
 def fiberInfo(self):
     """ Return a single numpy array containing what we know about the fibers. """
