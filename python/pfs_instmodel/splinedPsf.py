@@ -197,7 +197,7 @@ class SplinedPsf(psf.Psf):
         lo_w = newImages < 0
         if numpy.any(lo_w):
             minpix = newImages[lo_w].min()
-            print("%d/%d low PSF pixels, min=%f" % (lo_w.sum(), newImages.size, minpix))
+            print("%d/%d low PSF pixels, min=%g" % (lo_w.sum(), newImages.size, minpix))
             newImages += minpix
 
         finalImages = newImages
@@ -291,6 +291,9 @@ class SplinedPsf(psf.Psf):
         for i in range(len(pixelWaves)):
             specWave = pixelWaves[i]
             specFlux = pixelFlux[i]
+
+            if specFlux == 0.0:
+                continue
             
             rawPsf = fiberPsfs[i]
 
