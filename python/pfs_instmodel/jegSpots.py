@@ -100,7 +100,6 @@ def clearSpotCache():
 def readSpotFile(pathSpec, doConvolve=None, doRebin=False, 
                  doNorm=True, 
                  doSwapaxes=True, doTrimSpots=True,
-                 oversample=1,
                  verbose=False, clearCache=False):
     """ Directly read some recent version of JEGs spots.
 
@@ -208,14 +207,6 @@ def readSpotFile(pathSpec, doConvolve=None, doRebin=False,
         xsize, ysize = data.shape[1:]
         headerDict['XSIZE'] = xsize
         headerDict['YSIZE'] = ysize
-
-    if oversample > 1:
-        data = oversampleSpots(data, oversample)
-        xsize, ysize = data.shape[1:]
-        headerDict['XSIZE'] = xsize
-        headerDict['YSIZE'] = ysize
-        headerDict['XPIX'] /= oversample
-        headerDict['YPIX'] /= oversample
 
     fiberImage = makeFiberImage()
 
