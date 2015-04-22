@@ -38,7 +38,7 @@ class Exposure(object):
         return self._flux.shape
     
     def addFlux(self, addIm, outSlice=None, addNoise=True, addPlane=None):
-        """ Add some flux to ourselves.
+        """ Add some flux to ourselves. Optionally 
 
         """
         
@@ -67,15 +67,15 @@ class Exposure(object):
                                                                        min(noise[w]),
                                                                        outSlice))
 
-    def writeto(self, outputFile, doCombine=True, doWriteAll=True, addNoise=True):
+    def writeto(self, outputFile, doCombine=True, doWriteAll=True, addNoise=True, compress='RICE'):
         import fitsio
 
         print("writing to %s, addNoise=%s" % (outputFile, addNoise))
 
         self.readout(addNoise=addNoise)
-        fitsio.write(outputFile, self.pixelImage, clobber=True)
-        fitsio.write(outputFile, self.planes['mask'], extname='mask', compress='RICE')
-        fitsio.write(outputFile, self.planes['bias'], extname='bias', compress='RICE')
+        fitsio.write(outputFile, self.pixelImage, clobber=True, compress=compress)
+        fitsio.write(outputFile, self.planes['mask'], extname='mask', compress=compress)
+        fitsio.write(outputFile, self.planes['bias'], extname='bias', compress=compress)
 
     def readout(self, addNoise=True):
         if self.pixelImage is not None:
@@ -115,3 +115,17 @@ class Exposure(object):
 
         self._image[:] = im
         self._ivar[:] = ivar
+
+class SimExposure(Exposure):
+    def __init__(self, detector, 
+                 doNew=True, 
+                 addBias=False,
+                 addNoise=False,
+                 dtype='u2'):
+        """ """
+
+        super(Exposure, self).__init__(doNew=True,
+                                       addBias=False,
+                                       addNoise=addNoise,
+                                       dtype='f4')
+
