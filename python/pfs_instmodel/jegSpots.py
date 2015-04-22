@@ -203,12 +203,19 @@ def readSpotFile(pathSpec, doConvolve=None, doRebin=False,
         
     data = numpy.fromstring(rawData, dtype='(%d,%d)u2' % (xsize,ysize), count=nimage).astype('f4')
     if doTrimSpots:
-        data = trimSpots(data)
+        data = data[:,1:,1:]
+        
+        data, trimmedPixels = trimSpots(data, tryFor=127)
         xsize, ysize = data.shape[1:]
         headerDict['XSIZE'] = xsize
         headerDict['YSIZE'] = ysize
+        print("trimmed spots by %d pixels to %d pixels (%g mm)" % (trimmedPixels, xsize,
+                                                                   trimmedPixels * headerDict['XPIX']))
 
-    fiberImage = makeFiberImage()
+
+    print("convolving with fiber image: %s" % (doConvolve))
+    if doConvolve:
+        fiberImage = makeFiberImage()
 
     spots = []
     symSpots = []
@@ -218,7 +225,8 @@ def readSpotFile(pathSpec, doConvolve=None, doRebin=False,
         fiberIdx = fiberIDs[i / nlam]
         wavelength = wavelengths[i % nlam]
         xc = positions[i,0]
-        yc = -positions[i,1]
+        yc = positions[i,1]
+        focus = positions[i,2]
         if doConvolve:
             spot = convolveWithFiber(data[i,:,:], fiberImage)
         else:
@@ -243,19 +251,22 @@ def readSpotFile(pathSpec, doConvolve=None, doRebin=False,
             # Normalize the flux of each spot, w.r.t. the brightest spot.
             spot /= maxFlux
         
-        spots.append((fiberIdx, wavelength, xc, yc, rawSpot, spot))
+        spots.append((fiberIdx, wavelength, xc, yc, focus, rawSpot, spot))
         if verbose:
-            print("spot  %d (%d, %0.2f) at (%0.1f %0.1f), max=%0.2f sum=%0.2f, rawSum=%0.2f" % 
-                  (i, fiberIdx, wavelength, xc, yc, 
+            print("spot  %d (%d, %0.2f) at (%0.2f %0.2f %0.3f), max=%0.2f sum=%0.2f, rawSum=%0.2f" % 
+                  (i, fiberIdx, wavelength, xc, yc, focus,
                    spot.max(), spot.sum(), rawSum))
         if fiberIdx != 0:
-            symSpots.append((-fiberIdx, wavelength, -xc, yc, rawSpot[::-1,:], spot[::-1,:]))
+            rspot = spot[:,::-1]
+            assert(numpy.all(rspot[:,::-1] == spot))
+            
+            symSpots.append((-fiberIdx, wavelength, -xc, yc, focus, rawSpot[:,::-1], spot[:,::-1]))
 
     allSpots = spots + symSpots    
     spotw = spots[0][-1].shape[0]
     spotDtype = numpy.dtype([('fiberIdx','i2'),
                              ('wavelength','f4'),
-                             ('spot_xc','f4'), ('spot_yc','f4'),
+                             ('spot_xc','f4'), ('spot_yc','f4'), ('spot_focus','f4'),
                              ('rawspot', '(%d,%d)u2' % (spotw,spotw)),
                              ('spot', '(%d,%d)f4' % (spotw,spotw))])
 
@@ -263,26 +274,34 @@ def readSpotFile(pathSpec, doConvolve=None, doRebin=False,
 
     # Now clean up... later steps expect to have fiber IDs and wavelengths in order
     arr = numpy.sort(tarr, order=('fiberIdx','wavelength'))
-    assert(numpy.all(arr['spot'] > 0)), "spots must be positive")
+    assert(numpy.all(arr['spot'] >= 0)), "spots must be non-negative."
     
     _spotCache[path] = (arr, headerDict)
 
     return arr, headerDict
 
-def trimSpots(spots):
+def trimSpots(spots, tryFor=None):
     """ Return a spot array with the outer 0-level pixels trimmed off. """
 
+    assert spots.shape[-2] == spots.shape[-1], "input spots must be square"
+    
     startWidth = spots.shape[-1]
     nz = numpy.where(spots > 0)
     mn = min(nz[1].min(), nz[2].min())
     mx = max(nz[1].max(), nz[2].max())
 
     mxt = startWidth - mx
+    
     trimPix = min(mn, mxt)
+    if tryFor is not None:
+        if tryFor < startWidth - trimPix*2:
+            raise RuntimeError("cannot safely trim spots to %s pixels" % (tryFor))
+        trimPix = (startWidth-tryFor)/2
 
     print("trimming spots from %d to %d pixels" % (startWidth, startWidth-trimPix*2)) 
     nspots = spots[:,trimPix:startWidth-trimPix,trimPix:startWidth-trimPix]
-    return nspots
+
+    return nspots, trimPix
 
 def oversampleSpots(spots, factor):
     """ Oversample the given spots by factor. """
