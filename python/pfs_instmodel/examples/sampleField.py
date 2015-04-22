@@ -80,7 +80,8 @@ centerSkyx2  = [PROBE(i,0.0,1.0,100.0,200.0,'SKY') for i in keepEven(centerRange
 edgeFlatx2 = [PROBE(i,0.0,1.0,100.0,200.0,'SIMFLAT') for i in keepEven(edgeRange)]
 edgeSkyx2  = [PROBE(i,0.0,1.0,100.0,200.0,'SKY') for i in keepEven(edgeRange)]
 
-quickComb = [PROBE(i,0.0,1.0,100.0,200.0,'SIMCOMB') for i in (-fiberLim, 0, fiberLim+1)]
+quickComb = [PROBE(i,0.0,1.0,100.0,200.0,'SIMCOMB') for i in (-fiberLim, -fiberLim/2, 0, 1, fiberLim+1)]
+quickFlat = [PROBE(i,0.0,1.0,100.0,200.0,'SIMFLAT') for i in (-fiberLim, -fiberLim/2, 0, 1, fiberLim+1)]
 
 cpl = ([PROBE(i,0.0,1.0,100.0,200.0,'SIMFLAT') for i in range(0,3)] +
        [PROBE(i,0.0,1.0,100.0,200.0,'SKY') for i in range(4,6)] +
@@ -97,7 +98,6 @@ sampledComb = [PROBE(i,0.0,1.0,100.0,200.0,'SIMCOMB') for i in sampledRange]
 sampledFlat = [PROBE(i,0.0,1.0,100.0,200.0,'SIMFLAT') for i in sampledRange]
 sampledSky  = [PROBE(i,0.0,1.0,100.0,200.0,'SKY') for i in sampledRange]
 sampledCombx2 = [PROBE(i,0.0,1.0,100.0,200.0,'SIMCOMB') for i in keepEven(sampledRange)]
-sampledCombx2[-1] = PROBE(i,0.0,1.0,100.0,200.0,'SIMFLAT')
 sampledFlatx2 = [PROBE(i,0.0,1.0,100.0,200.0,'SIMFLAT') for i in keepEven(sampledRange)]
 sampledSkyx2  = [PROBE(i,0.0,1.0,100.0,200.0,'SKY') for i in keepEven(sampledRange)]
 
