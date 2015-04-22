@@ -232,16 +232,11 @@ class SplinedPsf(psf.Psf):
         
         if waveRange is None:
             waveRange = self.wave.min(), self.wave.max()
-        minX, maxX = self.evalSpline(self.xcCoeffs, [fiber], waveRange)[0]
-        minY, maxY = self.evalSpline(self.ycCoeffs, [fiber], waveRange)[0]
-
-        minRow = minY/pixelScale
-        maxRow = maxY/pixelScale
-        minCol = minX/pixelScale
-
-        # Generalize this... CPL
-        if minRow > maxRow:
-            minRow, maxRow = maxRow, minRow
+        #minY, maxY = self.evalSpline(self.ycCoeffs, [fiber], waveRange)[0]
+        #if minY > maxY:
+        #    minY, maxY = maxY, minY
+        #minRow = int(minY/pixelScale)
+        #maxRow = round(maxY/pixelScale + 0.5)
 
         # Get the wavelengths for the fiber pixels.
         allPixelRows, allPixelWaves = self.wavesForRows([fiber], waveRange=waveRange, 
@@ -253,34 +248,46 @@ class SplinedPsf(psf.Psf):
         fiberPsfs, psfIds, centers = self.psfsAt([fiber], pixelWaves)
 
         xCenters, yCenters = [c[0] for c in centers]
+        #minCol = int(xCenters.min()/pixelScale)
+        #minRow = int(yCenters.min()/pixelScale)
         
         psfToSpotRatio = self.detector.config['pixelScale'] / pixelScale
-        outImgSpotPixelScale = round(psfToSpotRatio)
+        psfToSpotPixRatio = int(round(psfToSpotRatio))
 
         # pixels
-        traceWidth = int((xCenters.max() - xCenters.min())/pixelScale + 0.5)
-        traceHeight = int((yCenters.max() - yCenters.min())/pixelScale + 0.5)
+        traceWidth = int((xCenters.max() - xCenters.min())/pixelScale) + 1
+        traceHeight = int((yCenters.max() - yCenters.min())/pixelScale) + 1
         spotWidth = fiberPsfs[0].shape[-1]
-
+        spotRad = spotWidth / 2
+        print("spot size: %s %s %s %s" % (spotWidth, spotRad, psfToSpotRatio, psfToSpotPixRatio))
+        print("trace    : %s %s" % (traceHeight, traceWidth))
+        
         # We want out fiber image to be sized in units of outImgSpotPixelScale.
-        fiHeight = (traceHeight + spotWidth)
-        fiWidth = (traceWidth + spotWidth)
-        fiHeight += outImgSpotPixelScale - fiHeight%outImgSpotPixelScale
-        fiWidth += outImgSpotPixelScale - fiWidth%outImgSpotPixelScale
-        fiberImage = numpy.zeros((fiHeight, fiWidth), dtype='f4')
+        fiHeight = traceHeight + spotWidth
+        fiWidth = traceWidth + spotWidth
+        chunkUp = numpy.array([fiHeight, fiWidth])
+        chunkUp = psfToSpotPixRatio - chunkUp%psfToSpotPixRatio
+        chunkUp[chunkUp == 10] = 0
+        fiHeight += chunkUp[0]
+        fiWidth += chunkUp[1]
+        print("trace    : %s %s -> %s %s" % (traceHeight, traceWidth, fiHeight, fiWidth))
 
         # mm
         fiberImageOffset = numpy.asarray((yCenters.min(), xCenters.min()))
 
+        # spot pixels; expand to include and fall on full image pixels
+        fiberImagePixelOffset = (fiberImageOffset / pixelScale).astype('i4') - spotRad
+        expandDown = fiberImagePixelOffset%psfToSpotPixRatio
+        fiberImagePixelOffset -= expandDown
+        
         # pixels
-        outImgOffset = fiberImageOffset / self.detector.config['pixelScale']
-        print("fiber offset: pix=%s mm=%s" % (outImgOffset, fiberImageOffset))
+        outImgOffset = fiberImagePixelOffset / psfToSpotPixRatio
+        print("fiber offset: pix=%s base=%s, mm=%s out=%s" % (fiberImagePixelOffset,
+                                                              fiberImageOffset/pixelScale, fiberImageOffset,
+                                                              outImgOffset))
 
-        # Adjust offset by fractional detector pixel
-        fiberImageOffset -= (outImgOffset - outImgOffset.astype('i4')) * self.detector.config['pixelScale']
-        outImgOffset = outImgOffset.astype('i4')
-        print("net fiber offset: pix=%s mm=%s" % (outImgOffset, fiberImageOffset))
-      
+        fiberImage = numpy.zeros((fiHeight, fiWidth), dtype='f4')
+
         if outExp is None:
             outExp = self.detector.makeExposure()
 
@@ -288,6 +295,7 @@ class SplinedPsf(psf.Psf):
         geometry = numpy.zeros(len(pixelWaves), dtype=[('xc','f4'),('yc','f4'),
                                                        ('intx','i4'),('inty','i4'),
                                                        ('wavelength','f4'),('flux','f4')])
+        isLinelist = spectrum.__class__.__name__ == "CombSpectrum"
         for i in range(len(pixelWaves)):
             specWave = pixelWaves[i]
             specFlux = pixelFlux[i]
@@ -300,12 +308,10 @@ class SplinedPsf(psf.Psf):
             # in mm
             xc = xCenters[i]
             yc = yCenters[i]
-            xoffset = xc - fiberImageOffset[1]
-            yoffset = yc - fiberImageOffset[0]
 
             # pix offset
-            xPixOffset = xoffset / pixelScale
-            yPixOffset = yoffset / pixelScale
+            xPixOffset = xc / pixelScale - fiberImagePixelOffset[1] - spotRad
+            yPixOffset = yc / pixelScale - fiberImagePixelOffset[0] - spotRad
 
             # Keep the shift to the smallest fraction possible, or rather keep the integer steps 
             # exact.
@@ -316,34 +322,27 @@ class SplinedPsf(psf.Psf):
             fracx = xPixOffset - intx
 
             if shiftPsfs:
-                shiftedPsf, kernels = spotgames.shiftSpot1d(rawPsf, fracx, 0)
+                shiftedPsf, kernels = spotgames.shiftSpot1d(rawPsf, fracx, fracy)
                 spot = specFlux * shiftedPsf
             else:
                 spot = specFlux * rawPsf
                 
-            if i % 1000 == 0 or i > len(pixelWaves)-2:
-                print("%5d %6.1f (%3.3f, %3.3f) %0.2f %0.2f %0.2f shift=%s" % (i, specWave, xc, yc, 
-                                                                               rawPsf.sum(), spot.sum(), specFlux,
-                                                                               shiftPsfs))
+            if isLinelist or i % 1000 == 0 or i > len(pixelWaves)-2:
+                print("%5d %6.1f (%3.3f, %3.3f) (%0.2f %0.2f) %0.2f %0.2f %0.2f" % (i, specWave, xc, yc, 
+                                                                                    xPixOffset + spotRad,
+                                                                                    yPixOffset + spotRad,
+                                                                                    rawPsf.sum(), spot.sum(), specFlux))
 
-            # This is unaccountably expensive.
-            #if spot.sum() < 1:
-            #    continue
-            
             self.placeSubimage(fiberImage, spot, (inty, intx))
             geometry[i] = (xc,yc,intx,inty,specWave,specFlux)
 
-            # bin psf to ccd pixels, shift by fractional pixel only.
-            #psf = self.scalePsf(rawPsf, -fracx, -fracy, doDetails=doDetails)
-            #self.placeSubimage(outImg, spot, (inty, intx))
-
         # transfer flux from oversampled fiber image to final resolution output image
-        resampledFiber = self.addOversampledImage(fiberImage, outExp, outImgOffset, outImgSpotPixelScale)
+        resampledFiber = self.addOversampledImage(fiberImage, outExp, outImgOffset, psfToSpotPixRatio)
 
         if returnUnbinned:
-            return outExp, minRow, minCol, geometry, fiberImage, resampledFiber
+            return outExp, fiberImagePixelOffset[0], fiberImagePixelOffset[1], geometry, fiberImage, resampledFiber
         else:
-            return outExp, minRow, minCol, geometry
+            return outExp, fiberImagePixelOffset[0], fiberImagePixelOffset[1], geometry
 
     def addOversampledImage(self, inImg, outExp, outOffset, outScale):
         """ Add the outScale-oversampled inImg to outImg at the given offset. """
@@ -538,8 +537,8 @@ class SplinedPsf(psf.Psf):
     
             return numpy.atleast_2d(spline(zz))
         else:
-            raise RuntimeError('evalSpline: unknown spline type: %s' % (spline))
-        
+            # print("warning: evalSpline: unknown spline type: %s'" % (spline))
+            return spline(x, y)
 
     def spotGridImage(self):
         """ Return an array showing the rawspots in their given locations. """
