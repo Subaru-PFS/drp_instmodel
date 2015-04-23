@@ -29,7 +29,7 @@ OFFSETS :
 def getDataPath(date='2013-04-18', band=None, frd=23, focus=0, spotDir=None):
     """ Given """
     if not spotDir:
-        spotDir = os.path.join(os.environ['PFS_INSTDATA_DIR'], 'data/spots/jeg')
+        spotDir = os.path.join(os.environ['DRP_INSTDATA_DIR'], 'data/spots/jeg')
         
     spotFile = os.path.join(spotDir, date, band, 
                             "*.dat_foc%d_frd%d.imgstk" % (focus, frd))
@@ -374,7 +374,7 @@ def main(band, spotDir=None, filePattern=None):
     """ Convert a directory of zemax spot files into a slightly more convenient FITS table. """
 
     if not spotDir:
-        spotDir = os.path.join(os.environ['PFS_INSTDATA_DIR'], 'data/spots/jeg', band)
+        spotDir = os.path.join(os.environ['DRP_INSTDATA_DIR'], 'data/spots/jeg', band)
 
     data = readSpotDir(spotDir, filePattern)
     writeSpotFITS(spotDir, data)

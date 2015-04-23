@@ -100,7 +100,7 @@ def writeSpotFITS(spotDir, data):
 def main(argv):
     """ Convert a directory of zemax spot files into a slightly more convenient FITS table. """
     
-    spotDir = os.path.join(os.environ['PFS_INSTDATA_DIR'], 'data/spots/zemax', argv[0])
+    spotDir = os.path.join(os.environ['DRP_INSTDATA_DIR'], 'data/spots/zemax', argv[0])
 
     data = readSpotDir(spotDir)
     writeSpotFITS(spotDir, data)

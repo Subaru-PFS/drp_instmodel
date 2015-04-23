@@ -71,7 +71,7 @@ class StaticSkyModel(SkyModel):
         """ Read in JEG's preliminary sky model. """
 
         # Map self.band to a filename using some config file. For now, hardcode
-        dataRoot = os.environ.get('PFS_INSTDATA_DIR', '.')
+        dataRoot = os.environ.get('DRP_INSTDATA_DIR', '.')
         filepath = os.path.join(dataRoot, 'data', 'sky', 'sumire%sskyHR.dat' % (self.band.upper()))
 
         self.native = numpy.genfromtxt(filepath, skip_footer=20, comments='\\')
@@ -84,7 +84,7 @@ class StaticSkyModel(SkyModel):
         """ Read in JEG's preliminary extinction model. """
 
         # Map self.band to a filename using some config file. For now, hardcode
-        dataRoot = os.environ.get('PFS_INSTDATA_DIR', '.')
+        dataRoot = os.environ.get('DRP_INSTDATA_DIR', '.')
         filepath = os.path.join(dataRoot, 'data', 'sky', 'MKextinction.dat')
 
         a = numpy.genfromtxt(filepath, comments='\\')

@@ -20,7 +20,7 @@ class Detector(object):
         """ Need to work out how to specify & pass in our properties. Use a "struct" for now. """
 
         # Map self.band to a filename using some mapper. For now, hardcode
-        dataRoot = os.environ.get('PFS_INSTDATA_DIR', '.')
+        dataRoot = os.environ.get('DRP_INSTDATA_DIR', '.')
         filepath = os.path.join(dataRoot, 'data', 'detectors', '%s.py' % (detectorName))
         
         self.band = detectorName
@@ -82,7 +82,7 @@ class Detector(object):
         """
 
         # Map self.band to a filename using some mapper. For now, hardcode
-        dataRoot = os.environ.get('PFS_INSTDATA_DIR', '.')
+        dataRoot = os.environ.get('DRP_INSTDATA_DIR', '.')
         filepath = os.path.join(dataRoot, 'data', 'sky', 'sumire%s.dat' % (self.band.upper()))
 
         a = numpy.genfromtxt(filepath, comments='\\')
