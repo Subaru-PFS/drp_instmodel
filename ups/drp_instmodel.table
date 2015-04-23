@@ -1,5 +1,5 @@
 setupRequired(pfs_tools)
-setupOptional(pfs_instdata)
+setupOptional(drp_instdata)
 
 pathPrepend(PYTHONPATH, ${PRODUCT_DIR}/python)
 pathPrepend(PATH, ${PRODUCT_DIR}/bin)
