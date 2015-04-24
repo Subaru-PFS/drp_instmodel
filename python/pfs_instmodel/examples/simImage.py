@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import argparse
+import logging
 import os
 import re
 
@@ -12,7 +13,8 @@ reload(pfsSpectrum)
 
 def makeSim(band, fieldName, fiberFilter=None,
             frd=23, focus=0, date='2013-04-18', psf=None, dtype='u2',
-            addNoise=True, combSpacing=50, shiftPsfs=True):
+            addNoise=True, combSpacing=50, shiftPsfs=True, constantPsf=False,
+            logger=None):
     """ Construct a simulated image. 
 
     Parameters
@@ -41,15 +43,17 @@ def makeSim(band, fieldName, fiberFilter=None,
     
     simID = dict(band=band, frd=frd, focus=focus, date=date)
 
-    sim = simImage.SimImage(band, simID=simID, psf=psf, dtype=dtype, addNoise=addNoise)
+    sim = simImage.SimImage(band, simID=simID, psf=psf, dtype=dtype,
+                            addNoise=addNoise, constantPsf=constantPsf,
+                            logger=logger)
     skyModel = pfsSky.StaticSkyModel(band) # plus field info....
-    flatSpectrum = pfsSpectrum.FlatSpectrum(sim.detector, gain=10.0)
+    flatSpectrum = pfsSpectrum.FlatSpectrum(sim.detector, gain=20.0)
     combSpectrum = pfsSpectrum.CombSpectrum(spacing=combSpacing, 
-                                            gain=20000.0)
+                                            gain=200000.0)
     
     field = loadField(fieldName)
 
-    print("addNoise=%s" % (addNoise))
+    logger.info("addNoise=%s" % (addNoise))
 
     fibers = []
     spectra = []
@@ -98,7 +102,7 @@ def loadField(fieldName):
     """
     
     # Decide on where to save field definitions, and add the usual path crap
-    fields = pfs_tools.par.loadParFile(os.path.join(os.environ["PFS_INSTMODEL_DIR"], "examples", "sampleField.py"))
+    fields = pfs_tools.par.loadParFile(os.path.join(os.environ["DRP_INSTMODEL_DIR"], "examples", "sampleField.py"))
     return fields[fieldName]
     
 def expandRangeArg(arg):
@@ -149,6 +153,11 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
     
    --band=IR --output=irsim.fits --field=field1
 """
+
+    # Configure the default formatter and logger.
+    logging.basicConfig(datefmt = "%Y-%m-%d %H:%M:%S",
+                        format = "%(asctime)s.%(msecs)03dZ %(name)-12s %(levelno)s %(filename)s:%(lineno)d %(message)s")
+    logger = logging.getLogger()
     
     parser = argparse.ArgumentParser(description="generate a simulated image", 
                                      formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -157,6 +166,7 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
     parser.add_argument('-F', '--field', action='store', required=True)
     parser.add_argument('-o', '--output', action='store', default=None)
     parser.add_argument('-f', '--fibers', action='store', default=None)
+    parser.add_argument('-v', '--verbose', action='store_true')
     parser.add_argument('--focus', action='store', default=0, type=int)
     parser.add_argument('--frd', action='store', default=23, type=int)
     parser.add_argument('--date', action='store', default='2013-04-18')
@@ -164,10 +174,14 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
     parser.add_argument('--noNoise', action='store_true')
     parser.add_argument('--shiftPsfs', action='store_false')
     parser.add_argument('--combSpacing', action='store', type=float, default=50)
+    parser.add_argument('--constantPsf', action='store_true', help='Use a single PSF for the entire field.')
+    parser.add_argument('--constantX', action='store_true', help='Use the 0th X-coordinate for each fiber.')
     parser.add_argument('-d', '--ds9', action='store_true', default=False)
 
     args = parser.parse_args(args)
-
+    logger.setLevel(logging.INFO if not args.verbose else logging.DEBUG)
+    logger.debug('starting simImage logging')
+    
     fibers = expandRangeArg(args.fibers)
 
     sim = makeSim(args.band, fieldName=args.field, 
@@ -176,7 +190,9 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
                   dtype=args.dtype,
                   addNoise=not args.noNoise,
                   combSpacing=args.combSpacing,
-                  shiftPsfs=args.shiftPsfs)
+                  shiftPsfs=args.shiftPsfs,
+                  constantPsf=args.constantPsf,
+                  logger=logger)
     if args.output:
         sim.writeTo(args.output, addNoise=not args.noNoise)
     if args.ds9:

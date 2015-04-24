@@ -555,16 +555,27 @@ class SplinedPsf(psf.Psf):
 
         pass
         
-    def setConstantSpot(self, spot, spotScale, doFixX=False):
+    def setConstantSpot(self, spot=None, spotScale=None, doFixX=False):
         """ Set ourself to use a single PSF over the whole focal plane. Uses the existing .fiber and .wave maps. """
 
+        if spot is None:
+            spotFiber = sorted(self.fiber)[len(self.fiber)/2]
+            spotWave = sorted(self.wave)[len(self.wave)/2]
+            spotId = np.where((self.fiber == spotFiber) & (self.wave == spotWave))[0]
+            spot = self.spots[int(spotId)]
+
+            self.logger.warn("set constant PSF to spot %s (fiber %d, wave %d)" % (spotId, spotFiber, spotWave))
+            self.logger.warn("shapes: ", self.spots.shape, spot.shape)
+            
         imshape = spot.shape
         self.spots = [spot]
-        self.spotScale = spotScale
+        if spotScale is not None:
+            self.spotScale = spotScale
 
         def freezeVal(val):
-            return lambda x,y: numpy.ones((len(y), len(x))) * val
-        coeffs = numpy.zeros(imshape, dtype='O')
+            return lambda x,y: np.ones((len(y), len(x))) * val
+        
+        coeffs = np.zeros(imshape, dtype='O')
         for ix in range(imshape[0]):
             for iy in range(imshape[1]):
                 spotval = float(spot[iy,ix])
