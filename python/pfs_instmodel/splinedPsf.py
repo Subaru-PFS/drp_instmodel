@@ -564,8 +564,7 @@ class SplinedPsf(psf.Psf):
             spotId = np.where((self.fiber == spotFiber) & (self.wave == spotWave))[0]
             spot = self.spots[int(spotId)]
 
-            self.logger.warn("set constant PSF to spot %s (fiber %d, wave %d)" % (spotId, spotFiber, spotWave))
-            self.logger.warn("shapes: ", self.spots.shape, spot.shape)
+            self.logger.warn("set constant PSF to spot %s (fiber %d, wave %d)", spotId, spotFiber, spotWave)
             
         imshape = spot.shape
         self.spots = [spot]
