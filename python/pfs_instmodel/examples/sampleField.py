@@ -19,6 +19,11 @@ def keepInBundle(input=None):
         if i%bundleSpacing != 0:
             yield i
 
+def keepNth(input, N):
+    for i in input:
+        if i%N == 0:
+            yield i
+
 def keepOdd(input):
     for i in input:
         if i%2 == 1:
@@ -59,6 +64,10 @@ skyField =  [PROBE(i,0.0,1.0,100.0,200.0,'SKY') for i in bundledField]
 combFieldx2 = [PROBE(i,0.0,1.0,100.0,200.0,'SIMCOMB') for i in keepEven(bundledField)]
 flatFieldx2 = [PROBE(i,0.0,1.0,100.0,200.0,'SIMFLAT') for i in keepEven(bundledField)]
 skyFieldx2 =  [PROBE(i,0.0,1.0,100.0,200.0,'SKY') for i in keepEven(bundledField)]
+
+combFieldx10 = [PROBE(i,0.0,1.0,100.0,200.0,'SIMCOMB') for i in keepNth(bundledField, 10)]
+flatFieldx10 = [PROBE(i,0.0,1.0,100.0,200.0,'SIMFLAT') for i in keepNth(bundledField, 10)]
+skyFieldx10 =  [PROBE(i,0.0,1.0,100.0,200.0,'SKY') for i in keepNth(bundledField, 10)]
 
 sparseCombField = [PROBE(i,0.0,1.0,100.0,200.0,('SIMCOMB' if i%100 == 0 or i in (-fiberLim, fiberLim+1) else 'UNPLUGGED')) 
                    for i in fullField()]
