@@ -225,7 +225,7 @@ def readSpotFile(pathSpec, doConvolve=None, doRebin=False,
         fiberIdx = fiberIDs[i / nlam]
         wavelength = wavelengths[i % nlam]
         xc = positions[i,0]
-        yc = positions[i,1]
+        yc = -positions[i,1]
         focus = positions[i,2]
         if doConvolve:
             spot = convolveWithFiber(data[i,:,:], fiberImage)
