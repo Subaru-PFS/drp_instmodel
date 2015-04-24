@@ -1,9 +1,11 @@
 #!/usr/bin/env python
 
+import logging
 import os
 import time
+
 from astropy.io import fits as pyfits
-import numpy
+import numpy as np
 
 import scipy.ndimage
 import scipy.signal
@@ -15,7 +17,7 @@ from pfs_tools import pydebug
 import spotgames
 
 class SplinedPsf(psf.Psf):
-    def __init__(self, detector, spotType='jeg', spotID=None):
+    def __init__(self, detector, spotType='jeg', spotID=None, logger=None):
         """ Create or read in our persisted form. By default use JEG's models. 
 
         Parameters
@@ -29,8 +31,8 @@ class SplinedPsf(psf.Psf):
            If spotType is set, some dataset identifier. Opaque to us.
         """
 
-        psf.Psf.__init__(self, detector)
-        
+        psf.Psf.__init__(self, detector, logger=logger)
+
         # The locations at which we have PSFs
         self.wave = []
         self.fiber = []

@@ -1,8 +1,13 @@
+import logging
 import numpy
 import scipy
 
 class Psf(object):
-    def __init__(self, detector):
+    def __init__(self, detector, logger=None):
+        if logger is None:
+            logger = logging.getLogger()
+        self.logger = logger
+
         self.detector = detector
     
     def psfAt(self, fiber, wave):

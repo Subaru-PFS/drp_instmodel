@@ -1,3 +1,4 @@
+import logging
 import numpy
 
 import pfs_instmodel.detector as pfsDet
@@ -16,10 +17,21 @@ _______
                                 spectra=[irSky]*len(fibers))
 """
 class SimImage(object):
-    def __init__(self, band, sky=None, psf=None, simID=None, addNoise=True, dtype='i4'):
+    def __init__(self, band, sky=None, psf=None, simID=None,
+                 addNoise=True, dtype='i4', constantPsf=False,
+                 logger=None):
+
+        if logger is None:
+            logger = logging.getLogger()
+        self.logger = logger
+
         self.detector = pfsDet.Detector(band)
         self.sky = sky if sky else pfsSky.StaticSkyModel(band)
-        self.psf = psf if psf else pfsPsf.SplinedPsf(self.detector, spotID=simID)
+        self.psf = psf if psf else pfsPsf.SplinedPsf(self.detector, spotID=simID,
+                                                     logger=logger)
+        if constantPsf:
+            self.psf.setConstantSpot()
+            
         self.exposure = self.detector.makeExposure(dtype=dtype, addNoise=addNoise)
         self.fibers = {}
 
