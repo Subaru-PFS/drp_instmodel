@@ -234,24 +234,23 @@ class SplinedPsf(psf.Psf):
         
         if waveRange is None:
             waveRange = self.wave.min(), self.wave.max()
-        #minY, maxY = self.evalSpline(self.ycCoeffs, [fiber], waveRange)[0]
-        #if minY > maxY:
-        #    minY, maxY = maxY, minY
-        #minRow = int(minY/pixelScale)
-        #maxRow = round(maxY/pixelScale + 0.5)
 
         # Get the wavelengths for the fiber pixels.
+        self.logger.debug("waves range: %s", waveRange)
         allPixelRows, allPixelWaves = self.wavesForRows([fiber], waveRange=waveRange, 
                                                         pixelScale=pixelScale)
-        pixelWaves = allPixelWaves[0]
-        pixelFlux = spectrum(pixelWaves)
+        self.logger.debug("allwaves: %s %d", allPixelWaves[0].dtype, len(allPixelWaves[0]))
 
+        isLinelist = spectrum.__class__.__name__ == "CombSpectrum"
+        waves, flux = spectrum.flux(allPixelWaves[0])
+
+        self.logger.debug("waves: %s %d %d", waves.dtype, len(waves), waves.nbytes)
+        self.logger.debug("flux:  %s %d %d", flux.dtype, len(flux), flux.nbytes)
+        
         # Get the PSFs and their locations on the oversampled pixels.
-        fiberPsfs, psfIds, centers = self.psfsAt([fiber], pixelWaves)
+        fiberPsfs, psfIds, centers = self.psfsAt([fiber], waves)
 
         xCenters, yCenters = [c[0] for c in centers]
-        #minCol = int(xCenters.min()/pixelScale)
-        #minRow = int(yCenters.min()/pixelScale)
         
         psfToSpotRatio = self.detector.config['pixelScale'] / pixelScale
         psfToSpotPixRatio = int(round(psfToSpotRatio))
@@ -329,15 +328,24 @@ class SplinedPsf(psf.Psf):
             else:
                 spot = specFlux * rawPsf
                 
-            if isLinelist or i % 1000 == 0 or i > len(pixelWaves)-2:
-                print("%5d %6.1f (%3.3f, %3.3f) (%0.2f %0.2f) %0.2f %0.2f %0.2f" % (i, specWave, xc, yc, 
-                                                                                    xPixOffset + spotRad,
-                                                                                    yPixOffset + spotRad,
-                                                                                    rawPsf.sum(), spot.sum(), specFlux))
-
+            if isLinelist or i % 1000 == 0 or i > len(waves)-2:
+                self.logger.debug("%5d %6.1f (%3.3f, %3.3f) (%0.2f %0.2f) %0.2f %0.2f %0.2f" % (i, specWave, xc, yc, 
+                                                                                                xPixOffset + spotRad,
+                                                                                                yPixOffset + spotRad,
+                                                                                                rawPsf.sum(), spot.sum(),
+                                                                                                specFlux))
             self.placeSubimage(fiberImage, spot, (inty, intx))
             geometry[i] = (xc,yc,intx,inty,specWave,specFlux)
 
+
+            if isLinelist:
+                # mc1 = pfs_tools.centroid(fiberImage[inty-spotRad:inty+spotRad, intx-spotRad:intx+spotRad])
+                mc2 = pfs_tools.centroid(spot)
+                self.logger.debug("(%0.3f, %0.3f) (%0.3f, %0.3f)",
+                                  xc / pixelScale, yc / pixelScale,
+                                  mc2[0] + fiberImagePixelOffset[1] + intx,
+                                  mc2[1] + fiberImagePixelOffset[0] + inty)
+                
         # transfer flux from oversampled fiber image to final resolution output image
         resampledFiber = self.addOversampledImage(fiberImage, outExp, outImgOffset, psfToSpotPixRatio)
 

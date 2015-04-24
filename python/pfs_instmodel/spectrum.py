@@ -89,7 +89,13 @@ class FlatSpectrum(Spectrum):
         # Work out the fing scaling, CPL
         return wave, pfs_tools.blackbody(wave, 3800.0) * self.scale
 
-class CombSpectrum(Spectrum):
+class LineSpectrum(Spectrum):
+    """ """
+
+    def flux(self, wave):
+        return self.linelist(wave.min(), wave.max())
+    
+class CombSpectrum(LineSpectrum):
     def __init__(self, spacing=50, gain=10000.0):
         """ Create a spectrum which will return a flux of gain at every ~spacing AA, 0 elsewhere. 
 
@@ -99,7 +105,17 @@ class CombSpectrum(Spectrum):
         self.spacing = spacing
         self.gain = gain
 
-    def flux(self, wave):
+    def linelist(self, minWave, maxWave):
+        """ Return all the lines in the given wave range. """
+        
+        dw = maxWave-minWave
+
+        wave = numpy.linspace(minWave, minWave+dw, dw/self.spacing + 1)
+        flux = wave*0 + self.gain
+
+        return wave, flux
+
+    def flux0(self, wave):
         minWave = wave.min()
         maxWave = wave.max()
         nWaves = len(wave)
