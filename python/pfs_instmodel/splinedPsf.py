@@ -135,11 +135,11 @@ class SplinedPsf(psf.Psf):
         maxRow = int(maxY/pixelScale)
 
         if rows is None:
-            rows = np.arange(minRow, maxRow+1)
+            rows = np.arange(minRow, maxRow+1, dtype='i4')
 
         # Invert the spline into a row->wave map. 
         # Just use a linear interpolation based on the evaluation near the pixels.
-        allWaves = np.linspace(waveRange[0], waveRange[1], maxRow-minRow+1, dtype='f4')
+        allWaves = np.linspace(waveRange[0], waveRange[1], maxRow-minRow+1, dtype='f8')
 
         waves = []
         for f in fibers:
@@ -154,7 +154,7 @@ class SplinedPsf(psf.Psf):
                 
             waveFunc = spInterp.interp1d(allWaveRows0, allWaves0, 'linear', bounds_error=False)
             fiberWaves = waveFunc(rows)
-            waves.append(fiberWaves.astype('f4'))
+            waves.append(fiberWaves.astype('f8'))
 
         return rows, waves
     
