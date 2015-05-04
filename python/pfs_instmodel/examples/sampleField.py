@@ -16,7 +16,7 @@ def keepInBundle(input=None):
     if input is None:
         input = fullField()
     for i in input:
-        if i%bundleSpacing != 0:
+        if i == 0 or i%bundleSpacing != 0:
             yield i
 
 def keepNth(input, N):
