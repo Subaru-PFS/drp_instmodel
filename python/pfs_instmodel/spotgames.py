@@ -13,7 +13,7 @@ import pfs_instmodel.jegSpots as jegSpots
 def radToIndices(rad, sampling=1.0, offset=0.0):
     """ Return the indices for an odd-width vector. """
     
-    if rad < 1:
+    if rad <= 0:
         raise RuntimeError("radius must be positive.")
     x = numpy.linspace(-(rad-1), rad-1, 
                        (2*rad-1)/sampling).astype('f4')
@@ -69,6 +69,23 @@ def toyspot(at, width, sampling=0.1, sigma=1.0, ongrid=False, donorm=False):
         y /= sigma * numpy.sqrt(2*numpy.pi)
         
     return x+at, y
+
+def centroid(im):
+    xFlux = im.sum(axis=0, dtype='f8')
+    yFlux = im.sum(axis=1, dtype='f8')
+    flux = yFlux.sum()
+
+    xc1 = (xFlux * numpy.arange(1, im.shape[1]+1)).sum()
+    yc1 = (yFlux * numpy.arange(1, im.shape[0]+1)).sum()
+    
+    return xc1/flux - 1, yc1/flux - 1
+
+def lineCentroid(l):
+    flux = l.sum(dtype='f8')
+
+    xc1 = (l * numpy.arange(1, len(l)+1)).sum(dtype='f8')
+    
+    return xc1/flux - 1
 
 def readSpot(filename):
     spot = pyfits.getdata(filename)
@@ -212,8 +229,11 @@ def sincKernel(offset=0.0, padding=0, window=lanczosWindow, n=3, doNorm=True, ra
 
     if rad is not None:
         cnt = 2*rad + 1
-    else:
+    elif (n + padding) > 0:
         cnt = 2*(n+padding) + 1
+    else:
+        cnt = 3
+        
     left = offset - n - padding
     right = offset + n + padding
 
@@ -546,15 +566,15 @@ def spotShowImages(im, fftim, iim, imbox, fig, plotids, resClip=0,
     return plt_im, plt_fft, plt_iim
 
 def spotShow(im, scale=10, binning=2, figName='spot',
-             plotResiduals=True):
+             plotResiduals=True, figsize=None):
     
-    fig = plt.figure(figName)
+    fig = plt.figure(figName, figsize=figsize)
     sgs = gridspec.GridSpec(3,3, hspace=0.1, wspace=0.1)
 
     im1 = im/im.max() + 1e-6
     fftx, ffty, fftim = imfreq1d(im1, sampling=1.0/scale)
     print "x,y,im: ", fftx.shape, ffty.shape, fftim.shape
-    iim = freq2im(fftim, doAbs=False)
+    iim = freq2im(fftim, doAbs=True)
     imbox = imextent(im1, scale=scale, doCenter=True)
     spotShowImages(im1, fftim, iim, imbox, fig, [sgs[0,0],sgs[0,1],sgs[0,2]],
                    plotResiduals=plotResiduals)
@@ -573,7 +593,7 @@ def spotShow(im, scale=10, binning=2, figName='spot',
     fftx, ffty, fftim = imfreq1d(im2, sampling=1.0/binnedScale)
     print "x,y,im: ", fftx.shape, ffty.shape, fftim.shape
     #fftim[im2.shape[0]/2, im2.shape[1]/binning] = 0
-    iim = freq2im(fftim, doAbs=False)
+    iim = freq2im(fftim, doAbs=True)
     imbox = imextent(im2, scale=binnedScale, doCenter=True)
     spotShowImages(im2, fftim, iim, imbox, fig, [sgs[1,0],sgs[1,1],sgs[1,2]],
                    plotResiduals=plotResiduals)
