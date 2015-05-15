@@ -167,9 +167,11 @@ def shiftSpot1d(spot, dx, dy, kernels=None, kargs=None):
     if not kargs:
         kargs = {}
     if kernels is None:
-        xkernel = make1dKernel(offset=dx, **kargs)[1]
-        ykernel = make1dKernel(offset=dy, **kargs)[1]
+        _, xkernel = make1dKernel(offset=dx, imSize=spot.shape[1], **kargs)
+        _, ykernel = make1dKernel(offset=dy, imSize=spot.shape[0], **kargs)
         kernels = (xkernel, ykernel)
+    else:
+        xkernel, ykernel = kernels
 
     if dy != 0:
         sspot = scipy.ndimage.convolve1d(spot, ykernel, axis=0)
@@ -223,24 +225,27 @@ def lanczos3(x):
 def lanczos4(x):
     return lanczosWindow(x, 4)
     
-def sincKernel(offset=0.0, padding=0, window=lanczosWindow, n=3, doNorm=True, rad=None):
+def sincKernel(offset=0.0, window=lanczosWindow, n=5, padding=0, doNorm=True):
     if offset < -1 or offset > 1:
         raise ValueError("sinc offset must be in [-1,1], not %0.4f" % (offset))
 
-    if rad is not None:
-        cnt = 2*rad + 1
-    elif (n + padding) > 0:
+    #if window is not None and padding == 0:
+    #    padding = 1
+        
+    if (n + padding) > 0:
         cnt = 2*(n+padding) + 1
     else:
-        cnt = 3
-        
+        cnt = 2*3 + 1
+
+    assert cnt%2 == 1, "sinc kernel width must be odd."
     left = offset - n - padding
     right = offset + n + padding
 
     x = numpy.linspace(left, right, cnt)
     y = numpy.sinc(x)
-    
-    if window and n > 0:
+
+    print("offset=%g, window=%s, n=%s, padding=%s" % (offset, window, n, padding))
+    if window is not None and n > 0:
         w = window(x, n=n)
         y *= w
     
@@ -249,27 +254,28 @@ def sincKernel(offset=0.0, padding=0, window=lanczosWindow, n=3, doNorm=True, ra
         
     return x, y
     
-def make1dKernel(n=3, offset=0.0, padding=0, window=lanczosWindow, doNorm=True, rad=None):
+def make1dKernel(n=5, offset=0.0, padding=0, window=lanczosWindow, doNorm=True, imSize=None):
     """ Construct a centered 1-d lanczos-windowed sinc kernel. """
 
-    x, y = sincKernel(n=n, offset=-offset, window=window, padding=padding, rad=rad)
-    
-    if doNorm:
-        y /= numpy.sum(y)
+    #if window is None:
+    #    n = imSize/2-2
+    x, y = sincKernel(n=n, offset=-offset, window=window, padding=padding, doNorm=doNorm)
         
     return x, y
 
-def padArray(arr, padTo):
+def padArray(arr, padTo, center=True):
     assert arr.shape[0] == arr.shape[1]
     assert arr.shape[0] < padTo
 
     #print "old size=%d, new=%d" % (arr.shape[0], padTo)
     newSize = numpy.array([padTo, padTo])
-    offset = (padTo-arr.shape[0])/2
+    if center:
+        offset = (padTo-arr.shape[0])/2
+    else:
+        offset = 0
     parr = numpy.zeros(newSize, dtype=arr.dtype)
     coreSlice = slice(offset, offset+arr.shape[0])
-    parr[offset:offset+arr.shape[0],
-         offset:offset+arr.shape[1]] = arr
+    parr[coreSlice, coreSlice] = arr
 
     return parr, coreSlice
 
