@@ -10,6 +10,8 @@ import numpy as np
 import scipy.ndimage
 import scipy.signal
 import scipy.interpolate as spInterp
+import scipy.ndimage
+import scipy.ndimage.interpolation
 
 import psf
 import pfs_tools
@@ -17,7 +19,7 @@ from pfs_tools import pydebug
 import spotgames
 
 class SplinedPsf(psf.Psf):
-    def __init__(self, detector, spotType='jeg', spotID=None, logger=None):
+    def __init__(self, detector, spotType='jeg', spotID=None, logger=None, doTrimSpots=True):
         """ Create or read in our persisted form. By default use JEG's models. 
 
         Parameters
@@ -44,7 +46,7 @@ class SplinedPsf(psf.Psf):
         self.spotID = spotID
 
         if spotType:
-            self.loadFromSpots(spotType, spotID)
+            self.loadFromSpots(spotType, spotID, spotArgs=dict(doTrimSpots=doTrimSpots))
 
         
     def __str__(self):
@@ -78,7 +80,7 @@ class SplinedPsf(psf.Psf):
         return self.spots[0].shape
 
     def traceCenters(self, fibers, waves):
-        """ Return the pixel centers for the given fibers and wavelengths """
+        """ Return the pixel centers in mm for the given fibers and wavelengths """
 
         fibers = np.array(fibers)
         waves = np.array(waves)
@@ -270,9 +272,9 @@ class SplinedPsf(psf.Psf):
         fiWidth = traceWidth + spotWidth
         chunkUp = np.array([fiHeight, fiWidth])
         chunkUp = psfToSpotPixRatio - chunkUp%psfToSpotPixRatio
-        chunkUp[chunkUp == 10] = 0
-        fiHeight += chunkUp[0]
-        fiWidth += chunkUp[1]
+        chunkUp[chunkUp == psfToSpotPixRatio] = 0
+        fiHeight += chunkUp[0] + psfToSpotPixRatio
+        fiWidth += chunkUp[1] + psfToSpotPixRatio
         self.logger.debug("trace    : %s %s -> %s %s" % (traceHeight, traceWidth, fiHeight, fiWidth))
 
         # mm
@@ -319,8 +321,8 @@ class SplinedPsf(psf.Psf):
             yc = yCenters[i]
 
             # pix offset
-            xPixOffset = xc / pixelScale - fiberImagePixelOffset[1] - spotRad
-            yPixOffset = yc / pixelScale - fiberImagePixelOffset[0] - spotRad
+            xPixOffset = xc/pixelScale - fiberImagePixelOffset[1] - spotRad + psfToSpotPixRatio/2
+            yPixOffset = yc/pixelScale - fiberImagePixelOffset[0] - spotRad + psfToSpotPixRatio/2
 
             # Keep the shift to the smallest fraction possible, or rather keep the integer steps 
             # exact.

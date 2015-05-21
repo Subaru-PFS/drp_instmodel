@@ -11,6 +11,7 @@ import scipy.ndimage
 
 import astropy.io.fits as fits
 
+import spotgames
 import pfs_tools
 
 from pfs_tools import pydebug
