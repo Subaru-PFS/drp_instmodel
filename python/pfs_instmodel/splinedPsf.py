@@ -555,11 +555,11 @@ class SplinedPsf(psf.Psf):
 
         pass
         
-    def setConstantSpot(self, spot=None, spotScale=None, doFixX=False):
+    def setConstantSpot(self, spot=None, spotScale=None):
         """ Set ourself to use a single PSF over the whole focal plane. Uses the existing .fiber and .wave maps. """
 
         if spot is None:
-            spotFiber = sorted(self.fiber)[len(self.fiber)/2]
+            spotFiber = 0
             spotWave = sorted(self.wave)[len(self.wave)/2]
             spotId = np.where((self.fiber == spotFiber) & (self.wave == spotWave))[0]
             spot = self.spots[int(spotId)]
@@ -582,12 +582,14 @@ class SplinedPsf(psf.Psf):
         self.coeffs = coeffs
         tx = ty = imshape[0]/2
 
-        if doFixX:
-            xx = np.unique(self.fiber)
-            yy = np.unique(self.wave)
+    def setConstantX(self):
+        """ Force spot x positions to be for the center spot on their trace. """
+        
+        xx = np.unique(self.fiber)
+        yy = np.unique(self.wave)
 
-            xc = self.xc.reshape(len(xx), len(yy))
-            xc[:,:] = xc[:,0:1]
-            self.xcCoeffs = self.buildSpline(self.xcCoeffs.__class__,
-                                             xx, yy, xc)
-            self.logger.warn("set constant X")
+        xc = self.xc.reshape(len(xx), len(yy))
+        xc[:,:] = xc[:,len(yy)/2:len(yy)/2+1]
+        self.xcCoeffs = self.buildSpline(self.xcCoeffs.__class__,
+                                         xx, yy, xc)
+        self.logger.warn("set constant X")

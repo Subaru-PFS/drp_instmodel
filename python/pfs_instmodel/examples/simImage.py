@@ -13,7 +13,8 @@ reload(pfsSpectrum)
 
 def makeSim(band, fieldName, fiberFilter=None,
             frd=23, focus=0, date='2013-04-18', psf=None, dtype='u2',
-            addNoise=True, combSpacing=50, shiftPsfs=True, constantPsf=False,
+            addNoise=True, combSpacing=50, shiftPsfs=True,
+            constantPsf=False, constantX=False,
             logger=None):
     """ Construct a simulated image. 
 
@@ -44,7 +45,8 @@ def makeSim(band, fieldName, fiberFilter=None,
     simID = dict(band=band, frd=frd, focus=focus, date=date)
 
     sim = simImage.SimImage(band, simID=simID, psf=psf, dtype=dtype,
-                            addNoise=addNoise, constantPsf=constantPsf,
+                            addNoise=addNoise,
+                            constantPsf=constantPsf, constantX=constantX,
                             logger=logger)
     skyModel = pfsSky.StaticSkyModel(band) # plus field info....
     flatSpectrum = pfsSpectrum.FlatSpectrum(sim.detector, gain=20.0)
@@ -175,7 +177,7 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
     parser.add_argument('--shiftPsfs', action='store_false')
     parser.add_argument('--combSpacing', action='store', type=float, default=50)
     parser.add_argument('--constantPsf', action='store_true', help='Use a single PSF for the entire field.')
-    parser.add_argument('--constantX', action='store_true', help='Use the 0th X-coordinate for each fiber.')
+    parser.add_argument('--constantX', action='store_true', help='Use the middle X-coordinate for all of each fiber.')
     parser.add_argument('-d', '--ds9', action='store_true', default=False)
 
     args = parser.parse_args(args)
@@ -192,6 +194,7 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
                   combSpacing=args.combSpacing,
                   shiftPsfs=args.shiftPsfs,
                   constantPsf=args.constantPsf,
+                  constantX=args.constantX,
                   logger=logger)
     if args.output:
         sim.writeTo(args.output, addNoise=not args.noNoise)

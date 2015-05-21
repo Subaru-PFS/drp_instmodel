@@ -18,7 +18,8 @@ _______
 """
 class SimImage(object):
     def __init__(self, band, sky=None, psf=None, simID=None,
-                 addNoise=True, dtype='i4', constantPsf=False,
+                 addNoise=True, dtype='i4',
+                 constantPsf=False, constantX=False,
                  logger=None):
 
         if logger is None:
@@ -31,6 +32,8 @@ class SimImage(object):
                                                      logger=logger)
         if constantPsf:
             self.psf.setConstantSpot()
+        if constantX:
+            self.psf.setConstantX()
             
         self.exposure = self.detector.makeExposure(dtype=dtype, addNoise=addNoise)
         self.fibers = {}
