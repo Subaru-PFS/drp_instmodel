@@ -73,7 +73,7 @@ class Exposure(object):
         print("writing to %s, addNoise=%s" % (outputFile, addNoise))
 
         self.readout(addNoise=addNoise)
-        fitsio.write(outputFile, self.pixelImage, clobber=True, compress=compress)
+        fitsio.write(outputFile, self.pixelImage, extname='flux', clobber=True, compress=compress)
         fitsio.write(outputFile, self.planes['mask'], extname='mask', compress=compress)
         fitsio.write(outputFile, self.planes['bias'], extname='bias', compress=compress)
 
