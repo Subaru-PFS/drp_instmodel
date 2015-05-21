@@ -96,7 +96,7 @@ class LineSpectrum(Spectrum):
         return self.linelist(wave.min(), wave.max())
     
 class CombSpectrum(LineSpectrum):
-    def __init__(self, spacing=50, gain=10000.0):
+    def __init__(self, spacing=50, gain=10000.0, inset=100):
         """ Create a spectrum which will return a flux of gain at every ~spacing AA, 0 elsewhere. 
 
         Actually, return a comb spectrum with non-zero values at the full range endpoints and at as
@@ -104,13 +104,14 @@ class CombSpectrum(LineSpectrum):
         """
         self.spacing = spacing
         self.gain = gain
-
+        self.inset = inset
+        
     def linelist(self, minWave, maxWave):
         """ Return all the lines in the given wave range. """
         
-        dw = maxWave-minWave
+        dw = maxWave-minWave - 2*self.inset
 
-        wave = numpy.linspace(minWave, minWave+dw, dw/self.spacing + 1)
+        wave = numpy.linspace(minWave+self.inset, minWave+dw, dw/self.spacing + 1)
         flux = wave*0 + self.gain
 
         return wave, flux
