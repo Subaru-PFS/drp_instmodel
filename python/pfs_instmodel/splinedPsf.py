@@ -294,9 +294,17 @@ class SplinedPsf(psf.Psf):
             outExp = self.detector.makeExposure()
 
         # construct the oversampled fiber image
-        geometry = np.zeros(len(waves), dtype=[('xc','f4'),('yc','f4'),
+        geometry = np.zeros(len(waves), dtype=[('xc','f8'),('yc','f8'),
+                                               ('dxc','f8'),('dyc','f8'),
                                                ('intx','i4'),('inty','i4'),
-                                               ('wavelength','f4'),('flux','f4')])
+                                               ('wavelength','f8'),('flux','f4')])
+
+        # Construct a mask to remove residual flux shifted by the truncated sinc.
+        #
+        spotmask = fiberPsfs[0]*0
+        spotSlice = slice(10, -10)
+        spotmask[spotSlice, spotSlice] = 1
+        
         for i in range(len(waves)):
             specWave = waves[i]
             specFlux = flux[i]
@@ -323,28 +331,54 @@ class SplinedPsf(psf.Psf):
             fracx = xPixOffset - intx
 
             if shiftPsfs:
-                shiftedPsf, kernels = spotgames.shiftSpot1d(rawPsf, fracx, fracy)
+                if False:
+                    shiftedPsf, kernels = spotgames.shiftSpot1d(rawPsf, fracx, fracy)
+                else:
+                    if True:
+                        shiftedPsf, kernels = spotgames.shiftSpot1d(rawPsf, fracx, fracy, kargs=dict(n=spotRad))
+                        shiftedPsf *= spotMask
+                    else:
+                        shiftedPsf = scipy.ndimage.interpolation.shift(rawPsf,(fracy,fracx))
+
+                    _c0x, _c0y = spotgames.centroid(rawPsf)
+                    dxc = _c0x - spotRad
+                    dyc = _c0y - spotRad
+                    if isLinelist:
+                        _c1x, _c1y = spotgames.centroid(shiftedPsf)
+                        self.logger.debug("%5d %6.1f   c0: %0.5f,%0.5f  cdiff: %0.5f,%0.5f   diff: %0.5f,%0.5f   pix: %0.5f,%0.5f cnts: %0.4f,%0.4f,%d",
+                                          i, specWave,
+                                          _c0x-spotRad, _c0y-spotRad,
+                                          _c1x-spotRad+intx-xPixOffset, _c1y-spotRad+inty-yPixOffset,
+                                          _c1x-_c0x-fracx, _c1y-_c0y-fracy,
+                                          xc/pixelScale, yc/pixelScale,
+                                          rawPsf.sum(), shiftedPsf.sum(), np.sum(shiftedPsf<0))
+                        if np.sum(shiftedPsf < 0) > 0:
+                            self.logger.debug('%d low pixels, min=%g',
+                                              np.sum(shiftedPsf < 0),
+                                              np.min(shiftedPsf))
+                    shiftedPsf[shiftedPsf<0] = 0 # CPL
+                            
                 spot = specFlux * shiftedPsf
             else:
                 spot = specFlux * rawPsf
                 
-            if isLinelist or i % 1000 == 0 or i > len(waves)-2:
-                self.logger.debug("%5d %6.1f (%3.3f, %3.3f) (%0.2f %0.2f) %0.2f %0.2f %0.2f" % (i, specWave, xc, yc, 
-                                                                                                xPixOffset + spotRad,
-                                                                                                yPixOffset + spotRad,
+            if False and (isLinelist or i % 1000 == 0 or i > len(waves)-2):
+                self.logger.debug("%5d %6.1f (%3.3f, %3.3f) (%0.2f %0.2f) %0.2f %0.2f %0.2f" % (i, specWave,
+                                                                                                xc/pixelScale, yc/pixelScale, 
+                                                                                                xPixOffset,
+                                                                                                yPixOffset,
                                                                                                 rawPsf.sum(), spot.sum(),
                                                                                                 specFlux))
             self.placeSubimage(fiberImage, spot, (inty, intx))
-            geometry[i] = (xc,yc,intx,inty,specWave,specFlux)
+            geometry[i] = (xc,yc,dxc,dyc,intx,inty,specWave,specFlux)
 
-
-            if isLinelist:
+            if False and isLinelist:
                 # mc1 = pfs_tools.centroid(fiberImage[inty-spotRad:inty+spotRad, intx-spotRad:intx+spotRad])
                 mc2 = pfs_tools.centroid(spot)
                 self.logger.debug("(%0.3f, %0.3f) (%0.3f, %0.3f)",
                                   xc / pixelScale, yc / pixelScale,
-                                  mc2[0] + fiberImagePixelOffset[1] + intx,
-                                  mc2[1] + fiberImagePixelOffset[0] + inty)
+                                  mc2[0] + intx,
+                                  mc2[1] + inty)
                 
         # transfer flux from oversampled fiber image to final resolution output image
         resampledFiber = self.addOversampledImage(fiberImage, outExp, outImgOffset, psfToSpotPixRatio)
