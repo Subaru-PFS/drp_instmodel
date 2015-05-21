@@ -227,24 +227,39 @@ def readSpotFile(pathSpec, doConvolve=None, doRebin=False,
         xc = positions[i,0]
         yc = -positions[i,1]
         focus = positions[i,2]
+
         if doConvolve:
             spot = convolveWithFiber(data[i,:,:], fiberImage)
         else:
             spot = data[i,:,:]
 
-        if doRebin:
-            raise NotImplementedError("readSpotFile(doRebin=True) has bit rot")
+        if doRecenter:
+            assert spot.shape[0] == spot.shape[1]
+            spotw = spot.shape[0]/2
+            ctr = spotgames.centroid(spot)
+            assert numpy.abs(ctr[0] - spotw) < 0.1, "centroid too far from center (%g %g)" % (ctr[0], spotw)
+            assert numpy.abs(ctr[1] - spotw) < 0.1, "centroid too far from center (%g %g)" % (ctr[0], spotw)
 
-            # bin from 256x256 1um pixels to 85x85 3um pixels.
-            # Still oversampled by 5.
-            spot = spot[:-1,:-1]
-            spot = pfs_tools.rebin(spot, 85,85)
+            pspot, spotSlice = spotgames.padArray(spot, padTo=spot.shape[0]*2)
+            pspot, _ = spotgames.shiftSpot1d(pspot, spotw-ctr[0], spotw-ctr[1], kargs=dict(n=spotw*3/2))
+            spot = pspot[spotSlice, spotSlice]
+            ctr2 = spotgames.centroid(spot)
+
+            fluxMin = spot.min()
+            if fluxMin < 0:
+                spot -= fluxMin
+                
+            print("recentered spot %i by (%0.5f, %0.5f) to (%0.5f, %0.5f) [min=%0.5f]" %
+                  (i,
+                   spotw-ctr[0], spotw-ctr[1],
+                   ctr2[0], ctr2[1],
+                   fluxMin))
 
         # Rotate x-up mechanical view to y-up detector view (dispersing along columns)
         spot = numpy.swapaxes(spot,0,1)
         xc, yc = yc, xc
 
-        rawSpot = spot.copy()
+        rawSpot = numpy.swapaxes(rawspots[i,:,:],0,1)
 
         rawSum = spot.sum()
         if doNorm:
@@ -291,14 +306,19 @@ def trimSpots(spots, tryFor=None):
     mx = max(nz[1].max(), nz[2].max())
 
     mxt = startWidth - mx
-    
-    trimPix = min(mn, mxt)
+    return max(mn, mxt), min(mn, mxt)
+
+def trimSpots(spots, tryFor=None):
+    """ Return a spot array with the outer 0-level pixels trimmed off. """
+
+    _, trimPix = dataWidth(spots)
+
     if tryFor is not None:
         if tryFor < startWidth - trimPix*2:
             raise RuntimeError("cannot safely trim spots to %s pixels" % (tryFor))
         trimPix = (startWidth-tryFor)/2
 
-    print("trimming spots from %d to %d pixels" % (startWidth, startWidth-trimPix*2)) 
+    print("trimming spots by %d pixels from %d to %d pixels" % (trimPix, startWidth, startWidth-trimPix*2)) 
     nspots = spots[:,trimPix:startWidth-trimPix,trimPix:startWidth-trimPix]
 
     return nspots, trimPix
