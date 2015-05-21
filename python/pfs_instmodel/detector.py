@@ -38,11 +38,10 @@ class Detector(object):
     def getBias(self, exp=None):
         """ Return a bias plane. """
 
-        dtype = exp.dtype if exp else 'u2'
-
-        bias = numpy.random.normal(self.config['bias'],
-                                   self.config['readNoise'],
-                                   self.config['ccdSize']).astype(dtype)
+        dtype = 'u2'
+        bias = numpy.fix(numpy.random.normal(self.config['bias'],
+                                             self.config['readNoise'],
+                                             self.config['ccdSize'])).astype(dtype)
         return bias
 
     def addBias(self, exp):
@@ -58,12 +57,12 @@ class Detector(object):
 
         bias = self.addBias(exp)
 
-        rimage = numpy.rint(flux) + bias
+        rimage = numpy.fix(flux) + bias
 
         saturatedPixels = (rimage > 65535)
         lowPixels = (rimage < 0)
 
-        rimage = rimage.astype('u2')
+        rimage = numpy.fix(rimage).astype('u2')
         rimage[saturatedPixels] = 65535
         rimage[lowPixels] = 0
         exp.pixelImage = rimage
