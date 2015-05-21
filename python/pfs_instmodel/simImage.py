@@ -105,8 +105,9 @@ class SimImage(object):
         fiberIds = sorted(combFibers)
 
         geomType = numpy.dtype([('fiberId','i2'),
-                                ('xc','f4'), ('yc','f4'),
-                                ('wavelength', 'f4'),
+                                ('xc','f8'), ('yc','f8'),
+                                ('dxc','f4'), ('dyc','f4'),
+                                ('wavelength', 'f8'),
                                 ('flux', 'f4')])
         npoints = 0
         for f in fiberIds:
@@ -125,6 +126,8 @@ class SimImage(object):
             geomArr[g_i]['fiberId'] = f_i
             geomArr[g_i]['xc'] = fiberGeom['xc'][hasFlux] / self.detector.config['pixelScale']
             geomArr[g_i]['yc'] = fiberGeom['yc'][hasFlux] / self.detector.config['pixelScale']
+            geomArr[g_i]['dxc'] = fiberGeom['dxc'][hasFlux]
+            geomArr[g_i]['dyc'] = fiberGeom['dyc'][hasFlux]
             geomArr[g_i]['wavelength'] = fiberGeom['wavelength'][hasFlux]
             geomArr[g_i]['flux'] = fiberGeom['flux'][hasFlux]
 
