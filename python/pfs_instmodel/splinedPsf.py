@@ -355,10 +355,17 @@ class SplinedPsf(psf.Psf):
             return outExp, fiberImagePixelOffset[0], fiberImagePixelOffset[1], geometry
 
     def addOversampledImage(self, inImg, outExp, outOffset, outScale):
-        """ Add the outScale-oversampled inImg to outImg at the given offset. """
+        """ Add the outScale-oversampled inImg to outImg at the given offset. 
 
-        resampled = pfs_tools.rebin(inImg, inImg.shape[0]/outScale, inImg.shape[1]/outScale)
+        Must convolve with the pixel response of the oversampled pixel.
+        """
 
+        pixelKernel = np.ones((outScale, outScale), dtype='f4') / (outScale*outScale)
+        pixImg = scipy.ndimage.convolve(inImg, pixelKernel, mode='constant', cval=0.0)
+                                
+        resampled = pfs_tools.rebin(pixImg, pixImg.shape[0]/outScale, pixImg.shape[1]/outScale)
+        self.logger.debug("addOversampled kernel shape: %s, out type: %s",
+                          pixelKernel.shape, resampled.dtype)
         parentIdx, childIdx = self.trimRect(outExp, resampled, outOffset)
         try:
             outExp.addFlux(resampled[childIdx], outSlice=parentIdx, addNoise=True)
