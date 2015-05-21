@@ -97,9 +97,11 @@ def clearSpotCache():
     global _spotCache
     _spotCache.clear()
 
+
 def readSpotFile(pathSpec, doConvolve=None, doRebin=False, 
                  doNorm=True, 
                  doSwapaxes=True, doTrimSpots=True,
+                 doRecenter=True,
                  verbose=False, clearCache=False):
     """ Directly read some recent version of JEGs spots.
 
@@ -202,16 +204,21 @@ def readSpotFile(pathSpec, doConvolve=None, doRebin=False,
     fiberIDs = getFiberIds(headerDict, headerVersion)
         
     data = numpy.fromstring(rawData, dtype='(%d,%d)u2' % (xsize,ysize), count=nimage).astype('f4')
+    rawspots = data.copy()
     if doTrimSpots:
         data = data[:,1:,1:]
-        
-        data, trimmedPixels = trimSpots(data, tryFor=127)
-        xsize, ysize = data.shape[1:]
-        headerDict['XSIZE'] = xsize
-        headerDict['YSIZE'] = ysize
+        tryFor = 127
+        data, trimmedPixels = trimSpots(data, tryFor=tryFor)
+        assert data.shape[-1] == tryFor, "found trimmed spots to be %d pixels, wanted %d" % (data.shape[-1], tryFor)
         print("trimmed spots by %d pixels to %d pixels (%g mm)" % (trimmedPixels, xsize,
                                                                    trimmedPixels * headerDict['XPIX']))
+    else:
+        # The input spots 
+        data = data[:,1:,1:]
 
+    xsize, ysize = data.shape[1:]
+    headerDict['XSIZE'] = xsize
+    headerDict['YSIZE'] = ysize
 
     print("convolving with fiber image: %s" % (doConvolve))
     if doConvolve:
@@ -268,8 +275,10 @@ def readSpotFile(pathSpec, doConvolve=None, doRebin=False,
         
         spots.append((fiberIdx, wavelength, xc, yc, focus, rawSpot, spot))
         if verbose:
-            print("spot  %d (%d, %0.2f) at (%0.2f %0.2f %0.3f), max=%0.2f sum=%0.2f, rawSum=%0.2f" % 
+            ctr = spotgames.centroid(spot)
+            print("spot  %d (%d, %0.2f) at (%0.2f %0.2f %0.3f) (%g,%g), max=%0.2f sum=%0.2f, rawSum=%0.2f" % 
                   (i, fiberIdx, wavelength, xc, yc, focus,
+                   ctr[0], ctr[1],
                    spot.max(), spot.sum(), rawSum))
         if fiberIdx != 0:
             rspot = spot[:,::-1]
@@ -280,9 +289,9 @@ def readSpotFile(pathSpec, doConvolve=None, doRebin=False,
     allSpots = spots + symSpots    
     spotw = spots[0][-1].shape[0]
     spotDtype = numpy.dtype([('fiberIdx','i2'),
-                             ('wavelength','f4'),
-                             ('spot_xc','f4'), ('spot_yc','f4'), ('spot_focus','f4'),
-                             ('rawspot', '(%d,%d)u2' % (spotw,spotw)),
+                             ('wavelength','f8'),
+                             ('spot_xc','f8'), ('spot_yc','f8'), ('spot_focus','f4'),
+                             ('rawspot', '(%d,%d)u2' % (rawSpot.shape[0],rawSpot.shape[1])),
                              ('spot', '(%d,%d)f4' % (spotw,spotw))])
 
     tarr = numpy.array(allSpots, dtype=spotDtype)
@@ -295,9 +304,9 @@ def readSpotFile(pathSpec, doConvolve=None, doRebin=False,
 
     return arr, headerDict
 
-def trimSpots(spots, tryFor=None):
-    """ Return a spot array with the outer 0-level pixels trimmed off. """
-
+def dataWidth(spots):
+    """ Return the x/y radius of the furthest nonzero pixel. """
+    
     assert spots.shape[-2] == spots.shape[-1], "input spots must be square"
     
     startWidth = spots.shape[-1]
