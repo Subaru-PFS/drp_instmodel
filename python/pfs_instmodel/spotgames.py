@@ -78,7 +78,7 @@ def centroid(im):
     xc1 = (xFlux * numpy.arange(1, im.shape[1]+1)).sum()
     yc1 = (yFlux * numpy.arange(1, im.shape[0]+1)).sum()
     
-    return xc1/flux - 1, yc1/flux - 1
+    return numpy.array([xc1/flux - 1, yc1/flux - 1])
 
 def lineCentroid(l):
     flux = l.sum(dtype='f8')
@@ -181,6 +181,12 @@ def shiftSpot1d(spot, dx, dy, kernels=None, kargs=None):
     if dx != 0:
         sspot = scipy.ndimage.convolve1d(sspot, xkernel, axis=1)
 
+    if 'trim' in kargs:
+        _spot = spot*0
+        _slice = slice(kargs['trim'], spot.shape[0]-kargs['trim']+1)
+        _spot[_slice, _slice] = 1
+        sspot *= _spot
+
     return sspot, kernels
     
 def shiftSpot2d(spot, dx, dy, kernels=None, kargs=None):
@@ -207,7 +213,10 @@ def shiftSpotSpline(spot, dx, dy, kernels=None, kargs=None):
     sspot = scipy.ndimage.interpolation.shift(spot, (dy,dx), **kargs)
     return sspot, kernels
     
-    
+
+def hanningWindow(x, n):
+    return numpy.hanning(len(x))
+
 def lanczosWindow(x, n):
     if n > 0: 
         w = numpy.sinc(x/n)
@@ -229,13 +238,7 @@ def sincKernel(offset=0.0, window=lanczosWindow, n=5, padding=0, doNorm=True):
     if offset < -1 or offset > 1:
         raise ValueError("sinc offset must be in [-1,1], not %0.4f" % (offset))
 
-    #if window is not None and padding == 0:
-    #    padding = 1
-        
-    if (n + padding) > 0:
-        cnt = 2*(n+padding) + 1
-    else:
-        cnt = 2*3 + 1
+    cnt = 2*(n+padding) + 1
 
     assert cnt%2 == 1, "sinc kernel width must be odd."
     left = offset - n - padding
@@ -244,7 +247,7 @@ def sincKernel(offset=0.0, window=lanczosWindow, n=5, padding=0, doNorm=True):
     x = numpy.linspace(left, right, cnt)
     y = numpy.sinc(x)
 
-    print("offset=%g, window=%s, n=%s, padding=%s" % (offset, window, n, padding))
+    # print("offset=%g, window=%s, n=%s, padding=%s" % (offset, window, n, padding))
     if window is not None and n > 0:
         w = window(x, n=n)
         y *= w
@@ -254,18 +257,16 @@ def sincKernel(offset=0.0, window=lanczosWindow, n=5, padding=0, doNorm=True):
         
     return x, y
     
-def make1dKernel(n=5, offset=0.0, padding=0, window=lanczosWindow, doNorm=True, imSize=None):
-    """ Construct a centered 1-d lanczos-windowed sinc kernel. """
+def make1dKernel(n=5, offset=0.0, padding=0, window=lanczosWindow, doNorm=True, imSize=None, trim=None):
+    """ Construct a centered 1-d sinc kernel, optionally windowed.  """
 
-    #if window is None:
-    #    n = imSize/2-2
     x, y = sincKernel(n=n, offset=-offset, window=window, padding=padding, doNorm=doNorm)
         
     return x, y
 
 def padArray(arr, padTo, center=True):
-    assert arr.shape[0] == arr.shape[1]
-    assert arr.shape[0] < padTo
+    assert arr.shape[0] == arr.shape[1], "array must be rectangular, not: %s" % (arr.shape)
+    assert arr.shape[0] < padTo, "array width must be smaller than requested size: %s vs %s" % (arr.shape[0], padTo)
 
     #print "old size=%d, new=%d" % (arr.shape[0], padTo)
     newSize = numpy.array([padTo, padTo])
