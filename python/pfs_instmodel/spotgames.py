@@ -162,7 +162,16 @@ def distmap(arr, x0=None, y0=None):
     return dmap
     
 def shiftSpot1d(spot, dx, dy, kernels=None, kargs=None):
-    """ shift an image using seperable x&y lanczos kernels. """
+    """ Shift an image using seperable x&y kernels. 
+
+    Arguments
+    ---------
+    spot : 1d or 2d array
+       The image to shift.
+    dx, dy : float
+       The fractional pixel to shift by.
+    kernels : 
+    """
     
     if not kargs:
         kargs = {}
@@ -174,12 +183,12 @@ def shiftSpot1d(spot, dx, dy, kernels=None, kargs=None):
         xkernel, ykernel = kernels
 
     if dy != 0:
-        sspot = scipy.ndimage.convolve1d(spot, ykernel, axis=0)
+        sspot = scipy.ndimage.convolve1d(spot, ykernel, mode='constant', axis=0)
     else:
         sspot = spot
 
     if dx != 0:
-        sspot = scipy.ndimage.convolve1d(sspot, xkernel, axis=1)
+        sspot = scipy.ndimage.convolve1d(sspot, xkernel, mode='constant', axis=1)
 
     if 'trim' in kargs:
         _spot = spot*0
