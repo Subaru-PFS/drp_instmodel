@@ -321,6 +321,7 @@ def dataWidth(spots):
 def trimSpots(spots, tryFor=None):
     """ Return a spot array with the outer 0-level pixels trimmed off. """
 
+    startWidth = spots.shape[-1]
     _, trimPix = dataWidth(spots)
 
     if tryFor is not None:
