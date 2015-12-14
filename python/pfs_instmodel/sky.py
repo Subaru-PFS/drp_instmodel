@@ -4,6 +4,8 @@ import os
 import numpy
 import scipy.interpolate
 
+from spectrum import Spectrum
+
 class SkyModel(object):
     """ Encapsulate a generator for sky spectra. We specify the model and the individual multiplicative and additive terms.
 
@@ -112,6 +114,21 @@ class StaticSkyModel(SkyModel):
     def getSkyAt(self, **argv):
         """ Return a spline for the sky at the given conditions.
         """
-        return self.skySpline
+
+        return SkySpectrum(None, self.skySpline)
+
+class SkySpectrum(Spectrum):
+    def __init__(self, detector, skyModel, scale=1.0):
+        self.detector = detector
+        self.scale = scale
+        self.skyModel = skyModel
+
+    def flux(self, wave):
+        """ return a sky spectrum, as seen by our detector. """
+
+        # Work out the fing scaling, CPL
+        return wave, self.skyModel(wave) * self.scale
+    
+
 
     
