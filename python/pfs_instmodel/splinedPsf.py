@@ -195,6 +195,9 @@ class SplinedPsf(psf.Psf):
             newImages = np.zeros(shape=(len(fibers)*len(interpWaves),
                                            self.imshape[0],
                                            self.imshape[1]), dtype='f4')
+            self.logger.info("psfsAt: fibers %s for %d waves, in %s %s array" % (fibers, len(interpWaves),
+                                                                                 newImages.shape,
+                                                                                 newImages.dtype))
             for ix in range(self.imshape[0]):
                 for iy in range(self.imshape[1]):
                     newImages[:, iy, ix] = self.evalSpline(self.coeffs[iy, ix], fibers, interpWaves).flat
@@ -575,13 +578,16 @@ class SplinedPsf(psf.Psf):
             return splineType(x, y, z)
         elif splineType is spInterp.RegularGridInterpolator:
             return splineType((x, y), z, method='linear')
+        elif splineType is float:
+            return z[0]
         else:
             raise RuntimeError('evalSpline: unknown spline type: %s' % (splineType))
 
     def evalSpline(self, spline, x, y):
-        if spline.__class__ is spInterp.RectBivariateSpline:
+        splineType = spline.__class__
+        if splineType is spInterp.RectBivariateSpline:
             return spline(x, y)
-        elif spline.__class__ is spInterp.RegularGridInterpolator:
+        elif splineType is spInterp.RegularGridInterpolator:
             x = np.asarray(x).flatten()
             y = np.asarray(y).flatten()
             xx,yy = np.meshgrid(x, y, indexing='ij')
@@ -589,6 +595,8 @@ class SplinedPsf(psf.Psf):
             zz = np.array((xx,yy)).T.reshape(x.shape[0]*y.shape[0], 2)
     
             return np.atleast_2d(spline(zz))
+        elif splineType is float:
+            return np.asarray(spline)
         else:
             # print("warning: evalSpline: unknown spline type: %s'" % (spline))
             return spline(x, y)
