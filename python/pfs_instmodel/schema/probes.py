@@ -8,6 +8,7 @@ PROBETYPE = frozenset(('SKY',
                        'UNPLUGGED',
                        'SIMFLAT',         #: sims only: we insert a quartz spectrum
                        'SIMCOMB',         #: sims only: we insert a comb spectrum.
+                       'SIMARC',          #: sims only: we insert an arc spectrum
                        ))
 
 """ The external structure defining individual probes. We need to add some detail field(s), for
@@ -18,4 +19,5 @@ PROBE = pfs_tools.schema.makeParClass(('fiberId', int),
                                       ('dec', float), #: decimal degrees
                                       ('x', float),   #: mm from center on focal plane
                                       ('y', float),   #: mm from center on focal plane
-                                      ('type', PROBETYPE))
+                                      ('type', PROBETYPE),
+                                      ('args', tuple))
