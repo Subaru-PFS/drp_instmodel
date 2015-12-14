@@ -179,7 +179,7 @@ def readSpotFile(pathSpec, doConvolve=None, doRebin=False,
             headerDict['LINE%03d'%(i)] = h
 
     # Add in a temporary fiber range, until the .imgstk file specifies one
-    headerDict['MAXFIBER'] = 314
+    headerDict['MAXFIBER'] = 325
     print "  XXX: hardwired max(fiberid)==%d logic" % (headerDict['MAXFIBER'])
 
     headerVersion = 1 if 'LAM[1]' in headerDict else 2
