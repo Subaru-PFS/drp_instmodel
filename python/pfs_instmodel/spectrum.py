@@ -1,4 +1,5 @@
 import numpy
+import os
 import scipy
 
 import pfs_tools
@@ -71,7 +72,7 @@ class Spectrum(object):
             return wwave, self.interp(wwave)
         else:
             return wave, self.interp(wave)
-        
+
     def __call__(self, wave):
         """ Shorthand to fetch the fluxes corresponding to one or more wavelengths. This is the 
         primary method to get fluxes. Subclasses only need to implement .flux(wave) """
@@ -92,9 +93,60 @@ class FlatSpectrum(Spectrum):
 class LineSpectrum(Spectrum):
     """ """
 
-    def flux(self, wave):
-        return self.linelist(wave.min(), wave.max())
+    def linelist(self, minWave, maxWave):
+        """ Return all the lines in the given wave range. """
+
+        raise NotImplementedError()
     
+    def flux(self, wave):
+        return self.linelist(wave.min(), wave.max())            
+
+class ArcSpectrum(LineSpectrum):
+    def __init__(self, lampset=None, gain=100.0):
+        """ Create a spectrum which will return a flux of gain at every ~spacing AA, 0 elsewhere. 
+
+        Actually, return a comb spectrum with non-zero values at the full range endpoints and at as
+        many points as can be placed between them no closer than the given spacing.
+        """
+
+        self.lampset = lampset
+        self.loadLines(lampset)
+        self.gain = gain
+
+    def __str__(self):
+        return("ArcSpectrum(lampset=%s, gain=%s, nlines=%d, waverange=(%g,%g))" %
+               (self.lampset, self.gain, len(self.lines),
+                self.lines['wave'].min(), self.lines['wave'].max()))
+                                                                
+    def linelist(self, minWave=0, maxWave=1e6):
+        """ Return all the lines in the given wave range. """
+
+        w_w = (self.lines['wave'] >= minWave) & (self.lines['wave'] <= maxWave)
+        
+        wave = self.lines['wave'][w_w]
+        flux = self.lines['flux'][w_w] * self.gain
+
+        return wave, flux
+
+    def loadLines(self, lampset=None):
+        """ Hackety hack hack hack. """
+    
+        # Map self.band to a filename using some config file. For now, hardcode
+        dataRoot = os.environ.get('DRP_INSTDATA_DIR', '.')
+        filepath = os.path.join(dataRoot, 'data', 'lines', 'nist_all.txt')
+
+        self.lines = numpy.genfromtxt(filepath, usecols=range(3),
+                                      dtype=[('wave', 'f4'),
+                                             ('name', 'S5',),
+                                             ('flux', 'f4')])
+
+        if lampset is not None and lampset:
+            l_w = self.lines['name'] == lampset
+            self.lines = self.lines[l_w]
+            
+        return self.lines
+        
+
 class CombSpectrum(LineSpectrum):
     def __init__(self, spacing=50, gain=10000.0, inset=100):
         """ Create a spectrum which will return a flux of gain at every ~spacing AA, 0 elsewhere. 
@@ -112,7 +164,7 @@ class CombSpectrum(LineSpectrum):
         dw = maxWave-minWave - 2*self.inset
 
         wave = numpy.linspace(minWave+self.inset, minWave+dw, dw/self.spacing + 1)
-        flux = wave*0 + self.gain
+        flux = wave*0 * self.gain
 
         return wave, flux
 

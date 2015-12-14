@@ -41,7 +41,10 @@ def makeSim(band, fieldName, fiberFilter=None,
     The fieldName is currently just an entry in the fixed file 
     :download:`examples/sampleField.py <../../examples/sampleField.py>`
     """
-    
+
+    if logger is None:
+        logger = logging.getLogger()
+        
     simID = dict(band=band, frd=frd, focus=focus, date=date)
 
     sim = simImage.SimImage(band, simID=simID, psf=psf, dtype=dtype,
@@ -73,6 +76,10 @@ def makeSim(band, fieldName, fiberFilter=None,
         elif f.type == 'SIMCOMB':
             fibers.append(f.fiberId)
             spectra.append(combSpectrum)
+        elif f.type == 'SIMARC':
+            fibers.append(f.fiberId)
+            arcSpectrum = pfsSpectrum.ArcSpectrum(*f.args)
+            spectra.append(arcSpectrum)
         elif f.type == 'OBJECT':
             raise RuntimeError("sorry, we don't do %s spectra yet" % f.type)
 
@@ -176,7 +183,7 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
     parser.add_argument('--noNoise', action='store_true')
     parser.add_argument('--shiftPsfs', action='store_false')
     parser.add_argument('--combSpacing', action='store', type=float, default=50)
-    parser.add_argument('--constantPsf', action='store_true', help='Use a single PSF for the entire field.')
+    parser.add_argument('--constantPsf', action='store', type=float, default=0, help='Use a single PSF for the entire field.')
     parser.add_argument('--constantX', action='store_true', help='Use the middle X-coordinate for all of each fiber.')
     parser.add_argument('-d', '--ds9', action='store_true', default=False)
 

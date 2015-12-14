@@ -31,7 +31,7 @@ class SimImage(object):
         self.psf = psf if psf else pfsPsf.SplinedPsf(self.detector, spotID=simID,
                                                      logger=logger)
         if constantPsf:
-            self.psf.setConstantSpot()
+            self.psf.setConstantSpot(constantPsf if constantPsf else None)
         if constantX:
             self.psf.setConstantX()
             
