@@ -365,7 +365,7 @@ def oversampleSpots(spots, factor):
 
     return newSpots
 
-def writeSpotFITS(spotDir, data):
+def writeSpotFITS(pathSpec, outDir, data):
 #    raise NotImplementedError("writeSpotFITS() no longer needed or tested")
 
     phdu = fits.PrimaryHDU()
@@ -397,7 +397,9 @@ def writeSpotFITS(spotDir, data):
     thdu = fits.new_table(colDefs)
     hdulist = fits.HDUList([phdu, thdu])
 
-    hdulist.writeto(os.path.join(spotDir, 'spots.fits'), 
+    filename = "%(date)s_%(band)s_%(frd)02d_%(focus)+02d.fits" % pathSpec
+    
+    hdulist.writeto(os.path.join(outDir, filename), 
                     checksum=True, clobber=True)
 
     
