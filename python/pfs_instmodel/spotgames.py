@@ -8,9 +8,7 @@ import matplotlib.gridspec as gridspec
 import pfs_tools
 import plotutils
 
-import pfs_instmodel.jegSpots as jegSpots
-
-def radToIndices(rad, sampling=1.0, offset=0.0):
+def XXradToIndices(rad, sampling=1.0, offset=0.0):
     """ Return the indices for an odd-width vector. """
     
     if rad <= 0:
@@ -19,15 +17,30 @@ def radToIndices(rad, sampling=1.0, offset=0.0):
                        (2*rad-1)/sampling).astype('f4')
     return x+offset
 
-def radToImageIndices(rad, sampling=1.0, offset=None):
-    """ Return the indices for an odd-width image. """
+def radToIndices(rad, sampling=1.0, offset=0.0):
+    """ Return the indices for an odd-width vector. """
     
+    if rad <= 0:
+        raise RuntimeError("radius must be positive.")
+    x = numpy.linspace(-rad, rad, 2*rad + 1)
+    x *= sampling
+    
+    return x+offset
+
+def radToXYGrid(rad, sampling=1.0, offset=None):
     x = radToIndices(rad, sampling=sampling)
     xx, yy = numpy.meshgrid(x, x)
 
     if offset is not None:
         xx += offset[0]
         yy += offset[1]
+
+    return xx, yy
+
+def radToImageIndices(rad, sampling=1.0, offset=None):
+    """ Return the indices for an odd-width image. """
+    
+    xx, yy = radToXYGrid(rad, sampling, offset)
         
     r = numpy.sqrt(xx**2 + yy**2)
 
@@ -53,8 +66,21 @@ def radFuncToImage(func, rad, sampling=1.0):
 
 
 def tophat(rad, width):
-    return (rad < width).astype('f4')
-        
+    return (rad <= width).astype('f4')
+
+def gaussianFiber(rad, sigma, alpha):
+    g = gaussian(rad, sigma=sigma)[1].astype('f8')
+    f = tophat(rad, alpha).astype('f8')
+
+    w = f.shape[0]
+    c = w/2
+    f = f[c-2*alpha:c+2*alpha, c-2*alpha:c+2*alpha]
+    
+    spot = scipy.ndimage.convolve(g, f, mode='constant')
+    #spot = scipy.signal.fftconvolve(g, f, mode='full')
+
+    return spot
+
 def gaussian(rad, at=0.0, sigma=1.0, donorm=False):
     y = numpy.exp(-0.5*(rad/sigma)**2)
     if donorm:
@@ -69,6 +95,15 @@ def toyspot(at, width, sampling=0.1, sigma=1.0, ongrid=False, donorm=False):
         y /= sigma * numpy.sqrt(2*numpy.pi)
         
     return x+at, y
+
+def gspot(at, width, sampling=0.1, sigma=1.0, ongrid=False, donorm=False):
+    x = numpy.arange(-width, width, step=sampling)
+    y = numpy.exp(-0.5*(x/sigma)**2)
+    if donorm:
+        y /= sigma * numpy.sqrt(2*numpy.pi)
+        
+    return x+at, y
+
 
 def centroid(im):
     xFlux = im.sum(axis=0, dtype='f8')
@@ -298,7 +333,8 @@ def applyPixelResponse(arr, pixelSize):
     kern[pixelSize:2*pixelSize, pixelSize:2*pixelSize] = 1
     kern /= numpy.sum(kern)
     
-    out = scipy.signal.fftconvolve(arr, kern, mode='same')
+    # out = scipy.signal.fftconvolve(arr, kern, mode='same')
+    out = scipy.ndimage.convolve(arr, kern, mode='constant')
 
     return out
     
@@ -625,6 +661,7 @@ def frdShow(frds,
             figName='frd', doClear=True,
             doNorm=True, yrange=None):
 
+    import pfs_instmodel.jegSpots as jegSpots
     
     fig = plt.figure(figName)
     if doClear:

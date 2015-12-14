@@ -4,3 +4,6 @@ doc/build
 *.fz
 .ipynb_checkpoints/
 .DS_Store/
+
+callgrind*
+valgrind*
