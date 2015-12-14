@@ -608,6 +608,17 @@ class SplinedPsf(psf.Psf):
             spot = self.spots[int(spotId)]
 
             self.logger.warn("set constant PSF to spot %s (fiber %d, wave %d)", spotId, spotFiber, spotWave)
+        else:
+            spotShape = self.spots[0].shape
+            spotRad = spotShape[0]/2
+            alpha = spot
+            rad = spotgames.radToImageIndices(spotRad, sampling=0.1)
+            spot = spotgames.gaussianFiber(rad, sigma=1.0, alpha=alpha)
+            spot /= spot.sum()
+            self.logger.warn("set constant PSF to given spot, with alpha=%s. shape=%s from %s (%s..%s)" % (alpha,
+                                                                                                           spot.shape,
+                                                                                                           spotShape,
+                                                                                                           rad.min(), rad.max()))
             
         imshape = spot.shape
         self.spots = [spot]
@@ -621,7 +632,8 @@ class SplinedPsf(psf.Psf):
         for ix in range(imshape[0]):
             for iy in range(imshape[1]):
                 spotval = float(spot[iy,ix])
-                coeffs[iy, ix] = freezeVal(spotval)
+                #coeffs[iy, ix] = freezeVal(spotval)
+                coeffs[iy, ix] = spotval
         self.coeffs = coeffs
         tx = ty = imshape[0]/2
 
