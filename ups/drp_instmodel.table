@@ -1,5 +1,6 @@
 setupRequired(pfs_tools)
 setupOptional(drp_instdata)
+setupRequired(ics_xcu_fpga)
 
 pathPrepend(PYTHONPATH, ${PRODUCT_DIR}/python)
 pathPrepend(PATH, ${PRODUCT_DIR}/bin)
