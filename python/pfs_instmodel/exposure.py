@@ -116,12 +116,7 @@ class Exposure(object):
         else:
             noisyFlux = self._flux
             
-        self.detector.readout(self, noisyFlux)
-
-    def XXXXaddNoise(self):
-        noise = numpy.rint(numpy.sqrt(self.flux * numpy.random.normal(size=self.shape))).astype('i2')
-
-        self.addPlane('shotnoise', noise)
+        self.detector.readout(self, noisyFlux, ontoBias=realBias)
 
     def addPlane(self, name, im):
         if name in self.planes:
