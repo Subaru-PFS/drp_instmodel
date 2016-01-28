@@ -109,7 +109,6 @@ class Exposure(object):
             if len(lo_w[0]) > 0:
                 print("%d low pixels, min=%f" % (len(lo_w[0]), 
                                                  self._flux.min()))
-                self._flux[lo_w] = 0
 
             noisyFlux = numpy.random.poisson(self._flux)
             noise = noisyFlux - self._flux
