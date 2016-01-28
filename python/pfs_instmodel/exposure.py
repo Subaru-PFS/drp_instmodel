@@ -52,32 +52,49 @@ class Exposure(object):
         if addPlane is not None:
             self.addPlane(addPlane, addIm)
 
-        if addNoise and self.addNoise:
-            noise = numpy.rint(numpy.sqrt(addIm.clip(0,addIm.max())) * numpy.random.normal(size=addIm.shape)).astype('i4')
-
-            # Do we need a soft bias?
-            w = numpy.where((outIm + noise) < 0)
-            outIm += noise
-
-            if len(w[0] > 0):
-                minLow = min((outIm + noise)[w])
-                print("%d low pixels (min=%0.4f,%0.4f,%0.4f) at %s" % (len(w[0]),
-                                                                       minLow,
-                                                                       min(addIm[w]),
-                                                                       min(noise[w]),
-                                                                       outSlice))
-
-    def writeto(self, outputFile, doCombine=True, doWriteAll=True, addNoise=True, compress='RICE'):
+    def ts(self, t=None):
+        if t is None:
+            t = time.time()
+            return time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime(t))
+                                    
+    def writeto(self, outputFile, doCombine=True, doWriteAll=True,
+                addNoise=True, compress='RICE', realBias=None,
+                imagetyp=None, allOutput=False):
         import fitsio
 
-        print("writing to %s, addNoise=%s" % (outputFile, addNoise))
+        print("writing to %s, addNoise=%s, imagetyp=%s" % (outputFile, addNoise, imagetyp))
 
-        self.readout(addNoise=addNoise)
-        fitsio.write(outputFile, self.pixelImage, extname='flux', clobber=True, compress=compress)
-        fitsio.write(outputFile, self.planes['mask'], extname='mask', compress=compress)
-        fitsio.write(outputFile, self.planes['bias'], extname='bias', compress=compress)
+        hdr = fitsio.FITSHDR()
+        if imagetyp is not None:
+            imageTyp, expTime = imagetyp.split(',')
+            hdr.add_record(dict(name='IMAGETYP', value=imageTyp))
+            hdr.add_record(dict(name='EXPTIME', value=float(expTime)))
+            hdr.add_record(dict(name='DATE-OBS', value=self.ts(), comment='Crude time'))
+            
+        self.readout(addNoise=addNoise, realBias=realBias)
+        if realBias:
+            outIm = self.biasExp.replaceActiveFlux(self.pixelImage)
+            fitsio.write(outputFile, outIm, header=hdr, clobber=True, compress=compress)
+        else:
+            fitsio.write(outputFile, self.pixelImage, header=hdr, clobber=True, compress=compress)
+        if allOutput:
+            fitsio.write(outputFile, self.planes['mask'], extname='mask', compress=compress)
+            fitsio.write(outputFile, self.planes['bias'], extname='bias', compress=compress)
+            fitsio.write(outputFile, self.planes['shotnoise'], extname='shotnoise', compress=compress)
+            if realBias:
+                fitsio.write(outputFile, self.pixelImage, extname='active', compress=compress)
+            
+    def loadBias(self, biasID):
+        """ Load a real detector bias, return its active image. """
 
-    def readout(self, addNoise=True):
+        dataRoot = os.environ.get('DRP_INSTDATA_DIR', '.')
+        filepath = os.path.join(dataRoot, 'data', 'pfs', 'PFSA00715%d%d%d.fits' %
+                                (biasID, 9, 2 if self.detector.band == 'Red' else 1))
+
+        self.biasExp = geom.Exposure(obj=filepath)
+        return self.biasExp.finalImage(leadingRows=True)
+        
+    def readout(self, addNoise=True, realBias=None):
         if self.pixelImage is not None:
             return
 

@@ -135,12 +135,17 @@ class SimImage(object):
                 
         return geomArr
         
-    def writeTo(self, outputFile, addNoise=True):
+    def writeTo(self, outputFile, addNoise=True,
+                compress='RICE', allOutput=False,
+                imagetyp=None, realBias=None):
         import fitsio
 
-        print("output to %s, addNoise=%s, dtype=self.exposure" % (outputFile, addNoise))
-
-        self.exposure.writeto(outputFile, addNoise=addNoise, compress='RICE')
+        print("output to %s, addNoise=%s, realBias=%s, dtype=self.exposure" %
+              (outputFile, realBias, addNoise))
+        
+        self.exposure.writeto(outputFile, addNoise=addNoise,
+                              realBias=realBias, imagetyp=imagetyp,
+                              compress=compress, allOutput=allOutput)
         
         waveImage = self.waveImage()
         fitsio.write(outputFile, waveImage, extname='wavelengths', compress='RICE')

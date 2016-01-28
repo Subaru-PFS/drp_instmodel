@@ -44,25 +44,32 @@ class Detector(object):
                                              self.config['ccdSize'])).astype(dtype)
         return bias
 
-    def addBias(self, exp):
+    def addBias(self, exp, ontoBias=None):
         """ Add our bias to the given exposure. """
 
-        bias = self.getBias(exp)
+        if ontoBias:
+            bias = exp.loadBias(ontoBias)
+        else:
+            bias = self.getBias(exp)
+
         exp.addPlane('bias', bias)
 
         return bias
 
-    def readout(self, exp, flux):
+    def saturate(self, exp):
+        """ Deal with saturated pixels. Set flags, spread flux, etc. """
+        pass
+    
+    def readout(self, exp, flux, ontoBias=None):
         """ 'Readout' an exposure: add bad columns, hot pixels, etc. """
 
-        bias = self.addBias(exp)
+        bias = self.addBias(exp, ontoBias=ontoBias)
 
-        rimage = numpy.fix(flux) + bias
-
+        rimage = numpy.round(flux) + bias
         saturatedPixels = (rimage > 65535)
         lowPixels = (rimage < 0)
-
-        rimage = numpy.fix(rimage).astype('u2')
+        
+        rimage = numpy.round(rimage).astype('u2')
         rimage[saturatedPixels] = 65535
         rimage[lowPixels] = 0
         exp.pixelImage = rimage
