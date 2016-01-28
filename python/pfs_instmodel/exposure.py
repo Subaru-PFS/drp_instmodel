@@ -1,4 +1,9 @@
 import numpy
+import os
+import time
+
+import fitsio
+from fpga import geom
 
 class Exposure(object):
     def __init__(self, detector, 
@@ -37,8 +42,8 @@ class Exposure(object):
     def shape(self):
         return self._flux.shape
     
-    def addFlux(self, addIm, outSlice=None, addNoise=True, addPlane=None):
-        """ Add some flux to ourselves. Optionally 
+    def addFlux(self, addIm, outSlice=None, addNoise=False, addPlane=None):
+        """ Add some flux to ourselves. 
 
         """
         

@@ -581,7 +581,7 @@ class SplinedPsf(psf.Psf):
         elif splineType is float:
             return z[0]
         else:
-            raise RuntimeError('evalSpline: unknown spline type: %s' % (splineType))
+            raise RuntimeError('buildSpline: unknown spline type: %s' % (splineType))
 
     def evalSpline(self, spline, x, y):
         splineType = spline.__class__
