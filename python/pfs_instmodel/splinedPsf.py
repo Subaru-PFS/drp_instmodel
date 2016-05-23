@@ -547,14 +547,17 @@ class SplinedPsf(psf.Psf):
         # Keep the raw info around, at least until production.
         self.rawSpots = rawSpots
 
+        self.buildAllSplines()
+        
+    def buildAllSplines(self, xOffset=0.0, yOffset=0.0):
         imshape = self.spots.shape[1:]
 
         # Make a spline for each pixel. The spots are centered on the output grid,
         # and we track the xc,yc offset separately.
 
         # XXX - Check that the input is properly sorted.
-        xx = np.unique(self.fiber)
-        yy = np.unique(self.wave)
+        xx = np.unique(self.fiber) + xOffset
+        yy = np.unique(self.wave) + yOffset
 
         splineType = spInterp.RectBivariateSpline
         coeffs = np.zeros(imshape, dtype='O')
@@ -565,14 +568,22 @@ class SplinedPsf(psf.Psf):
         self.coeffs = coeffs
 
         # Shift offsets to origin.
-        self.xc = rawSpots['spot_xc'] + self.detector.config['ccdSize'][1] * self.detector.config['pixelScale'] / 2
-        self.yc = rawSpots['spot_yc'] + self.detector.config['ccdSize'][0] * self.detector.config['pixelScale'] / 2
+        self.xc = self.rawSpots['spot_xc'] + self.detector.config['ccdSize'][1] * self.detector.config['pixelScale'] / 2
+        self.yc = self.rawSpots['spot_yc'] + self.detector.config['ccdSize'][0] * self.detector.config['pixelScale'] / 2
 
         self.xcCoeffs = self.buildSpline(splineType,
                                          xx, yy, self.xc.reshape(len(xx), len(yy)))
         self.ycCoeffs = self.buildSpline(splineType,
                                          xx, yy, self.yc.reshape(len(xx), len(yy)))
 
+        
+    def offsetSlit(self, xOffset=0.0, yOffset=0.0):
+        """ Tilt the slit in x, shift in y. """
+
+        if yOffset != 0.0:
+            raise RuntimeError("do not yet know how to offset in wavelength.")
+        self.buildAllSplines(xOffset=xOffset, yOffset=yOffset)
+        
     def buildSpline(self, splineType, x, y, z):
         if splineType is spInterp.RectBivariateSpline:
             return splineType(x, y, z)
