@@ -98,7 +98,8 @@ class Slit(object):
 slit1 = Slit()
 
 # Science fiber numbers, -300 to +300:
-LamSlit1Fibers = [-300, -240, -100, -30, -1, 1, 30, 100, 170, 240, 300]
+#LamSlit1Fibers = [-300, -240, -100, -30, -1, 1, 30, 100, 170, 240, 300]
+LamSlit1Fibers = [-300, -240, -239, -100, -30, -29, -1, 1, 30, 100, 170, 240, 300]
 LamSlit2Fibers = [-299, -290, -246, -194, -148, -112, -56, -10 -2,
                    2, 10, 56, 112, 148, 194, 148, 194, 246, 290]
 LamSlit1 = [slit1.scienceFiberToSlitPos(f) for f in LamSlit1Fibers]
