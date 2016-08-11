@@ -202,7 +202,7 @@ class SplinedPsf(psf.Psf):
                 for iy in range(self.imshape[1]):
                     newImages[:, iy, ix] = self.evalSpline(self.coeffs[iy, ix], fibers, interpWaves).flat
 
-        lo_w = newImages < 0
+        lo_w = newImages < -0.01
         if np.any(lo_w):
             minpix = newImages[lo_w].min()
             self.logger.warn("%d/%d low PSF pixels, min=%g" % (lo_w.sum(), newImages.size, minpix))
