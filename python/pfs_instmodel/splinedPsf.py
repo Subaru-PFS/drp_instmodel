@@ -19,7 +19,9 @@ from pfs_tools import pydebug
 import spotgames
 
 class SplinedPsf(psf.Psf):
-    def __init__(self, detector, spotType='jeg', spotID=None, logger=None, doTrimSpots=True):
+    def __init__(self, detector, spotType='jeg', spotID=None, logger=None,
+                 slitOffset=(0.0, 0.0),
+                 doTrimSpots=True):
         """ Create or read in our persisted form. By default use JEG's models. 
 
         Parameters
@@ -31,6 +33,8 @@ class SplinedPsf(psf.Psf):
            Whether to load 'jeg' or 'zemax' spot images.
         spotID : list/string/dict, optional
            If spotType is set, some dataset identifier. Opaque to us.
+        slitOffset : pair
+           X, wavelength offset of the slit. Used for dithered flats.
         """
 
         psf.Psf.__init__(self, detector, logger=logger)
@@ -44,6 +48,7 @@ class SplinedPsf(psf.Psf):
         self.xcCoeffs = []
         self.ycCoeffs = []
         self.spotID = spotID
+        self.slitOffset = slitOffset
 
         if spotType:
             self.loadFromSpots(spotType, spotID, spotArgs=dict(doTrimSpots=doTrimSpots))
