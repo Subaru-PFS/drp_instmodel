@@ -1,4 +1,5 @@
 import logging
+import os
 import numpy
 
 import pfs_instmodel.detector as pfsDet
@@ -137,16 +138,34 @@ class SimImage(object):
                 
         return geomArr
         
-    def writeTo(self, outputFile, addNoise=True,
+    def writeTo(self, outputFile=None, addNoise=True,
                 compress='RICE', allOutput=False,
                 imagetyp=None, realBias=None):
         import fitsio
 
+        if outputFile is None:
+            import fpga.SeqPath
+
+            dewarMap = {'Blue':1, 'Red':2, 'NIR': 3}
+            detectorNum = '1%d' % (dewarMap[self.detector.band])
+            
+            baseTemplate = '%(filePrefix)s%(seqno)06d'
+            self.fileMgr = fpga.SeqPath.NightFilenameGen('/data/pfsSim',
+                                                         filePrefix='PFFA',
+                                                         filePattern="%s%s.fz" % (baseTemplate,
+                                                                                  detectorNum))
+            outputFile = self.fileMgr.getNextFileset()[0]
+            if realBias is True:
+                realBias = int(outputFile[-6])
+
         print("output to %s, addNoise=%s, realBias=%s, dtype=self.exposure" %
               (outputFile, realBias, addNoise))
+
+        addCards = self.psf.getCards()
         
         self.exposure.writeto(outputFile, addNoise=addNoise,
                               realBias=realBias, imagetyp=imagetyp,
+                              addCards=addCards,
                               compress=compress, allOutput=allOutput)
         
         waveImage = self.waveImage()
