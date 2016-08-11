@@ -190,7 +190,7 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
     parser.add_argument('--noNoise', action='store_true')
     parser.add_argument('--allOutput', action='store_true',
                         help='whether to add (many) additional HDUs abut the simulation')
-    parser.add_argument('--realBias', action='store', default=None, type=int)
+    parser.add_argument('--realBias', action='store', default=True)
     parser.add_argument('--shiftPsfs', action='store_false')
     parser.add_argument('--imagetyp', action='store', default=None,
                         help='IMAGETYP,EXPTIME pair')
@@ -221,7 +221,7 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
                   yOffset=args.yoffset,
                   realBias=args.realBias,
                   logger=logger)
-    if args.output:
+    if args.output != 'no':
         sim.writeTo(args.output, addNoise=not args.noNoise,
                     compress=args.compress, allOutput=args.allOutput,
                     realBias=args.realBias, imagetyp=args.imagetyp)
