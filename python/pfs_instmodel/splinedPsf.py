@@ -198,11 +198,11 @@ class SplinedPsf(psf.Psf):
             newImages = usePsfs
         else:
             newImages = np.zeros(shape=(len(fibers)*len(interpWaves),
-                                           self.imshape[0],
-                                           self.imshape[1]), dtype='f4')
-            self.logger.info("psfsAt: fibers %s for %d waves, in %s %s array" % (fibers, len(interpWaves),
-                                                                                 newImages.shape,
-                                                                                 newImages.dtype))
+                                        self.imshape[0],
+                                        self.imshape[1]), dtype='f4')
+            self.logger.debug("psfsAt: fibers %s for %d waves, in %s %s array" % (fibers, len(interpWaves),
+                                                                                  newImages.shape,
+                                                                                  newImages.dtype))
             for ix in range(self.imshape[0]):
                 for iy in range(self.imshape[1]):
                     newImages[:, iy, ix] = self.evalSpline(self.coeffs[iy, ix], fibers, interpWaves).flat
@@ -554,15 +554,15 @@ class SplinedPsf(psf.Psf):
 
         self.buildAllSplines()
         
-    def buildAllSplines(self, xOffset=0.0, yOffset=0.0):
+    def buildAllSplines(self):
         imshape = self.spots.shape[1:]
 
         # Make a spline for each pixel. The spots are centered on the output grid,
         # and we track the xc,yc offset separately.
 
         # XXX - Check that the input is properly sorted.
-        xx = np.unique(self.fiber) + xOffset
-        yy = np.unique(self.wave) + yOffset
+        xx = np.unique(self.fiber)
+        yy = np.unique(self.wave)
 
         splineType = spInterp.RectBivariateSpline
         coeffs = np.zeros(imshape, dtype='O')
@@ -576,18 +576,44 @@ class SplinedPsf(psf.Psf):
         self.xc = self.rawSpots['spot_xc'] + self.detector.config['ccdSize'][1] * self.detector.config['pixelScale'] / 2
         self.yc = self.rawSpots['spot_yc'] + self.detector.config['ccdSize'][0] * self.detector.config['pixelScale'] / 2
 
+        # Add slit shift offsets.
+        slitOffset = self.calcSlitOffset()
+        self.xc += slitOffset[0]
+        self.yc += slitOffset[1]
+        
         self.xcCoeffs = self.buildSpline(splineType,
                                          xx, yy, self.xc.reshape(len(xx), len(yy)))
         self.ycCoeffs = self.buildSpline(splineType,
                                          xx, yy, self.yc.reshape(len(xx), len(yy)))
 
         
-    def offsetSlit(self, xOffset=0.0, yOffset=0.0):
-        """ Tilt the slit in x, shift in y. """
+    def calcSlitOffset(self):
+        """ Given .slitOffset, calculate spot offsets for .xc. """
 
-        if yOffset != 0.0:
-            raise RuntimeError("do not yet know how to offset in wavelength.")
-        self.buildAllSplines(xOffset=xOffset, yOffset=yOffset)
+        if self.slitOffset[1] != 0:
+            raise RuntimeError("Cannot yet shift in wavelength!")
+
+        if self.slitOffset[0] == 0 and self.slitOffset[1] == 0:
+            return 0.0, 0.0
+
+        offsetData = np.genfromtxt('slitmove.dat',dtype='f4', names=True)
+        offsetWaves = np.unique(offsetData['lambda'])
+        offsetShifts = np.unique(offsetData['yslt'])
+
+        offsetDetX = offsetData['xdet']
+        offsetDetY = offsetData['ydet']
+
+        # Totally cheat for now -- CPL
+        return (self.slitOffset[0] * offsetData['dyd_dys'].mean(),
+                self.slitOffset[1] * offsetData['dxd_dxs'].mean())
+        
+        # x-y swap here: the physical detectors have the spectra going l-r.
+        xInterp = spInterp.RectBivariateSpline(offsetShifts, offsetWaves,
+                                               offsetDetY.reshape(len(offsetShifts),
+                                                                  len(offsetWaves)))
+        yInterp = spInterp.RectBivariateSpline(offsetShifts, offsetWaves,
+                                               offsetDetX.reshape(len(offsetShifts),
+                                                                  len(offsetWaves)))
         
     def buildSpline(self, splineType, x, y, z):
         if splineType is spInterp.RectBivariateSpline:
