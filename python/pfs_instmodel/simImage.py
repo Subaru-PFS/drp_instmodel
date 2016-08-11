@@ -20,7 +20,7 @@ class SimImage(object):
     def __init__(self, band, sky=None, psf=None, simID=None,
                  addNoise=True, dtype='i4',
                  constantPsf=False, constantX=False,
-                 xOffset=0.0, yOffset=0.0,
+                 slitOffset=(0.0, 0.0),
                  logger=None):
 
         if logger is None:
@@ -30,14 +30,13 @@ class SimImage(object):
         self.detector = pfsDet.Detector(band)
         self.sky = sky if sky else pfsSky.StaticSkyModel(band)
         self.psf = psf if psf else pfsPsf.SplinedPsf(self.detector, spotID=simID,
+                                                     slitOffset=slitOffset,
                                                      logger=logger)
         if constantPsf:
             self.psf.setConstantSpot(constantPsf if constantPsf else None)
         if constantX:
             self.psf.setConstantX()
 
-        if xOffset or yOffset:
-            self.psf.offsetSlit(xOffset, yOffset)
         self.exposure = self.detector.makeExposure(dtype=dtype, addNoise=addNoise)
         self.fibers = {}
 
