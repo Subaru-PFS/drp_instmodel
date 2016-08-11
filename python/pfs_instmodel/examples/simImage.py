@@ -52,7 +52,7 @@ def makeSim(band, fieldName, fiberFilter=None,
     sim = simImage.SimImage(band, simID=simID, psf=psf, dtype=dtype,
                             addNoise=addNoise,
                             constantPsf=constantPsf, constantX=constantX,
-                            xOffset=xOffset, yOffset=yOffset,
+                            slitOffset=(xOffset/1000.0, yOffset/1000.0),
                             logger=logger)
     skyModel = pfsSky.StaticSkyModel(band) # plus field info....
     flatSpectrum = pfsSpectrum.FlatSpectrum(sim.detector, gain=20.0)
@@ -184,9 +184,9 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
     parser.add_argument('--date', action='store', default='2013-04-18')
     parser.add_argument('--dtype', action='store', default='u2')
     parser.add_argument('--xoffset', action='store', type=float, default=0.0,
-                        help='mm shift in slit position, along slit.')
+                        help='shift in slit position along slit, in microns')
     parser.add_argument('--yoffset', action='store', type=float, default=0.0,
-                        help='mm shift in slit position, along dispersion.')
+                        help='shift in slit position along dispersion, in microns')
     parser.add_argument('--noNoise', action='store_true')
     parser.add_argument('--allOutput', action='store_true',
                         help='whether to add (many) additional HDUs abut the simulation')
