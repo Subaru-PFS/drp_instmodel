@@ -2,7 +2,7 @@ import numpy
 import os
 import time
 
-import fitsio
+import astropy.io.fits as pyfits
 from fpga import geom
 
 class Exposure(object):
@@ -64,31 +64,45 @@ class Exposure(object):
                                     
     def writeto(self, outputFile, doCombine=True, doWriteAll=True,
                 addNoise=True, compress='RICE', realBias=None,
+                addCards=(),
                 imagetyp=None, allOutput=False):
-        import fitsio
 
-        print("writing to %s, addNoise=%s, imagetyp=%s" % (outputFile, addNoise, imagetyp))
 
-        hdr = fitsio.FITSHDR()
-        if imagetyp is not None:
-            imageTyp, expTime = imagetyp.split(',')
-            hdr.add_record(dict(name='IMAGETYP', value=imageTyp))
-            hdr.add_record(dict(name='EXPTIME', value=float(expTime)))
-            hdr.add_record(dict(name='DATE-OBS', value=self.ts(), comment='Crude time'))
-            
         self.readout(addNoise=addNoise, realBias=realBias)
         if realBias:
             outIm = self.biasExp.replaceActiveFlux(self.pixelImage)
-            fitsio.write(outputFile, outIm, header=hdr, clobber=True, compress=compress)
+            hdr = self.biasExp.header
         else:
-            fitsio.write(outputFile, self.pixelImage, header=hdr, clobber=True, compress=compress)
-        if allOutput:
-            fitsio.write(outputFile, self.planes['mask'], extname='mask', compress=compress)
-            fitsio.write(outputFile, self.planes['bias'], extname='bias', compress=compress)
-            fitsio.write(outputFile, self.planes['shotnoise'], extname='shotnoise', compress=compress)
-            if realBias:
-                fitsio.write(outputFile, self.pixelImage, extname='active', compress=compress)
+            outIm = self.pixelImage
+            hdr = pyfits.Header()
+
+        print("writing to %s, addNoise=%s, imagetyp=%s, %s, dtype=%s" % (outputFile, addNoise,
+                                                                         imagetyp, type(outIm), outIm.dtype))
             
+        hdulist = pyfits.HDUList()
+        if imagetyp is not None:
+            imageTyp, expTime = imagetyp.split(',')
+            
+            hdr.set('IMAGETYP', imageTyp)
+            hdr.set('EXPTIME', float(expTime))
+            hdr.set('DATE-OBS', self.ts(), 'Crude time')
+
+        for c in addCards:
+            hdr.set(*c)
+            
+        hdu0 = pyfits.CompImageHDU(outIm, header=hdr, name='image')
+        # hdu0.data = outIm
+        hdulist.append(hdu0)
+            
+        if allOutput:
+            hdulist.append(pyfits.CompImageHDU(self.planes['mask'], name='mask'))
+            hdulist.append(pyfits.CompImageHDU(self.planes['bias'], name='bias'))
+            hdulist.append(pyfits.CompImageHDU(self.planes['shotnoise'], name='shotnoise'))
+            if realBias:
+                hdulist.append(pyfits.CompImageHDU(self.pixelImage, name='active'))
+            
+        hdulist.writeto(outputFile, checksum=True, clobber=True)
+
     def loadBias(self, biasID):
         """ Load a real detector bias, return its active image. """
 
@@ -96,7 +110,10 @@ class Exposure(object):
         filepath = os.path.join(dataRoot, 'data', 'pfs', 'PFSA00715%d%d%d.fits' %
                                 (biasID, 9, 2 if self.detector.band == 'Red' else 1))
 
+        print("loading bias %s" % (filepath))
         self.biasExp = geom.Exposure(obj=filepath)
+        print("  bias geom: %s" % (self.biasExp))
+
         return self.biasExp.finalImage(leadingRows=True)
         
     def readout(self, addNoise=True, realBias=None):
