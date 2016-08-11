@@ -84,6 +84,12 @@ class SplinedPsf(psf.Psf):
     def imshape(self):
         return self.spots[0].shape
 
+    def getCards(self):
+        cards = [('HIERARCH sim.slit.xoffset', self.slitOffset[0], 'slit fiber offset, mm'),
+                 ('HIERARCH sim.slit.yoffset', self.slitOffset[1], 'slit wavelength offset, mm')]
+
+        return cards
+    
     def traceCenters(self, fibers, waves):
         """ Return the pixel centers in mm for the given fibers and wavelengths """
 
