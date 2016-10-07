@@ -152,8 +152,8 @@ class SimImage(object):
             baseTemplate = '%(filePrefix)s%(seqno)06d'
             self.fileMgr = fpga.SeqPath.NightFilenameGen('/data/pfsSim',
                                                          filePrefix='PFFA',
-                                                         filePattern="%s%s.fz" % (baseTemplate,
-                                                                                  detectorNum))
+                                                         filePattern="%s%s.fits" % (baseTemplate,
+                                                                                    detectorNum))
             outputFile = self.fileMgr.getNextFileset()[0]
             if realBias is True:
                 realBias = int(outputFile[-6])
