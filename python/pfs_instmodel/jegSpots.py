@@ -309,13 +309,13 @@ def readSpotFile(pathSpec, doConvolve=None, doRebin=False,
         else:
             spot = data[i,:,:]
 
-        if doRecenter:
-            assert spot.shape[0] == spot.shape[1]
-            spotw = spot.shape[0]/2
-            ctr = spotgames.centroid(spot)
-            assert numpy.abs(ctr[0] - spotw) < 0.1, "centroid too far from center (%g %g)" % (ctr[0], spotw)
-            assert numpy.abs(ctr[1] - spotw) < 0.1, "centroid too far from center (%g %g)" % (ctr[0], spotw)
+        assert spot.shape[0] == spot.shape[1]
+        spotw = (spot.shape[0]+1)//2
+        ctr = spotgames.centroid(spot)
+        assert numpy.abs(ctr[0] - spotw) < 0.1, "centroid too far from center (%g %g)" % (ctr[0], spotw)
+        assert numpy.abs(ctr[1] - spotw) < 0.1, "centroid too far from center (%g %g)" % (ctr[1], spotw)
 
+        if doRecenter:
             pspot, spotSlice = spotgames.padArray(spot, padTo=spot.shape[0]*2)
             pspot, _ = spotgames.shiftSpot1d(pspot, spotw-ctr[0], spotw-ctr[1], kargs=dict(n=spotw*3/2))
             spot = pspot[spotSlice, spotSlice]
