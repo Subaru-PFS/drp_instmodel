@@ -74,20 +74,22 @@ def convolveWithFiber(spot, fiberImage=None):
     
     return scipy.ndimage.convolve(spot, fiberImage, mode='constant', cval=0.0)
 
-def getFiberIds(header, headerVersion):
+def getFiberIds(header, useArrayKeys):
     """ Given the header, return the fiberIDs. We assume that the spacing is proportional to the SINANGs. """
 
     nang = header['NANG']
     maxFiber = header['MAXFIBER']
-    if headerVersion == 1:
+    if useArrayKeys is False:
         angs = []
         for i in range(nang):
             ang = float(header['SINANG[%d]' % (i)])
             angs.append(ang)
-    else:
+    elif useArrayKeys is True:
         angs = header['SINANG[]']
         assert len(angs) == nang
-                        
+    else:
+        raise ValueError("useArrayKeys must be True or False.")
+    
     angs = numpy.array(angs)
     normAngs = angs / angs.max()
     fibers = (normAngs * (maxFiber-1)).astype('i2')
@@ -197,7 +199,8 @@ def readSpotFile(pathSpec, doConvolve=None, doRebin=False,
 
     wavelengths = []
     nlam = headerDict['NLAM']
-    if headerVersion == 1:
+    useArrayKeys = dataVersion >= 2
+    if not useArrayKeys:
         for i in range(nlam):
             waveKey = "LAM[%d]" % (i)
             wavelength = float(headerDict[waveKey])
