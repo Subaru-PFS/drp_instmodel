@@ -165,16 +165,25 @@ def readSpotFile(pathSpec, doConvolve=None, doRebin=False,
     rawHeader = rawHeader.rstrip('\0\n')
     header = rawHeader.split('\n')
 
+    def k2Decimal(s):
+        """ Convert '8K' -> 8192 """
+        if s[-1] in {'K', 'k'}:
+            return int(s[:-1]) * 1024
+        else:
+            return int(s)
+        
     headerDict = {'TITLE':header.pop(0)}
     converters = {'SLIT_RADIUS':float,
+                  'SLIT-VPUPIL_DISTANCE':float,
                   'FOFFSET':float,
                   'FSLOPE':float,
                   'FRD_SIGMA':float,
                   'FOFFSET':float,
                   'XPIX':float,
                   'YPIX':float,
-
-                  'FRD_ON':bool,
+                  'IMPEAK':int,
+                  
+                  'FRD_ON':int,
 
                   'NIMAGE':int,
                   'NLAM':int,
@@ -182,6 +191,12 @@ def readSpotFile(pathSpec, doConvolve=None, doRebin=False,
                   'XSIZE':int,
                   'YSIZE':int,
 
+                  'HDROFFS':k2Decimal,
+                  'DESOFFS':k2Decimal,
+                  'SBOFFS':k2Decimal,
+                  'XYFOFFS':k2Decimal,
+                  'DATOFFS':k2Decimal,
+                  
                   'LAM[]': lambda _s : [float(x) for x in _s.split(' ')],
                   'SINANG[]': lambda _s : [float(x) for x in _s.split(' ')]
     }
@@ -195,13 +210,36 @@ def readSpotFile(pathSpec, doConvolve=None, doRebin=False,
         else:
             headerDict['LINE%03d'%(i)] = h
 
+    if 'LAM[1]' in headerDict:
+        dataVersion = 1
+    elif 'SBOFFS' in headerDict:
+        dataVersion = 3
+    else:
+        dataVersion = 2
+        
+    headerDict['DATA_VERSION'] = dataVersion
+    headerDict['FILENAME'] = os.path.basename(path)
+    
+    with fopen(path, 'r') as f:
+        _ = f.read(headerDict['DESOFFS'])
+        if dataVersion < 3:
+            rawDesign = f.read(headerDict['XYFOFFS']-headerDict['DESOFFS'])    # unused, so far.
+            rawPositions = f.read(headerDict['DATOFFS']-headerDict['XYFOFFS'])
+            rawData = f.read()
+        else:
+            rawDesign = f.read(headerDict['SBOFFS']-headerDict['DESOFFS'])     # unused, so far.
+            rawBrightness = f.read(headerDict['XYFOFFS']-headerDict['SBOFFS']) # unused, so far.
+            rawPositions = f.read(headerDict['DATOFFS']-headerDict['XYFOFFS'])
+            rawData = f.read()
+
     # Add in a temporary fiber range, until the .imgstk file specifies one
     headerDict['MAXFIBER'] = 325
     print "  XXX: hardwired max(fiberid)==%d logic" % (headerDict['MAXFIBER'])
 
-    headerVersion = 1 if 'LAM[1]' in headerDict else 2
     if doConvolve is None:
-        doConvolve = headerVersion == 1
+        doConvolve = dataVersion == 1
+    if doRecenter is None:
+        doRecenter = dataVersion == 2
         
     nimage = headerDict['NIMAGE']
     xsize = headerDict['XSIZE']
