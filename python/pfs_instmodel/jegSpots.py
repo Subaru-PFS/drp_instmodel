@@ -107,23 +107,37 @@ def clearSpotCache():
 
 def readSpotFile(pathSpec, doConvolve=None, doRebin=False, 
                  doNorm=True, 
-                 doSwapaxes=True, doTrimSpots=True,
-                 doRecenter=True,
+                 doSwapaxes=True, doTrimSpots=False,
+                 doRecenter=None,
                  verbose=False, clearCache=False):
     """ Directly read some recent version of JEGs spots.
 
-    Parameters
-    -------
+    Args
+    ----
     pathSpec : dict
        Enough info to uniquely identify a jeg spot dataset.
        The keys are: (date, band, frd, focus). 
-
+    doConvolve : bool or None
+       Whether to convolve spots with a circular fiber tophat.
+       By default, set iff spot data version == 1.
+    doNorm : bool
+       Whether to normalize flux to the brightest spot's total.
+    doSwapaxes: bool
+       Whether to swap X&Y, so that the traces and CCD columns 
+       run vertically.
+    doTrimSpots : bool
+       Whether to trim 0-pixel borders from the input spots.
+    doRecenter : bool
+       Whether to "fix" the spot centers to the measured moments.
+       By default, set iff spot data version == 2.
+    
     Returns
     -------
     arr : the table of spots, with wavelength(AA), fiberID, xc, yc, image
     metadata : the partially converted header from the .imgstk file.
 
-    The .imgstk file contains a few 1k-aligned sections:
+    The .imgstk file contains a few 1k-aligned sections, described by
+    a commented-out header section. For version 1:
     
     OFFSETS :
         HEADER: 0
