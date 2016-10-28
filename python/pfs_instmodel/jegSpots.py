@@ -161,9 +161,6 @@ def readSpotFile(pathSpec, doConvolve=None, doRebin=False,
 
     with fopen(path, 'r') as f:
         rawHeader = f.read(2*1024)
-        rawDesign = f.read((8-2)*1024)    # unused, so far.
-        rawPositions = f.read((32-8)*1024)
-        rawData = f.read()
 
     rawHeader = rawHeader.rstrip('\0\n')
     header = rawHeader.split('\n')
