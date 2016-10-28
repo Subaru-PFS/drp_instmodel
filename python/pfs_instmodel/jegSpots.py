@@ -332,10 +332,11 @@ def readSpotFile(pathSpec, doConvolve=None, doRebin=False,
                    fluxMin))
 
         # Rotate x-up mechanical view to y-up detector view (dispersing along columns)
-        spot = numpy.swapaxes(spot,0,1)
-        xc, yc = yc, xc
+        if doSwapaxes:
+            spot = numpy.swapaxes(spot,0,1)
+            xc, yc = yc, xc
 
-        rawSpot = numpy.swapaxes(rawspots[i,:,:],0,1)
+            rawSpot = numpy.swapaxes(rawspots[i,:,:],0,1)
 
         rawSum = spot.sum()
         if doNorm:
