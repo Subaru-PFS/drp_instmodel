@@ -27,13 +27,17 @@ OFFSETS :
 
 """
 
-def getDataPath(date='2013-04-18', band=None, frd=23, focus=0, spotDir=None):
+def getDataPath(date='2013-04-18', band=None, frd=23, focus=0, slitFocus=None, spotDir=None):
     """ Given """
     if not spotDir:
         spotDir = os.path.join(os.environ['DRP_INSTDATA_DIR'], 'data/spots/jeg')
-        
-    spotFile = os.path.join(spotDir, date, band, 
-                            "*.dat_foc%d_frd%d.imgstk" % (focus, frd))
+
+    if date > '2016-10-01':
+        spotFile = os.path.join(spotDir, date, band, 
+                                "*.dat_foc%d_frd%d_sfld%02d.imgstk" % (focus, frd, slitFocus))
+    else:
+        spotFile = os.path.join(spotDir, date, band, 
+                                "*.dat_foc%d_frd%d.imgstk" % (focus, frd))
 
     files = glob.glob(spotFile) + glob.glob(spotFile + '.gz')
     if len(files) != 1:
