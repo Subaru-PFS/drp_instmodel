@@ -258,9 +258,17 @@ def readSpotFile(pathSpec, doConvolve=None, doRebin=False,
         wavelengths = headerDict['LAM[]']
         assert len(wavelengths) == nlam
                         
-    fiberIDs = getFiberIds(headerDict, headerVersion)
-        
-    data = numpy.fromstring(rawData, dtype='(%d,%d)u2' % (xsize,ysize), count=nimage).astype('f4')
+    fiberIDs = getFiberIds(headerDict, useArrayKeys)
+    nfibers = len(fiberIDs)
+    
+    if dataVersion < 3:
+        data = numpy.fromstring(rawData, dtype='(%d,%d)u2' % (xsize,ysize), count=nimage).astype('f4')
+    elif dataVersion == 3:
+        data = numpy.fromstring(rawData, dtype='(%d,%d)f4' % (xsize,ysize), count=nimage).astype('f4')
+    else:
+        raise ValueError("unknown spot file version: %s" % (dataVersion))
+    print("raw spot data range: %g..%g" % (data.min(), data.max()))
+    
     rawspots = data.copy()
     if doTrimSpots:
         data = data[:,1:,1:]
