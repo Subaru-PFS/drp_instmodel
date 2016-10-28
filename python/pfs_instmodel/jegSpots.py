@@ -271,28 +271,32 @@ def readSpotFile(pathSpec, doConvolve=None, doRebin=False,
     
     rawspots = data.copy()
     if doTrimSpots:
-        data = data[:,1:,1:]
-        tryFor = 127
-        data, trimmedPixels = trimSpots(data, tryFor=tryFor)
-        assert data.shape[-1] == tryFor, "found trimmed spots to be %d pixels, wanted %d" % (data.shape[-1], tryFor)
-        print("trimmed spots by %d pixels to %d pixels (%g mm)" % (trimmedPixels, xsize,
-                                                                   trimmedPixels * headerDict['XPIX']))
-    else:
-        # The input spots 
-        data = data[:,1:,1:]
+        if xsize % 2 == 0:
+            print("trimming outer pixel of %s spots" % (xsize))
+            data = data[:,:-1,:-1]
+        extents = dataWidth(data)
+        print("spot extents: %s" % (str(extents)))
+        
+        if doTrimSpots > 1:
+            tryFor = doTrimSpots
+            data, trimmedPixels = trimSpots(data, tryFor=tryFor)
+            assert data.shape[-1] == tryFor, "found trimmed spots to be %d pixels, wanted %d" % (data.shape[-1], tryFor)
+            print("trimmed spots by %d pixels to %d pixels (%g mm)" % (trimmedPixels, xsize,
+                                                                       trimmedPixels * headerDict['XPIX']))
 
     xsize, ysize = data.shape[1:]
     headerDict['XSIZE'] = xsize
     headerDict['YSIZE'] = ysize
 
-    print("convolving with fiber image: %s" % (doConvolve))
     if doConvolve:
+        print("convolving with fiber image: %s" % (doConvolve))
         fiberImage = makeFiberImage()
 
     spots = []
     symSpots = []
     maxFlux = max([data[d].sum() for d in range(data.shape[0])])
     print("max spot = %0.2f" % (maxFlux))
+
     for i in range(data.shape[0]):
         fiberIdx = fiberIDs[i / nlam]
         wavelength = wavelengths[i % nlam]
