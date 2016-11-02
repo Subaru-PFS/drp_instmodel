@@ -340,16 +340,18 @@ def readSpotFile(pathSpec, doConvolve=None, doRebin=False,
 
         rawSum = spot.sum()
         if doNorm:
+            print("normalizing %g..%g by %g...." % (spot.min(), spot.max(), maxFlux))
             # Normalize the flux of each spot, w.r.t. the brightest spot.
             spot /= maxFlux
+            print("     to %g..%g" % (spot.min(), spot.max()))
         
         spots.append((fiberIdx, wavelength, xc, yc, focus, rawSpot, spot))
         if verbose:
             ctr = spotgames.centroid(spot)
-            print("spot  %d (%d, %0.2f) at (%0.2f %0.2f %0.3f) (%g,%g), max=%0.2f sum=%0.2f, rawSum=%0.2f" % 
+            print("spot  %d (%d, %0.2f) at (%0.2f %0.2f %0.3f) (%g,%g), min=%0.2f max=%0.2f sum=%0.2f, rawSum=%0.2f" % 
                   (i, fiberIdx, wavelength, xc, yc, focus,
                    ctr[0], ctr[1],
-                   spot.max(), spot.sum(), rawSum))
+                   spot.min(), spot.max(), spot.sum(), rawSum))
         if fiberIdx != 0:
             rspot = spot[:,::-1]
             assert(numpy.all(rspot[:,::-1] == spot))
