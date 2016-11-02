@@ -436,7 +436,7 @@ def oversampleSpots(spots, factor):
 
     return newSpots
 
-def writeSpotFITS(pathSpec, outDir, data):
+def writeSpotFITS(pathSpec, outDir, data, headerDict):
 #    raise NotImplementedError("writeSpotFITS() no longer needed or tested")
 
     phdu = fits.PrimaryHDU()
