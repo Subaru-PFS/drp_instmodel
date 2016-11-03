@@ -66,17 +66,25 @@ class Slit(object):
              block2[::-1] +
              block1[::-1])
 
-    def __init__(self):
+    slits = slit1, slit1, slit1, slit1
+    
+    def __init__(self, slitId):
         self.fiber0 = -325
-        self.scienceFibers = []
-        self.engineeringFibers = []
+        scienceFibers = []
+        engineeringFibers = []
 
-        for i, fiberType in enumerate(self.slit1):
+        for i, fiberType in enumerate(self.slits[slitId]):
             if fiberType is Fiber.SCIENCE:
-                self.scienceFibers.append(i)
+                scienceFibers.append(i)
             elif fiberType is Fiber.ENGINEERING:
-                self.engineeringFibers.append(i)
-                
+                engineeringFibers.append(i)
+
+        self._scienceFibers = np.array(scienceFibers, dtype='i4')
+
+    @property
+    def scienceFibers(self):
+        return self._scienceFibers + self.fiber0
+    
     def scienceFiberToSlitPos(self, scienceFiberNum):
         """ Return the slit position for the given science fiber """
 
@@ -85,9 +93,9 @@ class Slit(object):
         else:
             indexNum = scienceFiberNum + 299
             
-        return self.fiber0 + self.scienceFibers[indexNum]
+        return self.scienceFibers[indexNum]
 
-slit1 = Slit()
+slit1 = Slit(1)
 
 # Science fiber numbers, -300 to +300:
 #LamSlit1Fibers = [-300, -240, -100, -30, -1, 1, 30, 100, 170, 240, 300]
