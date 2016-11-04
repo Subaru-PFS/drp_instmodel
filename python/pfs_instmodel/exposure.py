@@ -91,7 +91,6 @@ class Exposure(object):
             hdr.set(*c)
             
         hdu0 = pyfits.CompImageHDU(outIm, header=hdr, name='image')
-        # hdu0.data = outIm
         hdulist.append(hdu0)
             
         if allOutput:
@@ -100,9 +99,12 @@ class Exposure(object):
             hdulist.append(pyfits.CompImageHDU(self.planes['shotnoise'], name='shotnoise'))
             if realBias:
                 hdulist.append(pyfits.CompImageHDU(self.pixelImage, name='active'))
-            
+
+        hdulist.update_extend()
         hdulist.writeto(outputFile, checksum=True, clobber=True)
 
+        return hdulist
+    
     def loadBias(self, biasID):
         """ Load a real detector bias, return its active image. """
 

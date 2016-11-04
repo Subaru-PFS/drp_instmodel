@@ -141,8 +141,9 @@ class SimImage(object):
     def writeTo(self, outputFile=None, addNoise=True,
                 compress='RICE', allOutput=False,
                 imagetyp=None, realBias=None):
-        import fitsio
 
+        # import pyfits
+        
         if outputFile is None:
             import fpga.SeqPath
 
@@ -156,23 +157,23 @@ class SimImage(object):
                                                                                     detectorNum))
             outputFile = self.fileMgr.getNextFileset()[0]
             if realBias is True:
-                realBias = int(outputFile[-6])
+                realBias = int(outputFile[-8])
 
-        print("output to %s, addNoise=%s, realBias=%s, dtype=self.exposure" %
-              (outputFile, realBias, addNoise))
+        print("output to %s, addNoise=%s, realBias=%s" %
+              (outputFile, addNoise, realBias))
 
         addCards = self.psf.getCards()
         
-        self.exposure.writeto(outputFile, addNoise=addNoise,
-                              realBias=realBias, imagetyp=imagetyp,
-                              addCards=addCards,
-                              compress=compress, allOutput=allOutput)
+        hdulist = self.exposure.writeto(outputFile, addNoise=addNoise,
+                                        realBias=realBias, imagetyp=imagetyp,
+                                        addCards=addCards,
+                                        compress=compress, allOutput=allOutput)
         
-        waveImage = self.waveImage()
-        fitsio.write(outputFile, waveImage, extname='wavelengths', compress='RICE')
+        # waveImage = self.waveImage()
+        # pyfits.append(outputFile, waveImage, extname='wavelengths', compress='RICE')
 
-        lineGeometry = self.lineGeometry()
-        fitsio.write(outputFile, lineGeometry, extname='lines')
+        # lineGeometry = self.lineGeometry()
+        # pyfits.append(outputFile, lineGeometry, extname='lines')
         
 def fiberInfo(self):
     """ Return a single numpy array containing what we know about the fibers. """
