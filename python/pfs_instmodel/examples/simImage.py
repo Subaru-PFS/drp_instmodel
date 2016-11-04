@@ -205,7 +205,14 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
     args = parser.parse_args(args)
     logger.setLevel(logging.INFO if not args.verbose else logging.DEBUG)
     logger.debug('starting simImage logging')
-    
+
+    if args.realBias is True:
+        pass
+    elif args.realBias in {'False', 'None'}:
+        args.realBias = None
+    else:
+        args.realBias = int(args.realBias)
+        
     fibers = expandRangeArg(args.fibers)
 
     sim = makeSim(args.band, fieldName=args.field, 
