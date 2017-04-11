@@ -1,7 +1,7 @@
+import numpy as np
 from pfs_instmodel.schema.probes import PROBE
     
 fiberLim = 313
-bundleSpacing = 36
 
 def fullField():
     global fiberLim
@@ -10,14 +10,6 @@ def fullField():
 def halfField():
     global fiberLim
     return range(-fiberLim, 1)
-
-def keepInBundle(input=None):
-    global bundleSpacing
-    if input is None:
-        input = fullField()
-    for i in input:
-        if i == 0 or i%bundleSpacing != 0:
-            yield i
 
 def keepNth(input, N):
     for i in input:
