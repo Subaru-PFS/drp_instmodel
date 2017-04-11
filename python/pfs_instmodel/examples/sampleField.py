@@ -74,34 +74,52 @@ class Slit(object):
              block2[::-1] +
              block1[::-1])
 
-    def __init__(self):
-        self.fiber0 = -325
-        self.scienceFibers = []
-        self.engineeringFibers = []
+    # The second slit type is identical to the first but with
+    # three blanked-off science fibers.
+    slit2 = list(slit1)
+    for f in (280, 309, 359):
+        slit2[f-1] = Fiber.BLANK
+    slit2 = tuple(slit2)
 
-        for i, fiberType in enumerate(self.slit1):
+    slits = slit1, slit1, slit2, slit2
+
+    def __init__(self, slitId):
+        self.fiber0 = 1
+        scienceFibers = []
+        engineeringFibers = []
+
+        for i, fiberType in enumerate(self.slits[slitId]):
             if fiberType is Fiber.SCIENCE:
-                self.scienceFibers.append(i)
+                scienceFibers.append(i)
             elif fiberType is Fiber.ENGINEERING:
-                self.engineeringFibers.append(i)
-                
+                engineeringFibers.append(i)
+
+        self._scienceFibers = np.array(scienceFibers, dtype='i4')
+
+    @property
+    def scienceFibers(self):
+        return self._scienceFibers + self.fiber0
+    
     def scienceFiberToSlitPos(self, scienceFiberNum):
-        """ Return the slit position for the given science fiber """
+        """ Return the slit position for the given science fiber.
+        
+        This is only used for the engineering slits as LAM, which were 
+        sent defined in terms of the science fibers.
+        """
 
         if scienceFiberNum < 0:
             indexNum = scienceFiberNum + 300
         else:
             indexNum = scienceFiberNum + 299
             
-        return self.fiber0 + self.scienceFibers[indexNum]
+        return self.scienceFibers[indexNum]
 
-slit1 = Slit()
+slit1 = Slit(1)
 
 # Science fiber numbers, -300 to +300:
-#LamSlit1Fibers = [-300, -240, -100, -30, -1, 1, 30, 100, 170, 240, 300]
 LamSlit1Fibers = [-300, -240, -239, -100, -30, -29, -1, 1, 30, 100, 170, 240, 300]
-LamSlit2Fibers = [-299, -290, -246, -194, -148, -112, -56, -10 -2,
-                   2, 10, 56, 112, 148, 194, 148, 194, 246, 290]
+LamSlit2Fibers = [-299, -290, -246, -194, -148, -112, -56, -10, -2,
+                  2, 10, 56, 112, 148, 194, 148, 194, 246, 290]
 LamSlit1 = [slit1.scienceFiberToSlitPos(f) for f in LamSlit1Fibers]
 LamSlit2 = [slit1.scienceFiberToSlitPos(f) for f in LamSlit2Fibers]
 
