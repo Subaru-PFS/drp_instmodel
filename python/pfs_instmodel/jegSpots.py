@@ -12,7 +12,8 @@ import scipy.ndimage
 import astropy.io.fits as fits
 
 import spotgames
-import pfs_tools
+
+jegLogger = logging.getLogger('jegSpots')
 
 from pfs_tools import pydebug
 """
@@ -94,8 +95,8 @@ def getFiberIds(header, useArrayKeys):
     normAngs = angs / angs.max()
     fibers = (normAngs * (maxFiber-1)).astype('i2')
 
-    print "fiber angles: %s" % (angs)
-    print "fiber IDs   : %s" % (fibers)
+    jegLogger.info("fiber angles: %s" % (angs))
+    jegLogger.info("fiber IDs   : %s" % (fibers))
     
     return fibers
 
@@ -234,7 +235,7 @@ def readSpotFile(pathSpec, doConvolve=None, doRebin=False,
 
     # Add in a temporary fiber range, until the .imgstk file specifies one
     headerDict['MAXFIBER'] = 325
-    print "  XXX: hardwired max(fiberid)==%d logic" % (headerDict['MAXFIBER'])
+    jegLogger.debug("  XXX: hardwired max(fiberid)==%d logic" % (headerDict['MAXFIBER']))
 
     if doConvolve is None:
         doConvolve = dataVersion == 1
@@ -325,11 +326,11 @@ def readSpotFile(pathSpec, doConvolve=None, doRebin=False,
             if fluxMin < 0:
                 spot -= fluxMin
                 
-            print("recentered spot %i by (%0.5f, %0.5f) to (%0.5f, %0.5f) [min=%0.5f]" %
-                  (i,
-                   spotw-ctr[0], spotw-ctr[1],
-                   ctr2[0], ctr2[1],
-                   fluxMin))
+            jegLogger.debug("recentered spot %i by (%0.5f, %0.5f) to (%0.5f, %0.5f) [min=%0.5f]" %
+                            (i,
+                             spotw-ctr0[0], spotw-ctr0[1],
+                             ctr2[0], ctr2[1],
+                             fluxMin))
 
         # Rotate x-up mechanical view to y-up detector view (dispersing along columns)
         if doSwapaxes:
