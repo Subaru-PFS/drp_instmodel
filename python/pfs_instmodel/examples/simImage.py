@@ -12,7 +12,7 @@ import pfs_instmodel.spectrum as pfsSpectrum
 reload(pfsSpectrum)
 
 def makeSim(band, fieldName, fiberFilter=None,
-            frd=23, focus=0, date='2013-04-18', psf=None, dtype='u2',
+            frd=23, focus=0, date='2016-10-26', psf=None, dtype='u2',
             addNoise=True, combSpacing=50, shiftPsfs=True,
             constantPsf=False, constantX=False,
             xOffset=0.0, yOffset=0.0,
@@ -181,7 +181,7 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
     parser.add_argument('-v', '--verbose', action='store_true')
     parser.add_argument('--focus', action='store', default=0, type=int)
     parser.add_argument('--frd', action='store', default=23, type=int)
-    parser.add_argument('--date', action='store', default='2013-04-18')
+    parser.add_argument('--date', action='store', default='2016-10-26')
     parser.add_argument('--dtype', action='store', default='u2')
     parser.add_argument('--xoffset', action='store', type=float, default=0.0,
                         help='shift in slit position along slit, in microns')
