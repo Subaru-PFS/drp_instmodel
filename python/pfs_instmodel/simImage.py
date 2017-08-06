@@ -140,7 +140,7 @@ class SimImage(object):
         
     def writeTo(self, outputFile=None, addNoise=True,
                 compress='RICE', allOutput=False,
-                imagetyp=None, realBias=None):
+                imagetyp=None, realBias=None, realFlat=None):
         import fitsio
 
         if outputFile is None:
@@ -164,7 +164,8 @@ class SimImage(object):
         addCards = self.psf.getCards()
         
         self.exposure.writeto(outputFile, addNoise=addNoise,
-                              realBias=realBias, imagetyp=imagetyp,
+                              realBias=realBias, realFlat=realFlat,
+                              imagetyp=imagetyp,
                               addCards=addCards,
                               compress=compress, allOutput=allOutput)
         

@@ -1,3 +1,4 @@
+import glob
 import numpy
 import os
 import time
@@ -63,14 +64,14 @@ class Exposure(object):
             return time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime(t))
                                     
     def writeto(self, outputFile, doCombine=True, doWriteAll=True,
-                addNoise=True, compress='RICE', realBias=None,
+                addNoise=True, compress='RICE',
+                realBias=None, realFlat=None,
                 addCards=(),
                 imagetyp=None, allOutput=False):
 
-
-        self.readout(addNoise=addNoise, realBias=realBias)
+        self.readout(addNoise=addNoise, realBias=realBias, realFlat=realFlat)
         if realBias is not None:
-            outIm = self.biasExp.replaceActiveFlux(self.pixelImage)
+            outIm = self.biasExp.replaceActiveFlux(self.pixelImage, leadingRows=False)
             hdr = self.biasExp.header
         else:
             outIm = self.pixelImage
@@ -114,9 +115,29 @@ class Exposure(object):
         self.biasExp = geom.Exposure(obj=filepath)
         print("  bias geom: %s" % (self.biasExp))
 
-        return self.biasExp.finalImage(leadingRows=True)
+        if self._flux.shape[0] == 4174:
+            self.biasExp.leadinRows = 50
         
-    def readout(self, addNoise=True, realBias=None):
+        return self.biasExp.finalImage(leadingRows=False)
+        
+    def loadFlat(self):
+        """ Load a real detector flat, return its active image. """
+
+        dataRoot = os.environ.get('DRP_INSTDATA_DIR', '.')
+        fileglob = os.path.join(dataRoot, 'data', 'pfs', 'flats', 'pfsFlat-*-%d%s.fits' %
+                                (1, self.detector.band[0].lower()))
+
+        print("looking for flats %s" % (fileglob))
+        filepaths = glob.glob(fileglob)
+        filepath = filepaths[0]
+        print("fetching flat %s" % (filepath))
+        flat = pyfits.getdata(filepath)
+
+        return flat
+    
+    def readout(self, addNoise=True,
+                realBias=None, realFlat=None):
+        
         if self.pixelImage is not None:
             return
 
@@ -133,7 +154,8 @@ class Exposure(object):
         else:
             noisyFlux = self._flux
             
-        self.detector.readout(self, noisyFlux, ontoBias=realBias)
+        self.detector.readout(self, noisyFlux,
+                              ontoBias=realBias, applyFlat=realFlat)
 
     def addPlane(self, name, im):
         if name in self.planes:

@@ -191,6 +191,8 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
     parser.add_argument('--allOutput', action='store_true',
                         help='whether to add (many) additional HDUs abut the simulation')
     parser.add_argument('--realBias', action='store', default=True)
+    parser.add_argument('--realFlat', action='store', default=True,
+                        help='Apply an imaging flat. Use False/None to avoid.')
     parser.add_argument('--shiftPsfs', action='store_false')
     parser.add_argument('--imagetyp', action='store', default=None,
                         help='IMAGETYP,EXPTIME pair')
@@ -224,7 +226,8 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
     if args.output != 'no':
         sim.writeTo(args.output, addNoise=not args.noNoise,
                     compress=args.compress, allOutput=args.allOutput,
-                    realBias=args.realBias, imagetyp=args.imagetyp)
+                    realBias=args.realBias, realFlat=args.realFlat,
+                    imagetyp=args.imagetyp)
     if args.ds9:
         displayImage(sim.image)
     return sim
