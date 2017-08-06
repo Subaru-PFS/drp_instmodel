@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 
-import logging
 import os
-import time
 
 from astropy.io import fits as pyfits
 import numpy as np
@@ -14,8 +12,6 @@ import scipy.ndimage
 import scipy.ndimage.interpolation
 
 import psf
-import pfs_tools
-from pfs_tools import pydebug
 import spotgames
 
 class SplinedPsf(psf.Psf):
@@ -429,7 +425,6 @@ class SplinedPsf(psf.Psf):
 
         try:
             outImg[parentIdx] += subImg[childIdx]
-            # exp.addFlux(subImg[childy, childx], outSlice=(parenty, parentx), addNoise=True)
         except Exception, e:
             self.logger.warn("failed to place child at %s: %s" % (subOffset, e))
     
@@ -488,43 +483,10 @@ class SplinedPsf(psf.Psf):
             child[0] -= childOffset
             child[1] -= childOffset
 
-        if parent[1]-parent[0] != child[1]-child[0]:
-            pydebug.debug_here()
-            
+        assert parent[1]-parent[0] == child[1]-child[0]
+
         return (slice(parent[0], parent[1]+1),
                 slice(child[0], child[1]+1))
-
-    def _frac(self, n):
-        """ Return the fractional part of a float. """
-
-        return np.modf(n)[0]
-    
-    def _sincfunc(self, x, dx):
-        dampfac = 3.25
-        if dx != 0.0:
-            return np.exp(-((x+dx)/dampfac)**2) * np.sin(np.pi*(x+dx)) / (np.pi * (x+dx))
-        else:
-            xx = np.zeros(len(x))
-            xx[len(x)/2] = 1.0
-            return xx
-
-    def _sincshift(self, image, dx, dy):
-        """ UNUSED & UNTESTED from boss -- for comparison only, etc. etc. """
-        
-        sincrad = 10
-        s = np.arange(-sincrad, sincrad+1)
-        sincx = self._sincfunc(s, dx)
-
-        #- If we're shifting just in x, do faster 1D convolution with wraparound                                
-	    #- WARNING: can introduce edge effects if PSF isn't nearly 0 at edge                                    
-        if abs(dy) < 1e-6:
-            newimage = scipy.signal.convolve(image.ravel(), sincx, mode='same')
-            return newimage.reshape(image.shape)
-
-        sincy = self._sincfunc(s, dy)
-        kernel = np.outer(sincy, sincx)
-        newimage = scipy.signal.convolve2d(image, kernel, mode='same')
-        return newimage
 
     def loadFromSpots(self, spotType='jeg', spotIDs=None, spotArgs=None):
         """ Generate ourself from a semi-digested pfs_instdata spot file. 
