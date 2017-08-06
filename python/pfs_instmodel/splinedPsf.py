@@ -14,6 +14,8 @@ import scipy.ndimage.interpolation
 import psf
 import spotgames
 
+from spectrum import LineSpectrum
+
 class SplinedPsf(psf.Psf):
     def __init__(self, detector, spotType='jeg', spotID=None, logger=None,
                  slitOffset=(0.0, 0.0),
@@ -167,7 +169,7 @@ class SplinedPsf(psf.Psf):
 
         return rows, waves
     
-    def psfsAt(self, fibers, waves=None, usePsfs=None):
+    def psfsAt(self, fibers, waves=None, usePsfs=None, everyNth=1):
         """ Return a stack of PSFs, instantiated on a rectangular grid.
 
         Parameters
@@ -176,6 +178,8 @@ class SplinedPsf(psf.Psf):
            the fiber IDs we want PSFs for
         waves : array_like, AA, optional
            the wavelengths we want PSFs as. If not set, uses the native wavelength grid.
+        everyNth :integer
+           How many psf instances to reuse
         usePsfs : array_like , optional
            
         Returns
@@ -194,21 +198,26 @@ class SplinedPsf(psf.Psf):
             
         waveSign = 1 if waves[-1] > waves[0] else -1
         interpWaves = waves[::waveSign]
+        psfWaves = interpWaves[::everyNth]
         
         centers = [(x,y) for x in fibers for y in waves]
         if usePsfs is not None:
             newImages = usePsfs
         else:
-            newImages = np.zeros(shape=(len(fibers)*len(interpWaves),
+            newImages = np.zeros(shape=(len(fibers)*len(psfWaves),
                                         self.imshape[0],
-                                        self.imshape[1]), dtype='f4')
+                                        self.imshape[1]), dtype='f8')
             self.logger.debug("psfsAt: fibers %s for %d waves, in %s %s array" % (fibers, len(interpWaves),
                                                                                   newImages.shape,
                                                                                   newImages.dtype))
             for ix in range(self.imshape[0]):
                 for iy in range(self.imshape[1]):
-                    newImages[:, iy, ix] = self.evalSpline(self.coeffs[iy, ix], fibers, interpWaves).flat
-
+                    newImages[::, iy, ix] = self.evalSpline(self.coeffs[iy, ix],
+                                                            fibers, psfWaves).flat
+            if False and everyNth > 1:
+                for i in range(1,everyNth):
+                    newImages[i::everyNth,:,:] = newImages[::everyNth,:,:]
+                    
         lo_w = newImages < -0.01
         if np.any(lo_w):
             minpix = newImages[lo_w].min()
@@ -240,9 +249,11 @@ class SplinedPsf(psf.Psf):
 
     def fiberImage(self, fiber, spectrum, outExp=None, waveRange=None, 
                    returnUnbinned=False,
-                   shiftPsfs=True):
+                   shiftPsfs=True, everyNth=1):
         """ Return an interpolated image of a fiber """
 
+        fiber -= 326
+        
         # Evaluate at highest resolution
         pixelScale = self.spotScale
         
@@ -255,7 +266,8 @@ class SplinedPsf(psf.Psf):
                                                         pixelScale=pixelScale)
         self.logger.debug("allwaves: %s %d", allPixelWaves[0].dtype, len(allPixelWaves[0]))
 
-        isLinelist = spectrum.__class__.__name__ == "CombSpectrum"
+        isLinelist = isinstance(spectrum, LineSpectrum)
+        
         waves, flux = spectrum.flux(allPixelWaves[0])
 
         self.logger.debug("waves: %s %d %d", waves.dtype, len(waves), waves.nbytes)
@@ -324,7 +336,7 @@ class SplinedPsf(psf.Psf):
             if specFlux == 0.0:
                 continue
             
-            rawPsf = fiberPsfs[i]
+            rawPsf = fiberPsfs[i/everyNth]
 
             # in mm
             xc = xCenters[i]
@@ -402,16 +414,9 @@ class SplinedPsf(psf.Psf):
 
     def addOversampledImage(self, inImg, outExp, outOffset, outScale):
         """ Add the outScale-oversampled inImg to outImg at the given offset. 
-
-        Must convolve with the pixel response of the oversampled pixel.
         """
 
-        pixelKernel = np.ones((outScale, outScale), dtype='f4') / (outScale*outScale)
-        pixImg = scipy.ndimage.convolve(inImg, pixelKernel, mode='constant', cval=0.0)
-                                
-        resampled = pfs_tools.rebin(pixImg, pixImg.shape[0]/outScale, pixImg.shape[1]/outScale)
-        self.logger.debug("addOversampled kernel shape: %s, out type: %s",
-                          pixelKernel.shape, resampled.dtype)
+        resampled = spotgames.rebinBy(inImg, outScale)
         parentIdx, childIdx = self.trimRect(outExp, resampled, outOffset)
         try:
             outExp.addFlux(resampled[childIdx], outSlice=parentIdx, addNoise=True)
