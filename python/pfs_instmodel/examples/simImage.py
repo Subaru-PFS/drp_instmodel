@@ -56,6 +56,7 @@ def makeSim(band, fieldName, fiberFilter=None,
                             logger=logger)
     skyModel = pfsSky.StaticSkyModel(band) # plus field info....
     flatSpectrum = pfsSpectrum.FlatSpectrum(sim.detector, gain=20.0)
+    slopeSpectrum = pfsSpectrum.SlopeSpectrum(sim.detector, gain=20.0)
     combSpectrum = pfsSpectrum.CombSpectrum(spacing=combSpacing, 
                                             gain=200000.0)
     
@@ -79,6 +80,9 @@ def makeSim(band, fieldName, fiberFilter=None,
         elif f.type == 'SIMCOMB':
             fibers.append(f.fiberId)
             spectra.append(combSpectrum)
+        elif f.type == 'SIMSLOPE':
+            fibers.append(f.fiberId)
+            spectra.append(slopeSpectrum)
         elif f.type == 'SIMARC':
             fibers.append(f.fiberId)
             arcSpectrum = pfsSpectrum.ArcSpectrum(*f.args)
