@@ -144,6 +144,14 @@ def expandRangeArg(arg):
         # print "after %s, r=%s" % (r, fullRange)
     return fullRange
 
+def str2bool(v):
+    if v.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected.')
+
 def main(args=None):
     """ called by __main__, or pass in a string as if it were a command line. 
 
@@ -194,15 +202,17 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
     parser.add_argument('--noNoise', action='store_true')
     parser.add_argument('--allOutput', action='store_true',
                         help='whether to add (many) additional HDUs abut the simulation')
-    parser.add_argument('--realBias', action='store', default=True)
-    parser.add_argument('--realFlat', action='store', default=True,
+    parser.add_argument('--realBias', action='store', type=str2bool, default=True)
+    parser.add_argument('--realFlat', action='store', type=str2bool, default=True,
                         help='Apply an imaging flat. Use False/None to avoid.')
     parser.add_argument('--shiftPsfs', action='store_false')
     parser.add_argument('--imagetyp', action='store', default=None,
                         help='IMAGETYP,EXPTIME pair')
     parser.add_argument('--combSpacing', action='store', type=float, default=50)
-    parser.add_argument('--constantPsf', action='store', type=float, default=0, help='Use a single PSF for the entire field.')
-    parser.add_argument('--constantX', action='store_true', help='Use the middle X-coordinate for all of each fiber.')
+    parser.add_argument('--constantPsf', action='store', type=float, default=0,
+                        help='Use a single PSF for the entire field.')
+    parser.add_argument('--constantX', action='store_true',
+                        help='Use the middle X-coordinate for all of each fiber.')
     parser.add_argument('--compress', action='store', default=None,
                         help='fitsio FITS compression type. e.g. RICE')
     

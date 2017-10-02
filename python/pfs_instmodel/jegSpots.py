@@ -131,7 +131,9 @@ def readSpotFile(pathSpec, doConvolve=None, doRebin=False,
     doRecenter : bool
        Whether to "fix" the spot centers to the measured moments.
        By default, set iff spot data version == 2.
-    
+    doRebin : bool/integer
+       If not False, attempt to rebin pixels by the given factor.
+
     Returns
     -------
     arr : the table of spots, with wavelength(AA), fiberID, xc, yc, image
@@ -268,38 +270,59 @@ def readSpotFile(pathSpec, doConvolve=None, doRebin=False,
         data = numpy.fromstring(rawData, dtype='(%d,%d)f4' % (xsize,ysize), count=nimage).astype('f4')
     else:
         raise ValueError("unknown spot file version: %s" % (dataVersion))
-    print("raw spot data range: %g..%g" % (data.min(), data.max()))
-    
+    jegLogger.info("raw spot version %d data type %s, range: %g..%g",
+                   dataVersion, data.dtype, data.min(), data.max())
+
     rawspots = data.copy()
+    if doRebin is not False:
+        newSize = xsize//doRebin
+        if newSize*doRebin != xsize:
+            raise ValueError('doRebin must evenly divide the raw spot size')
+
+        newData = numpy.empty(shape=(data.shape[0], newSize, newSize), dtype=data.dtype)
+        for i in range(data.shape[0]):
+            tspot = spotgames.rebinBy(data[i], doRebin)
+            newData[i,:,:] = tspot
+            
+        data = newData
+        xsize = ysize = newSize
+        headerDict['XPIX'] *= doRebin
+        headerDict['YPIX'] *= doRebin
+        
     if doTrimSpots:
-        if xsize % 2 == 0:
-            print("trimming outer pixel of %s spots" % (xsize))
+        if xsize % 2 == 0 and dataVersion < 3:
+            jegLogger.info("trimming outer pixel of %s spots" % (xsize))
             data = data[:,:-1,:-1]
         extents = dataWidth(data)
-        print("spot extents: %s" % (str(extents)))
+        jegLogger.info("spot extents: %s" % (str(extents)))
         
-        if doTrimSpots > 1:
+        if not isinstance(doTrimSpots, bool):
             tryFor = doTrimSpots
-            data, trimmedPixels = trimSpots(data, tryFor=tryFor)
-            assert data.shape[-1] == tryFor, "found trimmed spots to be %d pixels, wanted %d" % (data.shape[-1], tryFor)
-            print("trimmed spots by %d pixels to %d pixels (%g mm)" % (trimmedPixels, xsize,
-                                                                       trimmedPixels * headerDict['XPIX']))
+        else:
+            tryFor = None
+            
+        data, trimmedPixels = trimSpots(data, tryFor=tryFor, leaveBorder=3)
+        if doTrimSpots > 1:
+            assert data.shape[-1] == tryFor, ("found trimmed spots to be %d pixels, wanted %d" %
+                                              (data.shape[-1], tryFor))
+        jegLogger.info("trimmed spots by %d pixels to %s pixels (%g mm)" % (2*trimmedPixels, data.shape[-1],
+                                                                            data.shape[0] * headerDict['XPIX']))
 
     xsize, ysize = data.shape[1:]
     headerDict['XSIZE'] = xsize
     headerDict['YSIZE'] = ysize
 
     if doConvolve:
-        print("convolving with fiber image: %s" % (doConvolve))
+        jegLogger.info("convolving with fiber image: %s" % (doConvolve))
         fiberImage = makeFiberImage()
 
     spots = []
     symSpots = []
     maxFlux = max([data[d].sum() for d in range(data.shape[0])])
-    print("max spot = %0.2f" % (maxFlux))
+    jegLogger.info("max spot = %0.2f" % (maxFlux))
 
     for i in range(data.shape[0]):
-        fiberIdx = fiberIDs[i / nlam]
+        fiberIdx = fiberIDs[i // nlam]
         wavelength = wavelengths[i % nlam]
         xc = positions[i,0]
         yc = -positions[i,1]
