@@ -108,8 +108,12 @@ class Exposure(object):
         """ Load a real detector bias, return its active image. """
 
         dataRoot = os.environ.get('DRP_INSTDATA_DIR', '.')
-        filepath = os.path.join(dataRoot, 'data', 'pfs', 'PFSA00715%d%d%d.fits' %
-                                (biasID, 9, 2 if self.detector.band == 'Red' else 1))
+        fileglob = os.path.join(dataRoot, 'data', 'pfs', 'biases', 'PF?A0*%d%d%d.fits' %
+                                (biasID, 1, 2 if self.detector.band == 'Red' else 1))
+
+        print("looking for biases %s" % (fileglob))
+        filepaths = glob.glob(fileglob)
+        filepath = filepaths[0]
 
         print("loading bias %s" % (filepath))
         self.biasExp = geom.Exposure(obj=filepath)
