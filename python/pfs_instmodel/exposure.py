@@ -91,7 +91,9 @@ class Exposure(object):
         for c in addCards:
             hdr.set(*c)
             
-        hdu0 = pyfits.CompImageHDU(outIm, header=hdr, name='image')
+        hdu0 = pyfits.CompImageHDU(outIm, name='image')
+        hdu0.header.extend(hdr)
+        
         # hdu0.data = outIm
         hdulist.append(hdu0)
             
