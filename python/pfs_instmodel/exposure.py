@@ -70,8 +70,8 @@ class Exposure(object):
                 imagetyp=None, allOutput=False):
 
         self.readout(addNoise=addNoise, realBias=realBias, realFlat=realFlat)
-        if realBias is not None:
-            outIm = self.biasExp.replaceActiveFlux(self.pixelImage, leadingRows=False)
+        if realBias:
+            outIm = self.biasExp.replaceActiveFlux(self.pixelImage, leadingRows=True)
             hdr = self.biasExp.header
         else:
             outIm = self.pixelImage
