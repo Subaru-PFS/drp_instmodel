@@ -413,18 +413,36 @@ def dataWidth(spots):
     mxt = startWidth - mx
     return max(mn, mxt), min(mn, mxt)
 
-def trimSpots(spots, tryFor=None):
+def borderWidth(spots):
+    """ Return the number of all-zero pixels around the edge of the image. """
+    
+    assert spots.shape[-2] == spots.shape[-1], "input spots must be square"
+    
+    startWidth = spots.shape[-1]
+    nz = numpy.where(spots > 0)
+    mn = min(nz[1].min(), nz[2].min())
+    mx = max(nz[1].max(), nz[2].max())
+    mxt = startWidth - mx - 1
+
+    return min(mn, mxt)
+
+def trimSpots(spots, tryFor=None, leaveBorder=1):
     """ Return a spot array with the outer 0-level pixels trimmed off. """
 
     startWidth = spots.shape[-1]
-    _, trimPix = dataWidth(spots)
+    trimPix = borderWidth(spots)
+    trimPix -= leaveBorder
 
+    if trimPix <= 0:
+        raise RuntimeError("cannot trim spots by %d pixels" % (trimPix))
+        
     if tryFor is not None:
-        if tryFor < startWidth - trimPix*2:
+        if tryFor < startWidth - 2*trimPix:
             raise RuntimeError("cannot safely trim spots to %s pixels" % (tryFor))
-        trimPix = (startWidth-tryFor)/2
+        trimPix = (startWidth-tryFor)//2
 
-    print("trimming spots by %d pixels from %d to %d pixels" % (trimPix, startWidth, startWidth-trimPix*2)) 
+    jegLogger.debug("trimming border by %d pixels; image goes from %d to %d pixels" %
+                    (trimPix, startWidth, startWidth-trimPix*2)) 
     nspots = spots[:,trimPix:startWidth-trimPix,trimPix:startWidth-trimPix]
 
     return nspots, trimPix
