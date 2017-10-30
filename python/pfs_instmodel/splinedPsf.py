@@ -369,8 +369,8 @@ class SplinedPsf(psf.Psf):
 
             # Keep the shift to the smallest fraction possible, or rather keep the integer steps 
             # exact.
-            inty = int(yPixOffset)
-            intx = int(xPixOffset)
+            inty = int(np.rint(yPixOffset))
+            intx = int(np.rint(xPixOffset))
 
             fracy = yPixOffset - inty
             fracx = xPixOffset - intx
