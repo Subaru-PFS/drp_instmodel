@@ -374,16 +374,15 @@ def readSpotFile(pathSpec, doConvolve=None, doRebin=False,
                 spot /= maxFlux
             jegLogger.debug("normalized to %g..%g sum=%g...." % (spot.min(), spot.max(), spot.sum()))
         
-        spots.append((fiberIdx, wavelength, xc, yc, focus, rawSpot, spot))
-        if verbose:
-            ctr = spotgames.centroid(spot)
-            print("spot  %d (%d, %0.2f) at (%0.2f %0.2f %0.3f) (%g,%g), min=%0.2f max=%0.2f sum=%0.2f, rawSum=%0.2f" % 
-                  (i, fiberIdx, wavelength, xc, yc, focus,
-                   ctr[0], ctr[1],
-                   spot.min(), spot.max(), spot.sum(), rawSum))
-        if fiberIdx != 0:
-            rspot = spot[:,::-1]
-            assert(numpy.all(rspot[:,::-1] == spot))
+        ctr = spotgames.centroid(spot)
+        dCtr = numpy.abs(ctr - numpy.array(spot.shape).T/2.0)
+        if numpy.any(dCtr > 0.01):
+            jegLogger.warn("spot  %d (%d, %0.2f) at (%0.2f %0.2f %0.3f) (%0.4f,%0.4f) (%0.4f, %0.4f), sum=%0.3f" % 
+                           (i, fiberIdx, wavelength, xc, yc, focus,
+                            ctr[0], ctr[1], dCtr[0], dCtr[1],
+                            spot.sum()))
+
+        spots.append((fiberIdx, wavelength, xc, yc, focus, rawSpot, spot, ctr))
             
         if fiberIdx != 0:
             flipCtr = ctr.copy()
@@ -391,12 +390,15 @@ def readSpotFile(pathSpec, doConvolve=None, doRebin=False,
             symSpots.append((-fiberIdx, wavelength, -xc, yc, focus, rawSpot[:,::-1], spot[:,::-1], flipCtr))
 
     allSpots = spots + symSpots    
-    spotw = spots[0][-1].shape[0]
+    spotw = spots[0][-2].shape[0]
     spotDtype = numpy.dtype([('fiberIdx','i2'),
                              ('wavelength','f8'),
                              ('spot_xc','f8'), ('spot_yc','f8'), ('spot_focus','f4'),
-                             ('rawspot', '(%d,%d)u2' % (rawSpot.shape[0],rawSpot.shape[1])),
-                             ('spot', '(%d,%d)f4' % (spotw,spotw))])
+                             ('rawspot', '(%d,%d)%s' % (rawSpot.shape[0],
+                                                        rawSpot.shape[1],
+                                                        rawSpot.dtype)),
+                             ('spot', '(%d,%d)f4' % (spotw,spotw)),
+                             ('ctr', '2f4')])
 
     tarr = numpy.array(allSpots, dtype=spotDtype)
 
