@@ -168,18 +168,11 @@ class SimImage(object):
                               imagetyp=imagetyp,
                               addCards=addCards,
                               compress=compress, allOutput=allOutput)
-        
-        waveImage = self.waveImage()
-        fitsio.write(outputFile, waveImage, extname='wavelengths', compress='RICE')
 
-        lineGeometry = self.lineGeometry()
-        fitsio.write(outputFile, lineGeometry, extname='lines')
-        
-def fiberInfo(self):
-    """ Return a single numpy array containing what we know about the fibers. """
+        if allOutput:
+            waveImage = self.waveImage()
+            fitsio.write(outputFile, waveImage, extname='wavelengths', compress='RICE')
 
-    nFibers = len(self.fibers)
-    s_i = sorted(self.fibers)
-
-    dtype = numpy.dtype([('id','i2')])
+            lineGeometry = self.lineGeometry()
+            fitsio.write(outputFile, lineGeometry, extname='lines')
 
