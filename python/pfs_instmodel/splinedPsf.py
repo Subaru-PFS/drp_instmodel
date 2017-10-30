@@ -102,6 +102,15 @@ class SplinedPsf(psf.Psf):
         x = self.evalSpline(self.xcCoeffs, fibers[fiberIdx], waves[waveIdx])
         y = self.evalSpline(self.ycCoeffs, fibers[fiberIdx], waves[waveIdx])
 
+        # Chip gap
+        halfGap = self.detector.config['interCcdGap'] / 2
+        x0 = self.evalSpline(self.xcCoeffs, [0], [waves[0]])
+        
+        neg_w = x < x0
+        pos_w = x > x0
+        x[neg_w] += halfGap
+        x[pos_w] -= halfGap
+        
         return (x[fiberIdx][:, waveIdx], 
                 y[fiberIdx][:, waveIdx])
     
