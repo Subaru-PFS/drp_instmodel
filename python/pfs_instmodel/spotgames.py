@@ -5,7 +5,8 @@ import scipy.signal
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 
-import pfs_tools
+import astropy.io.fits as pyfits
+
 import plotutils
 
 def XXradToIndices(rad, sampling=1.0, offset=0.0):
@@ -447,17 +448,48 @@ def padArray(arr, padTo, center=True):
 def unpadArray(arr, slice):
     return arr[slice, slice]
 
-def applyPixelResponse(arr, pixelSize):
-    kernelSize = pixelSize * 3
-    kern = numpy.zeros((kernelSize, kernelSize), dtype=arr.dtype)
-    kern[pixelSize:2*pixelSize, pixelSize:2*pixelSize] = 1
-    kern /= numpy.sum(kern)
-    
-    # out = scipy.signal.fftconvolve(arr, kern, mode='same')
-    out = scipy.ndimage.convolve(arr, kern, mode='constant')
+def rebin(a, *args):
+    """ integer factor rebin(a, *new_axis_sizes), taken from scipy cookbook. """
 
-    return out
+    shape = a.shape
+    lenShape = len(shape)
+    factor = numpy.asarray(shape)/numpy.asarray(args)
+    evList = ['a.reshape('] + \
+      ['args[%d],factor[%d],'%(i,i) for i in range(lenShape)] + \
+      [')'] + ['.sum(%d)'%(i+1) for i in range(lenShape)]
+      
+    binArray = eval(''.join(evList))
+    return binArray
     
+def applyPixelResponse(arr, pixelSize):
+    kernelSize = pixelSize
+    kern = numpy.ones((kernelSize, kernelSize), dtype='f4')
+    kern /= numpy.sum(kern)
+
+    origin = -pixelSize//2
+    if pixelSize%2 == 1:
+        origin += 1
+    out = scipy.ndimage.convolve(arr, kern,
+                                 origin=(origin, origin),
+                                 mode='constant', cval=0.0)
+    return out
+
+def rebinBy(img, binFactor):
+    """ Bin down an image by the given factor, first applying the new pixel response. """
+
+    c0 = centroid(img)
+    smoothedImg = applyPixelResponse(img.copy(), binFactor)
+    newShape = img.shape[0]//binFactor, img.shape[1]//binFactor
+    
+    newImg = rebin(smoothedImg, *newShape)
+    c1 = centroid(newImg)
+
+    dc = numpy.round(c1 * binFactor - c0, 4)
+    if numpy.any(dc != 0):
+        logging.warn('imag centroid moved: %s to %s (%s)', c0, c1*binFactor, c1)
+
+    return newImg
+
 def poo(arr, dx, dy, splines=None, binFactor=10, padTo=0, applyPixelResp=False, kargs=None):
     assert dx>=0 and dy>=0
 
@@ -469,9 +501,9 @@ def poo(arr, dx, dy, splines=None, binFactor=10, padTo=0, applyPixelResp=False, 
     # Get our unshifted, binned, reference image.
     if applyPixelResp:
         arrs = applyPixelResponse(arr, binFactor)
-        arr00 = pfs_tools.rebin(arrs, *newSize)
+        arr00 = rebin(arrs, *newSize)
     else:
-        arr00 = pfs_tools.rebin(arr, *newSize)
+        arr00 = rebin(arr, *newSize)
 
     if padTo:
         arr00unpadded = arr00.copy()
@@ -495,7 +527,7 @@ def poo(arr, dx, dy, splines=None, binFactor=10, padTo=0, applyPixelResp=False, 
                              slice(None,-dx if dx else None)]
     if applyPixelResp:
         arrPlaced = applyPixelResponse(arrPlaced, binFactor)
-    arrPlaced = pfs_tools.rebin(arrPlaced, *newSize)
+    arrPlaced = rebin(arrPlaced, *newSize)
 
     if padTo:
         arrShifted = unpadArray(arrShifted, padSlice)
@@ -520,7 +552,7 @@ def shiftSpotBy(spot, shiftBy, binTo,
         dx, dy = shiftBy, shiftBy
         
     binnedShape = (numpy.array(spot.shape,'i2')/(binnedOversample)).tolist()
-    binnedSpot = pfs_tools.rebin(spot, *binnedShape)
+    binnedSpot = rebin(spot, *binnedShape)
     if doNorm:
         binnedSpot = binnedSpot / binnedSpot.sum()
     binnedShift = (float(dx)/binnedOversample, 
@@ -556,7 +588,7 @@ def shiftSpotBy(spot, shiftBy, binTo,
     if applyPixelResp:
         placedSpot = applyPixelResponse(placedSpot, oversampleFactor)
 
-    placedSpot = pfs_tools.rebin(placedSpot, *binnedShape)
+    placedSpot = rebin(placedSpot, *binnedShape)
     if doNorm:
         placedSpot = placedSpot / placedSpot.sum()
 
@@ -755,7 +787,7 @@ def spotShow(im, scale=10, binning=2, figName='spot',
     p1.plot(fftx/scale, numpy.abs(ffty))
     p1.set_yscale('log')
 
-    im2 = pfs_tools.rebin(im1, 
+    im2 = rebin(im1, 
                           im.shape[0]/binning,
                           im.shape[0]/binning)
     binnedScale = float(scale)/binning
@@ -858,8 +890,8 @@ def spotShow2(spot0, scale1, scale2, figname='spot',
     size2 = scale2 * fullSize/unbinnedScale
     print "sizes = %s, %s" % (size1, size2)
 
-    spot1 = pfs_tools.rebin(spot0, size1, size1)
-    spot2 = pfs_tools.rebin(spot0, size2, size2)
+    spot1 = rebin(spot0, size1, size1)
+    spot2 = rebin(spot0, size2, size2)
 
     spot1 = spot1/spot1.sum()
     spot2 = spot2/spot2.sum()
@@ -991,7 +1023,7 @@ def spotgrid(spots, waves, fibers, trimRadius=75, figName='spot grid', vmax=0.6)
                 print("shape: %s; trying to bin to %d (needs %d)" 
                       % (trimmedSpot.shape, newWidth, newWidth*15))
 
-                bim = pfs_tools.rebin(trimmedSpot, newWidth, newWidth)
+                bim = rebin(trimmedSpot, newWidth, newWidth)
                 bim /= bim.max()
                 p.imshow(bim,
                          vmax=vmax)
