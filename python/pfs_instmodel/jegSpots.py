@@ -108,7 +108,7 @@ def clearSpotCache():
 
 def readSpotFile(pathSpec, doConvolve=None, doRebin=False, 
                  doNorm=True, 
-                 doSwapaxes=True, doTrimSpots=False,
+                 doSwapaxes=True, doTrimSpots=True,
                  doRecenter=None,
                  verbose=False, clearCache=False):
     """ Directly read some recent version of JEGs spots.
