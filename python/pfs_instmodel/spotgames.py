@@ -1,4 +1,5 @@
-import astropy.io.fits as pyfits
+import logging
+import numpy as np
 import numpy
 import scipy.ndimage
 import scipy.signal
@@ -332,18 +333,20 @@ def shiftSpot1d(spot, dx, dy, kernels=None, kargs=None):
     if not kargs:
         kargs = {}
     if kernels is None:
-        _, xkernel = make1dKernel(offset=dx, imSize=spot.shape[1], **kargs)
-        _, ykernel = make1dKernel(offset=dy, imSize=spot.shape[0], **kargs)
-        kernels = (xkernel, ykernel)
+        xkernel, ykernel = None, None
     else:
         xkernel, ykernel = kernels
 
     if dy != 0:
+        if not ykernel:
+            _, ykernel = make1dKernel(offset=dy, imSize=spot.shape[0], **kargs)
         sspot = scipy.ndimage.convolve1d(spot, ykernel, mode='constant', axis=0)
     else:
         sspot = spot
 
     if dx != 0:
+        if not xkernel:
+            _, xkernel = make1dKernel(offset=dx, imSize=spot.shape[1], **kargs)
         sspot = scipy.ndimage.convolve1d(sspot, xkernel, mode='constant', axis=1)
 
     if 'trim' in kargs:
