@@ -1,3 +1,5 @@
+from __future__ import (division)
+
 import numpy as np
 from pfs_instmodel.schema.probes import PROBE
     
@@ -151,8 +153,8 @@ centerAndEdgeFlat = [PROBE(i,0.0,1.0,100.0,200.0,'SIMFLAT', ()) for i in centerA
 centerAndEdgeComb = [PROBE(i,0.0,1.0,100.0,200.0,'SIMCOMB', ()) for i in centerAndEdge]
 centerAndEdgeSky = [PROBE(i,0.0,1.0,100.0,200.0,'SKY', ()) for i in centerAndEdge]
 
-quickComb = [PROBE(i,0.0,1.0,100.0,200.0,'SIMCOMB', ()) for i in (-fiberLim, -fiberLim/2, 0, 1, fiberLim+1)]
-quickFlat = [PROBE(i,0.0,1.0,100.0,200.0,'SIMFLAT', ()) for i in (-fiberLim, -fiberLim/2, 0, 1, fiberLim+1)]
+quickComb = [PROBE(i,0.0,1.0,100.0,200.0,'SIMCOMB', ()) for i in (-fiberLim, -fiberLim//2, 0, 1, fiberLim+1)]
+quickFlat = [PROBE(i,0.0,1.0,100.0,200.0,'SIMFLAT', ()) for i in (-fiberLim, -fiberLim//2, 0, 1, fiberLim+1)]
 
 oneArc = (PROBE(200,0.0,1.0,100.0,200.0,'SIMARC', ()),)
 oneFlat = (PROBE(200,0.0,1.0,100.0,200.0,'SIMFLAT', ()),)

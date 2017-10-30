@@ -1,3 +1,5 @@
+from __future__ import (division)
+
 import logging
 import numpy as np
 import numpy
@@ -75,7 +77,7 @@ def gaussianFiber(rad, sigma, alpha):
     f = tophat(rad, alpha).astype('f8')
 
     w = f.shape[0]
-    c = w/2
+    c = w//2
     f = f[c-2*alpha:c+2*alpha, c-2*alpha:c+2*alpha]
     
     spot = scipy.ndimage.convolve(g, f, mode='constant')
@@ -176,10 +178,10 @@ def imextent(im, scale=1.0, doCenter=False):
     """ return (l,r,b,t) indices for the pixel centers. """
 
     rows,cols = im.shape
-    rows /= scale
-    cols /= scale
-    x0 = 0 if doCenter==False else -cols/2.0
-    y0 = 0 if doCenter==False else -rows/2.0
+    rows //= scale
+    cols //= scale
+    x0 = 0 if doCenter is False else -cols//2.0
+    y0 = 0 if doCenter is False else -rows//2.0
     
     return (x0, x0+cols, y0, y0+rows)
 
@@ -478,7 +480,7 @@ def padArray(arr, padTo, center=True):
     #print "old size=%d, new=%d" % (arr.shape[0], padTo)
     newSize = numpy.array([padTo, padTo])
     if center:
-        offset = (padTo-arr.shape[0])/2
+        offset = (padTo-arr.shape[0])//2
     else:
         offset = 0
     parr = numpy.zeros(newSize, dtype=arr.dtype)
@@ -536,8 +538,8 @@ def poo(arr, dx, dy, splines=None, binFactor=10, padTo=0, applyPixelResp=False, 
     assert dx>=0 and dy>=0
 
     # Trim raw image to multiples of binFactor pixels.
-    maxSize = binFactor*(numpy.array(arr.shape,dtype='i4')/binFactor)
-    newSize = (maxSize / binFactor).tolist()
+    maxSize = binFactor*(numpy.array(arr.shape,dtype='i4')//binFactor)
+    newSize = (maxSize // binFactor).tolist()
     arr = arr[:maxSize[0],:maxSize[1]].copy()
 
     # Get our unshifted, binned, reference image.
@@ -593,7 +595,7 @@ def shiftSpotBy(spot, shiftBy, binTo,
     except:
         dx, dy = shiftBy, shiftBy
         
-    binnedShape = (numpy.array(spot.shape,'i2')/(binnedOversample)).tolist()
+    binnedShape = (numpy.array(spot.shape,'i2')//(binnedOversample)).tolist()
     binnedSpot = rebin(spot, *binnedShape)
     if doNorm:
         binnedSpot = binnedSpot / binnedSpot.sum()
@@ -830,8 +832,8 @@ def spotShow(im, scale=10, binning=2, figName='spot',
     p1.set_yscale('log')
 
     im2 = rebin(im1, 
-                          im.shape[0]/binning,
-                          im.shape[0]/binning)
+                im.shape[0]//binning,
+                im.shape[0]//binning)
     binnedScale = float(scale)/binning
 
     im2 /= (binning*binning)
@@ -879,7 +881,7 @@ def frdShow(frds,
     
     refSpot = spots[0]
     normScale = 1.0*refSpot.max()
-    midline = refSpot.shape[0]/2
+    midline = refSpot.shape[0]//2
     x = (numpy.arange(2*midline)-midline)/10.0
     colors = ['b','g','r']
     p1.xaxis.grid(True, which='major',
@@ -928,8 +930,8 @@ def spotShow2(spot0, scale1, scale2, figname='spot',
     fullSize = spot0.shape[0]
     spot0 = spot0/spot0.sum()
 
-    size1 = scale1 * fullSize/unbinnedScale
-    size2 = scale2 * fullSize/unbinnedScale
+    size1 = scale1 * fullSize//unbinnedScale
+    size2 = scale2 * fullSize//unbinnedScale
     print "sizes = %s, %s" % (size1, size2)
 
     spot1 = rebin(spot0, size1, size1)
@@ -975,7 +977,7 @@ def spotShow2(spot0, scale1, scale2, figname='spot',
     print "flux=%g,%g,resid=%g" % (placedSpot2.sum(),shiftedSpot2.sum(),
                                    numpy.abs(diffIm2).sum())
 
-    trimRad = spot2.shape[0]/2
+    trimRad = spot2.shape[0]//2
     xr = numpy.arange(spot1.shape[0]) - (spot1.shape[0]+1)/2
     mx,my = numpy.meshgrid(xr,xr)
     trimMask = ((mx < -trimRad) | (mx > trimRad) |
@@ -1016,7 +1018,7 @@ def plot2bins(spot, bin1, bin2, trimmedSize=None,
     assert spot.shape == (fullSize, fullSize)
 
     if trimmedSize:
-        inset = (fullSize-trimmedSize)/2
+        inset = (fullSize-trimmedSize)//2
         spot = spot[inset:-inset,inset:-inset].astype('f8')
         
     return spotShow2(spot, bin1, bin2, 
@@ -1041,7 +1043,7 @@ def spotgrid(spots, waves, fibers, trimRadius=75, figName='spot grid', vmax=0.6)
             sidx = numpy.where((spots['wavelength'] == w) & (spots['fiberIdx'] == f))
             p = fig.add_subplot(rows, cols, (rows-w_i-1)*cols+f_i+1)
             spotIm = spots['spot'][sidx[0][0]] / spots['spot'].max()
-            spotCtr = (spotIm.shape[0]+1)/2
+            spotCtr = (spotIm.shape[0]+1)//2
             trimmedSpot = spotIm[spotCtr-trimRadius:spotCtr+trimRadius,
                                  spotCtr-trimRadius:spotCtr+trimRadius]
             p.imshow(trimmedSpot,

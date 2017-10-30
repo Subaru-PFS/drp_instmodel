@@ -62,7 +62,7 @@ def makeFiberImage(fiberRadius=28, shape=(64,64), dtype='f4'):
     """ Return the image we convolve the spots with. """
     
     im = numpy.zeros(shape, dtype=dtype)
-    spotRadius = shape[0]/2
+    spotRadius = shape[0]//2
 
     x,y = numpy.meshgrid(numpy.arange(-spotRadius,spotRadius+1),
                          numpy.arange(-spotRadius,spotRadius+1))
@@ -337,14 +337,14 @@ def readSpotFile(pathSpec, doConvolve=None, doRebin=False,
             spot = data[i,:,:]
 
         assert spot.shape[0] == spot.shape[1]
-        spotw = spot.shape[0]/2
+        spotw = spot.shape[0]//2
         ctr0 = spotgames.centroid(spot)
         #assert numpy.abs(ctr0[0] - spotw) < 0.1, "centroid Y too far from center (%g %g)" % (ctr0[0], spotw)
         #assert numpy.abs(ctr0[1] - spotw) < 0.1, "centroid X too far from center (%g %g)" % (ctr0[1], spotw)
 
         if doRecenter:
             pspot, spotSlice = spotgames.padArray(spot, padTo=spot.shape[0]*2)
-            pspot, _ = spotgames.shiftSpot1d(pspot, spotw-ctr0[0], spotw-ctr0[1], kargs=dict(n=spotw*3/2))
+            pspot, _ = spotgames.shiftSpot1d(pspot, spotw-ctr0[0], spotw-ctr0[1], kargs=dict(n=spotw*3//2))
             spot = pspot[spotSlice, spotSlice]
             ctr2 = spotgames.centroid(spot)
 

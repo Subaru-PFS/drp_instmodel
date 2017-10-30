@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+from __future__ import (division)
+
 import os
 
 from astropy.io import fits as pyfits
@@ -357,7 +359,7 @@ class SplinedPsf(psf.Psf):
             if specFlux == 0.0:
                 continue
             
-            rawPsf = fiberPsfs[i/everyNth]
+            rawPsf = fiberPsfs[i//everyNth]
 
             # in mm
             xc = xCenters[i]
@@ -657,7 +659,7 @@ class SplinedPsf(psf.Psf):
 
         if spot is None:
             spotFiber = 0
-            spotWave = sorted(self.wave)[len(self.wave)/2]
+            spotWave = sorted(self.wave)[len(self.wave)//2]
             spotId = np.where((self.fiber == spotFiber) & (self.wave == spotWave))[0]
             spot = self.spots[int(spotId)]
 
@@ -697,7 +699,7 @@ class SplinedPsf(psf.Psf):
         yy = np.unique(self.wave)
 
         xc = self.xc.reshape(len(xx), len(yy))
-        xc[:,:] = xc[:,len(yy)/2:len(yy)/2+1]
+        xc[:,:] = xc[:,len(yy)//2:len(yy)//2+1]
         self.xcCoeffs = self.buildSpline(self.xcCoeffs.__class__,
                                          xx, yy, xc)
         self.logger.warn("set constant X")
