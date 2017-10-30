@@ -53,10 +53,10 @@ def getDataPath(date='2016-10-26', band='Red', frd=23, focus=0, slitFocus=0, fie
 def resolveSpotPathSpec(pathSpec):
     if isinstance(pathSpec, basestring):
         return pathSpec
+    if pathSpec is None:
+        return getDataPath()
+    
     return getDataPath(**pathSpec)
-
-def displaySpot(spot, scale=15.0):
-    import xplot
 
 def makeFiberImage(fiberRadius=28, shape=(64,64), dtype='f4'):
     """ Return the image we convolve the spots with. """
