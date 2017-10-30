@@ -11,12 +11,12 @@ import scipy.interpolate as spInterp
 import scipy.ndimage
 import scipy.ndimage.interpolation
 
+import spotgames
+from spectrum import LineSpectrum
+
 import psf
 reload(psf)
 
-import spotgames
-
-from spectrum import LineSpectrum
 
 class SplinedPsf(psf.Psf):
     def __init__(self, detector, spotType='jeg', spotID=None, logger=None,
@@ -432,7 +432,8 @@ class SplinedPsf(psf.Psf):
         resampledFiber = self.addOversampledImage(fiberImage, outExp, outImgOffset, psfToSpotPixRatio)
 
         if returnUnbinned:
-            return outExp, fiberImagePixelOffset[0], fiberImagePixelOffset[1], geometry, fiberImage, resampledFiber
+            return (outExp, fiberImagePixelOffset[0], fiberImagePixelOffset[1], geometry,
+                    fiberImage, resampledFiber)
         else:
             return outExp, fiberImagePixelOffset[0], fiberImagePixelOffset[1], geometry
 
@@ -571,8 +572,10 @@ class SplinedPsf(psf.Psf):
         self.coeffs = coeffs
 
         # Shift offsets to origin.
-        self.xc = self.rawSpots['spot_xc'] + self.detector.config['ccdSize'][1] * self.detector.config['pixelScale'] / 2
-        self.yc = self.rawSpots['spot_yc'] + self.detector.config['ccdSize'][0] * self.detector.config['pixelScale'] / 2
+        self.xc = (self.rawSpots['spot_xc'] +
+                   self.detector.config['ccdSize'][1]*self.detector.config['pixelScale']/2)
+        self.yc = (self.rawSpots['spot_yc'] +
+                   self.detector.config['ccdSize'][0]*self.detector.config['pixelScale']/2)
 
         # Add slit shift offsets.
         slitOffset = self.calcSlitOffset()
@@ -647,7 +650,10 @@ class SplinedPsf(psf.Psf):
         pass
         
     def setConstantSpot(self, spot=None, spotScale=None):
-        """ Set ourself to use a single PSF over the whole focal plane. Uses the existing .fiber and .wave maps. """
+        """ Set ourself to use a single PSF over the whole focal plane. 
+
+        Uses the existing .fiber and .wave maps. 
+        """
 
         if spot is None:
             spotFiber = 0
@@ -663,10 +669,11 @@ class SplinedPsf(psf.Psf):
             rad = spotgames.radToImageIndices(spotRad, sampling=0.1)
             spot = spotgames.gaussianFiber(rad, sigma=1.0, alpha=alpha)
             spot /= spot.sum()
-            self.logger.warn("set constant PSF to given spot, with alpha=%s. shape=%s from %s (%s..%s)" % (alpha,
-                                                                                                           spot.shape,
-                                                                                                           spotShape,
-                                                                                                           rad.min(), rad.max()))
+            self.logger.warn("set constant PSF to given spot, with alpha=%s. shape=%s from %s (%s..%s)" %
+                             (alpha,
+                              spot.shape,
+                              spotShape,
+                              rad.min(), rad.max()))
             
         imshape = spot.shape
         self.spots = [spot]
@@ -680,10 +687,8 @@ class SplinedPsf(psf.Psf):
         for ix in range(imshape[0]):
             for iy in range(imshape[1]):
                 spotval = float(spot[iy,ix])
-                #coeffs[iy, ix] = freezeVal(spotval)
                 coeffs[iy, ix] = spotval
         self.coeffs = coeffs
-        tx = ty = imshape[0]/2
 
     def setConstantX(self):
         """ Force spot x positions to be for the center spot on their trace. """
