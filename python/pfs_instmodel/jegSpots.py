@@ -37,11 +37,17 @@ OFFSETS :
 """
 
 def getDataPath(date='2016-10-26', band='Red', frd=23, focus=0, slitFocus=0, fieldAngle=0, spotDir=None):
-    """ Given """
+    """ Return complete data path for the specified spots. 
+
+    The file format changed on 2017-10-30 from a homebrew binary to FITS.
+    """
     if not spotDir:
         spotDir = os.path.join(os.environ['DRP_INSTDATA_DIR'], 'data/spots/jeg')
 
-    if date > '2016-10-01':
+    if date > '2017-10-29':
+        spotFile = os.path.join(spotDir, date, band, 
+                                "PFSsim*_f%3d_*.fits" % (focus))
+    elif date > '2016-10-01':
         spotFile = os.path.join(spotDir, date, band, 
                                 "*.dat_foc%d_frd%d_sfld%02d.imgstk" % (focus, frd, fieldAngle))
     else:
