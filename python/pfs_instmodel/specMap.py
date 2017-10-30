@@ -1,3 +1,4 @@
+from builtins import object
 class SpecMap(object):
     """ Accumulate and provide the various fiberNum, wavelength, x, y mappings. 
 

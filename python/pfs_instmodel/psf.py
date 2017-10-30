@@ -1,4 +1,7 @@
 from __future__ import print_function
+from __future__ import division
+from builtins import object
+
 import logging
 import numpy
 import scipy
