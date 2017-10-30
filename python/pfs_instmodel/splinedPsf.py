@@ -374,35 +374,45 @@ class SplinedPsf(psf.Psf):
 
             fracy = yPixOffset - inty
             fracx = xPixOffset - intx
+            if fracy < ymin:
+                ymin = fracy
+            elif fracy > ymax:
+                ymax = fracy
 
-            if shiftPsfs:
-                if False:
-                    shiftedPsf, kernels = spotgames.shiftSpot1d(rawPsf, fracx, fracy)
+            # Trouble if we shift continuum significantly in y.
+            if not isLinelist:
+                if abs(fracy) > 1e-5:
+                    self.logger.warn('%d: yc=%g yPixOffset=%g fracy=%g', i, yc, yPixOffset, fracy)
                 else:
-                    if True:
-                        shiftedPsf, kernels = spotgames.shiftSpot1d(rawPsf, fracx, fracy, kargs=dict(n=spotRad))
-                        shiftedPsf *= spotMask
-                    else:
-                        shiftedPsf = scipy.ndimage.interpolation.shift(rawPsf,(fracy,fracx))
+                    fracy = 0
+                
+            if shiftPsfs:
+                if True:
+                    shiftedPsf, kernels = spotgames.shiftSpot(rawPsf, fracx, fracy)
+                elif False:
+                    shiftedPsf, kernels = spotgames.shiftSpot(rawPsf, fracx, fracy, method='1d',
+                                                              kargs=dict(n=spotRad))
+                else:
+                    shiftedPsf = scipy.ndimage.interpolation.shift(rawPsf,(fracy,fracx))
 
-                    _c0x, _c0y = spotgames.centroid(rawPsf)
-                    dxc = _c0x - spotRad
-                    dyc = _c0y - spotRad
-                    if isLinelist:
-                        _c1x, _c1y = spotgames.centroid(shiftedPsf)
-                        self.logger.debug("%5d %6.1f   c0: %0.5f,%0.5f  cdiff: %0.5f,%0.5f   diff: %0.5f,%0.5f   pix: %0.5f,%0.5f cnts: %0.4f,%0.4f,%d",
-                                          i, specWave,
-                                          _c0x-spotRad, _c0y-spotRad,
-                                          _c1x-spotRad+intx-xPixOffset, _c1y-spotRad+inty-yPixOffset,
-                                          _c1x-_c0x-fracx, _c1y-_c0y-fracy,
-                                          xc/pixelScale, yc/pixelScale,
-                                          rawPsf.sum(), shiftedPsf.sum(), np.sum(shiftedPsf<0))
-                        if np.sum(shiftedPsf < 0) > 0:
-                            self.logger.debug('%d low pixels, min=%g',
-                                              np.sum(shiftedPsf < 0),
-                                              np.min(shiftedPsf))
-                    shiftedPsf[shiftedPsf<0] = 0 # CPL
-                            
+                _c0x, _c0y = spotgames.centroid(rawPsf)
+                dxc = _c0x - spotRad
+                dyc = _c0y - spotRad
+                if isLinelist:
+                    _c1x, _c1y = spotgames.centroid(shiftedPsf)
+                    self.logger.debug("%5d %6.1f   c0: %0.5f,%0.5f  cdiff: %0.5f,%0.5f"
+                                      "    diff: %0.5f,%0.5f   pix: %0.5f,%0.5f cnts: %0.4f,%0.4f,%d",
+                                      i, specWave,
+                                      _c0x-spotRad, _c0y-spotRad,
+                                      _c1x-spotRad+intx-xPixOffset, _c1y-spotRad+inty-yPixOffset,
+                                      _c1x-_c0x-fracx, _c1y-_c0y-fracy,
+                                      xc/pixelScale, yc/pixelScale,
+                                      rawPsf.sum(), shiftedPsf.sum(), np.sum(shiftedPsf<0))
+                    if np.sum(shiftedPsf < 0) > 0:
+                        self.logger.debug('%d low pixels, min=%g',
+                                          np.sum(shiftedPsf < 0),
+                                          np.min(shiftedPsf))
+
                 spot = specFlux * shiftedPsf
             else:
                 spot = specFlux * rawPsf
