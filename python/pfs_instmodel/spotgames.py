@@ -196,6 +196,126 @@ def distmap(arr, x0=None, y0=None):
 
     return dmap
     
+def genLagrangeCoeffs(xshift, order=4):
+    """ Return Lagrange coefficients for the #order points centered on the requested shift. 
+
+    Args
+    ----
+    xshift : float
+      How much to shift by. Must be (-1..0) or (0..1)
+    order : integer
+      The order of the Lagrange polynomial
+
+    Returns
+    -------
+    outSlice : slice
+      The slice to save the interpolated sum to
+    xSlices : list of slices, len=order
+      The per-y slices for the inputs
+    coeffs : list of floats, len=order
+      The coefficients to multiply the sliced data by
+    """
+
+    if xshift == 0:
+        raise ValueError('xshift must be non-0.')
+    if abs(xshift) >= 1:
+        raise ValueError('abs(xshift) must be less than 1.')
+
+    # We are trying to center the output between input points.
+    if xshift > 0:
+        x = 1 - xshift
+        xp = range(-order//2+1, order//2+1)
+        xlo = range(0, order)
+        xhi = range(-order, 0)
+    else:
+        x = -1 - xshift
+        xp = range(-order//2, order//2)
+        xlo = range(1, order+1)
+        xhi = range(-(order-1), 0)
+        xhi = xhi + [None]
+
+    outSlice = slice(order//2,-order//2)
+
+    xSlices = []
+    coeffs = []
+    for c_i, cn in enumerate(xp):
+        num = 1.0
+        denum = 1.0
+
+        for x_i, xn in enumerate(xp):
+            if x_i == c_i:
+                continue
+            num *= (x-xn)
+            denum *= (c_i-x_i)
+
+        coeffs.append(num/denum)
+        xSlices.append(slice(xlo[c_i], xhi[c_i]))
+
+    return outSlice, xSlices, coeffs
+
+def shiftSpotLagrange(img, dx, dy, order=4, kargs=None):
+    """ Shift a spot using order=4 Lagrange interpolation.
+
+    Args
+    ----
+    img : 2-d image
+      The spot image to shift. Assumed to have enough border to do so.
+    dx, dy : float
+      How much to shift the spot in each direction. should be (-1..1)
+    order : integer
+      The Lagrange polynomial order. 4 gives two input points on each side.
+    kargs : dict
+      Unused, declared to be compatible with other shift functions.
+
+    Returns
+    -------
+    outImg : the shifted spot
+    None   : compatibility turd.
+
+    Notes
+    -----
+
+    It turns out that:
+      out = img[slice0]
+      out += img[slice1]
+      out += img[slice2]
+
+    is _significantly_ slower than:
+      out = img[slice0] + img[slice1] + img[slice2]
+
+    Hence the eval string.
+    """
+
+    if abs(dx) < 1e-6:
+        outImg1 = img
+    else:
+        outSlice, xSlices, coeffs = genLagrangeCoeffs(dx)
+
+        outImg1 = np.zeros(shape=img.shape, dtype=img.dtype)
+
+        evalList = ['(']
+        for o in range(order):
+            evalList.append("coeffs[%d]*img[:,xSlices[%d]]%s" %
+                            (o, o, ")" if o == order-1 else " + "))
+        evalStr = ''.join(evalList)
+        outImg1[:,outSlice] = eval(evalStr)
+
+    if abs(dy) < 1e-6:
+        outImg = outImg1
+    else:
+        outSlice, ySlices, coeffs = genLagrangeCoeffs(dy)
+
+        outImg = np.zeros(shape=img.shape, dtype=img.dtype)
+
+        evalList = ["("]
+        for o in range(order):
+            evalList.append("coeffs[%d]*outImg1[ySlices[%d],:]%s" %
+                            (o, o, ")" if o == order-1 else " + "))
+        evalStr = ''.join(evalList)
+        outImg[outSlice,:] = eval(evalStr)
+
+    return outImg, None
+
 def shiftSpot1d(spot, dx, dy, kernels=None, kargs=None):
     """ Shift an image using seperable x&y kernels. 
 
