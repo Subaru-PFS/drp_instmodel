@@ -19,7 +19,7 @@ from spectrum import LineSpectrum
 class SplinedPsf(psf.Psf):
     def __init__(self, detector, spotType='jeg', spotID=None, logger=None,
                  slitOffset=(0.0, 0.0),
-                 doTrimSpots=True):
+                 doTrimSpots=True, doRebin=False):
         """ Create or read in our persisted form. By default use JEG's models. 
 
         Parameters
@@ -31,11 +31,13 @@ class SplinedPsf(psf.Psf):
            Whether to load 'jeg' or 'zemax' spot images.
         spotID : list/string/dict, optional
            If spotType is set, some dataset identifier. Opaque to us.
+        doRebin : bool/integer
+           How much to unbin raw spots by.
         slitOffset : pair
            X, wavelength offset of the slit. Used for dithered flats.
-        """
-
         psf.Psf.__init__(self, detector, logger=logger)
+
+        """
 
         # The locations at which we have PSFs
         self.wave = []
@@ -49,7 +51,7 @@ class SplinedPsf(psf.Psf):
         self.slitOffset = slitOffset
 
         if spotType:
-            self.loadFromSpots(spotType, spotID, spotArgs=dict(doTrimSpots=doTrimSpots))
+            self.loadFromSpots(spotType, spotID, spotArgs=dict(doTrimSpots=doTrimSpots, doRebin=doRebin))
 
         
     def __str__(self):
