@@ -344,11 +344,8 @@ class SplinedPsf(psf.Psf):
                                                ('intx','i4'),('inty','i4'),
                                                ('wavelength','f8'),('flux','f4')])
 
-        # Construct a mask to remove residual flux shifted by the truncated sinc.
-        #
-        spotMask = fiberPsfs[0]*0
-        spotSlice = slice(10, -10)
-        spotMask[spotSlice, spotSlice] = 1
+        ymin = 1
+        ymax = -1
         
         for i in range(len(waves)):
             specWave = waves[i]
