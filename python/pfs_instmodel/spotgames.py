@@ -382,6 +382,45 @@ def shiftSpotSpline(spot, dx, dy, kernels=None, kargs=None):
     return sspot, kernels
     
 
+def shiftSpotSplineX(spot, dx, dy, kernels=None, kargs=None):
+    """ shift an image in x only using the scipy 1d interpolation routines. """
+    
+    if not kargs:
+        kargs = {}
+
+    sspot = np.zeros(spot.shape)
+    x = np.arange(spot.shape[1], dtype='f4')
+    if dx < 0:
+        xint = x[1:] + dx
+        xout = np.arange(0,spot.shape[1]-1)
+    else:
+        xint = x[:-1] + dx
+        xout = np.arange(1,spot.shape[1])
+        
+    sp = scipy.interpolate.interp1d(x, spot, kind='cubic', assume_sorted=True)
+    sspot[:,xout] = sp(xint)
+        
+    kernels = []
+    return sspot, kernels
+
+def shiftSpot(spot, dx, dy, method=shiftSpotLagrange, kargs=None):
+    if isinstance(method, str):
+        if method == '1d':
+            method = shiftSpot1d
+        elif method == '2d':
+            method = shiftSpot2d
+        elif method == 'spline':
+            method = shiftSpotSpline
+        elif method == 'splinex':
+            method = shiftSpotSplineX
+        elif method == 'lagrange':
+            method = shiftSpotLagrange
+        else:
+            raise KeyError('unknown shift algorithm: %s' % (method))
+        
+    return method(spot, dx, dy, kargs=kargs)
+
+
 def hanningWindow(x, n):
     return numpy.hanning(len(x))
 
