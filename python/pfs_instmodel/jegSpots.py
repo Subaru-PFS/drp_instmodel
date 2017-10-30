@@ -1,5 +1,8 @@
+from __future__ import division
+
 import glob
 import gzip
+import logging
 import os
 import re
 import sys
@@ -464,7 +467,7 @@ def oversampleSpots(spots, factor):
     newSpots = numpy.zeros(shape=(spots.shape[0], newWidth, newWidth),
                            dtype=spots.dtype)
 
-    ix1 = (numpy.arange(newWidth,dtype='f4')/factor).astype('i4')
+    ix1 = (numpy.arange(newWidth,dtype='f4')//factor).astype('i4')
     ix = numpy.tile(ix1, (newWidth,1))
     ixy = (ix, ix.T)
 
