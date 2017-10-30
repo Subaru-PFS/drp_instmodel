@@ -1,9 +1,10 @@
+from __future__ import absolute_import
 import os
 import numpy
 import scipy
 
 import pfs_tools.configFile
-import exposure
+from . import exposure
 
 class Detector(object):
     """ Placeholder for _all_ per-camera properties. 'Detector' is abused, since there

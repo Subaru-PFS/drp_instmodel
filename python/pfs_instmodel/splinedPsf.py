@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 
-from __future__ import (division)
+from __future__ import division
+from __future__ import print_function
+from __future__ import absolute_import
 
 import os
 
@@ -13,10 +15,10 @@ import scipy.interpolate as spInterp
 import scipy.ndimage
 import scipy.ndimage.interpolation
 
-import spotgames
-from spectrum import LineSpectrum
+from . import spotgames
+from .spectrum import LineSpectrum
 
-import psf
+from . import psf
 reload(psf)
 
 
@@ -447,7 +449,7 @@ class SplinedPsf(psf.Psf):
         parentIdx, childIdx = self.trimRect(outExp, resampled, outOffset)
         try:
             outExp.addFlux(resampled[childIdx], outSlice=parentIdx, addNoise=True)
-        except Exception, e:
+        except Exception as e:
             self.logger.warn("failed to place child at %s): %s" % (outOffset, e))
 
         return resampled
@@ -457,7 +459,7 @@ class SplinedPsf(psf.Psf):
 
         try:
             outImg[parentIdx] += subImg[childIdx]
-        except Exception, e:
+        except Exception as e:
             self.logger.warn("failed to place child at %s: %s" % (subOffset, e))
     
     def trimRect(self, parent, child, childOffset=(0,0)):
@@ -527,7 +529,7 @@ class SplinedPsf(psf.Psf):
         
         self.logger.info("reading and interpolating %s PSF spots: %s..." % (spotType, spotIDs))
         if spotType == 'jeg':
-            import jegSpots
+            from . import jegSpots
             reload(jegSpots)
             
             if spotArgs is None:

@@ -1,10 +1,11 @@
+from __future__ import absolute_import
 __all__ = ["SkyModel", "StaticSkyModel"]
 
 import os
 import numpy
 import scipy.interpolate
 
-from spectrum import Spectrum
+from .spectrum import Spectrum
 
 class SkyModel(object):
     """ Encapsulate a generator for sky spectra. We specify the model and the individual multiplicative and additive terms.

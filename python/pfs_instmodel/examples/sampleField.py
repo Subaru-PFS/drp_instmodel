@@ -127,8 +127,8 @@ Lam1KrArcs = [PROBE(i,0.0,1.0,100.0,200.0,'SIMARC', ('KrI',)) for i in LamSlit1]
 
 bundledField = slit1.scienceFibers
 
-centerRange = [slit1.scienceFiberToSlitPos(i) for i in -1,1]
-edgeRange = [slit1.scienceFiberToSlitPos(i) for i in -300,300]
+centerRange = [slit1.scienceFiberToSlitPos(i) for i in (-1,1)]
+edgeRange = [slit1.scienceFiberToSlitPos(i) for i in (-300,300)]
 centerAndEdge = centerRange + edgeRange
 
 combField = [PROBE(i,0.0,1.0,100.0,200.0,'SIMCOMB', ()) for i in slit1.scienceFibers]

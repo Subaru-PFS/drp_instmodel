@@ -1,4 +1,6 @@
-from __future__ import (division)
+from __future__ import division
+from __future__ import print_function
+from __future__ import absolute_import
 
 import logging
 import numpy as np
@@ -10,7 +12,7 @@ import matplotlib.gridspec as gridspec
 
 import astropy.io.fits as pyfits
 
-import plotutils
+from . import plotutils
 
 def XXradToIndices(rad, sampling=1.0, offset=0.0):
     """ Return the indices for an odd-width vector. """
@@ -613,7 +615,7 @@ def shiftSpotBy(spot, shiftBy, binTo,
     if numpy.abs(binnedShift[0]) >= 1 or numpy.abs(binnedShift[1]) >= 1:
         idx = int(binnedShift[0])
         idy = int(binnedShift[1])
-        print "cannot interpolate more than 1 pixel, moving by %d,%d first" % (idx,idy)
+        print("cannot interpolate more than 1 pixel, moving by %d,%d first" % (idx,idy))
         binnedShift = (binnedShift[0]-idx, binnedShift[1]-idy)
         tSpot = numpy.zeros(binnedSpot.shape, dtype='f4')
         tSpot[idy:,idx:] = binnedSpot[slice(None,-idy if idy else None),
@@ -621,11 +623,11 @@ def shiftSpotBy(spot, shiftBy, binTo,
         binnedSpot = tSpot
 
     # interpolation-shift the binned image
-    print "shifting %s by %g,%g" % (binnedSpot.shape, binnedShift[0], binnedShift[1])
+    print("shifting %s by %g,%g" % (binnedSpot.shape, binnedShift[0], binnedShift[1]))
     shiftedSpot, kernels = shiftFunc(binnedSpot, *binnedShift)
 
     # And pixel-shift (and optionally apply pixel response) then pixel-bin a comparison image
-    print "placing %s by %d,%d" % (spot.shape, dx,dy)
+    print("placing %s by %d,%d" % (spot.shape, dx,dy))
     placedSpot = numpy.zeros(spot.shape, dtype='f4')
     placedSpot[dy:,dx:] = spot[slice(None,-dy if dy else None),
                                slice(None,-dx if dx else None)]
@@ -679,14 +681,14 @@ def saveForBin(spotDict, bin, filebase):
             hdu.header['YSHIFT'] = dir
             hdu.header['TYPE'] = 'placed'
             hdus.append(hdu)
-            print "added placed hdu for (%d,%d,%d)" % (bin, s, dir)
+            print("added placed hdu for (%d,%d,%d)" % (bin, s, dir))
             hdu = pyfits.ImageHDU(sparts[0].astype('f4'))
             hdu.header['XSHIFT'] = s
             hdu.header['YSHIFT'] = dir
             hdu.header['TYPE'] = 'shifted'
             hdus.append(hdu)
-            print "added shifted hdu for (%d,%d,%d)" % (bin, s, dir)
-    print "writing %d HDUs" % (len(hdus))
+            print("added shifted hdu for (%d,%d,%d)" % (bin, s, dir))
+    print("writing %d HDUs" % (len(hdus)))
     
     hdulist = pyfits.HDUList(hdus)
     hdulist.writeto(filename, clobber=True)
@@ -710,7 +712,7 @@ def gatherPoo(spot, splines=None, applyPixelResp=False, kargs=None):
     all = {}
     for bin,pad in tries:
         for shift in range(bin):
-            print "processing %s with kargs=%s" % ((bin,pad,shift), kargs)
+            print("processing %s with kargs=%s" % ((bin,pad,shift), kargs))
             ret = poo(spot, shift, 0, 
                       splines=splines,
                       applyPixelResp=applyPixelResp,
@@ -730,7 +732,7 @@ def gatherPoo2(spot, bin, splines=None, pad=0, applyPixelResp=False, kargs=None)
     all = {}
     for xshift in range(bin):
         for yshift in range(bin):
-            print "processing %s with kargs=%s" % ((bin,pad,xshift,yshift), kargs)
+            print("processing %s with kargs=%s" % ((bin,pad,xshift,yshift), kargs))
             ret = poo(spot, xshift, yshift, 
                       splines=splines,
                       applyPixelResp=applyPixelResp,
@@ -793,7 +795,7 @@ def spotShowImages(im, fftim, iim, imbox, fig, plotids, resClip=0,
         print("imr range: %g %g" % (residIm.min(), residIm.max()))
             
         ticks = numpy.sort(numpy.append(numpy.linspace(-resClip,resClip,4),[0]))
-        print "setting ticks to %s" % (ticks)
+        print("setting ticks to %s" % (ticks))
         # fig.colorbar(im3, ticks=ticks)
         fig.colorbar(im3)
 
@@ -821,7 +823,7 @@ def spotShow(im, scale=10, binning=2, figName='spot',
 
     im1 = im/im.max() + 1e-6
     fftx, ffty, fftim = imfreq1d(im1, sampling=1.0/scale)
-    print "x,y,im: ", fftx.shape, ffty.shape, fftim.shape
+    print("x,y,im: ", fftx.shape, ffty.shape, fftim.shape)
     iim = freq2im(fftim, doAbs=True)
     imbox = imextent(im1, scale=scale, doCenter=True)
     spotShowImages(im1, fftim, iim, imbox, fig, [sgs[0,0],sgs[0,1],sgs[0,2]],
@@ -839,7 +841,7 @@ def spotShow(im, scale=10, binning=2, figName='spot',
     im2 /= (binning*binning)
     im2 = im2/im2.max() + 1e-6
     fftx, ffty, fftim = imfreq1d(im2, sampling=1.0/binnedScale)
-    print "x,y,im: ", fftx.shape, ffty.shape, fftim.shape
+    print("x,y,im: ", fftx.shape, ffty.shape, fftim.shape)
     #fftim[im2.shape[0]/2, im2.shape[1]/binning] = 0
     iim = freq2im(fftim, doAbs=True)
     imbox = imextent(im2, scale=binnedScale, doCenter=True)
@@ -875,7 +877,7 @@ def frdShow(frds,
             raise RuntimeError("you did not specify a unique spot (%d)" % (len(spot_w)))
 
         spots.append(d['spot'][spot_w][0])
-        print "spot %d max=%g sum=%g" % (f, spots[-1].max(), spots[-1].sum())
+        print("spot %d max=%g sum=%g" % (f, spots[-1].max(), spots[-1].sum()))
 
     p1 = fig.add_subplot(1,1,1)
     
@@ -932,7 +934,7 @@ def spotShow2(spot0, scale1, scale2, figname='spot',
 
     size1 = scale1 * fullSize//unbinnedScale
     size2 = scale2 * fullSize//unbinnedScale
-    print "sizes = %s, %s" % (size1, size2)
+    print("sizes = %s, %s" % (size1, size2))
 
     spot1 = rebin(spot0, size1, size1)
     spot2 = rebin(spot0, size2, size2)
@@ -974,8 +976,8 @@ def spotShow2(spot0, scale1, scale2, figname='spot',
         placedSpot2 = numpy.zeros(spot2.shape)
         shiftedSpot2 = numpy.zeros(spot2.shape)
     diffIm2 = placedSpot2 - shiftedSpot2
-    print "flux=%g,%g,resid=%g" % (placedSpot2.sum(),shiftedSpot2.sum(),
-                                   numpy.abs(diffIm2).sum())
+    print("flux=%g,%g,resid=%g" % (placedSpot2.sum(),shiftedSpot2.sum(),
+                                   numpy.abs(diffIm2).sum()))
 
     trimRad = spot2.shape[0]//2
     xr = numpy.arange(spot1.shape[0]) - (spot1.shape[0]+1)/2
@@ -1105,7 +1107,7 @@ def stretchSpan(span, factor=1.5):
     span *= factor
     span += off
     
-    print span
+    print(span)
     return span
     
 def plotProj(x,y,z,figname=None,figsize=None):
