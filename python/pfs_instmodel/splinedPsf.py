@@ -207,6 +207,9 @@ class SplinedPsf(psf.Psf):
 
         """
 
+        if isinstance(fibers, int):
+            fibers = [fibers]
+            
         if waves is None:
             waves = np.unique(self.wave)
             
