@@ -385,7 +385,10 @@ def readSpotFile(pathSpec, doConvolve=None, doRebin=False,
             rspot = spot[:,::-1]
             assert(numpy.all(rspot[:,::-1] == spot))
             
-            symSpots.append((-fiberIdx, wavelength, -xc, yc, focus, rawSpot[:,::-1], spot[:,::-1]))
+        if fiberIdx != 0:
+            flipCtr = ctr.copy()
+            flipCtr[0] = spot.shape[1]/2 - (flipCtr[0] - spot.shape[1]/2)
+            symSpots.append((-fiberIdx, wavelength, -xc, yc, focus, rawSpot[:,::-1], spot[:,::-1], flipCtr))
 
     allSpots = spots + symSpots    
     spotw = spots[0][-1].shape[0]
