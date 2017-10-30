@@ -116,7 +116,7 @@ class LineSpectrum(Spectrum):
         return self.linelist(wave.min(), wave.max())            
 
 class ArcSpectrum(LineSpectrum):
-    def __init__(self, lampset=None, gain=100.0):
+    def __init__(self, lampset=None, gain=2.0):
         """ Create a spectrum which will return a flux of gain at every ~spacing AA, 0 elsewhere. 
 
         Actually, return a comb spectrum with non-zero values at the full range endpoints and at as
