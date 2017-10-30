@@ -295,7 +295,7 @@ class SplinedPsf(psf.Psf):
         self.logger.debug("flux:  %s %d %d", flux.dtype, len(flux), flux.nbytes)
         
         # Get the PSFs and their locations on the oversampled pixels.
-        fiberPsfs, psfIds, centers = self.psfsAt([fiber], waves)
+        fiberPsfs, psfIds, centers = self.psfsAt([fiber], waves, everyNth=everyNth)
 
         xCenters, yCenters = [c[0] for c in centers]
         
