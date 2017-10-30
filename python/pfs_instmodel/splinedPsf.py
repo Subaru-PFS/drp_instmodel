@@ -407,24 +407,17 @@ class SplinedPsf(psf.Psf):
             else:
                 spot = specFlux * rawPsf
                 
-            if False and (isLinelist or i % 1000 == 0 or i > len(waves)-2):
-                self.logger.debug("%5d %6.1f (%3.3f, %3.3f) (%0.2f %0.2f) %0.2f %0.2f %0.2f" % (i, specWave,
-                                                                                                xc/pixelScale, yc/pixelScale, 
-                                                                                                xPixOffset,
-                                                                                                yPixOffset,
-                                                                                                rawPsf.sum(), spot.sum(),
-                                                                                                specFlux))
+            if (isLinelist or i % 1000 == 0 or i > len(waves)-2):
+                self.logger.debug("%5d %6.1f (%3.3f, %3.3f) (%0.2f %0.2f) %0.2f %0.2f %0.2f",
+                                  i, specWave,
+                                  xc/pixelScale, yc/pixelScale, 
+                                  xPixOffset, yPixOffset,
+                                  rawPsf.sum(), spot.sum(),
+                                  specFlux)
+                
             self.placeSubimage(fiberImage, spot, (inty, intx))
             geometry[i] = (xc,yc,dxc,dyc,intx,inty,specWave,specFlux)
 
-            if False and isLinelist:
-                # mc1 = pfs_tools.centroid(fiberImage[inty-spotRad:inty+spotRad, intx-spotRad:intx+spotRad])
-                mc2 = pfs_tools.centroid(spot)
-                self.logger.debug("(%0.3f, %0.3f) (%0.3f, %0.3f)",
-                                  xc / pixelScale, yc / pixelScale,
-                                  mc2[0] + intx,
-                                  mc2[1] + inty)
-                
         # transfer flux from oversampled fiber image to final resolution output image
         resampledFiber = self.addOversampledImage(fiberImage, outExp, outImgOffset, psfToSpotPixRatio)
 
