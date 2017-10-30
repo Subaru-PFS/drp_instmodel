@@ -12,6 +12,8 @@ import scipy.ndimage
 import scipy.ndimage.interpolation
 
 import psf
+reload(psf)
+
 import spotgames
 
 from spectrum import LineSpectrum
@@ -35,9 +37,9 @@ class SplinedPsf(psf.Psf):
            How much to unbin raw spots by.
         slitOffset : pair
            X, wavelength offset of the slit. Used for dithered flats.
-        psf.Psf.__init__(self, detector, logger=logger)
-
         """
+
+        psf.Psf.__init__(self, detector, logger=logger)
 
         # The locations at which we have PSFs
         self.wave = []
@@ -192,7 +194,8 @@ class SplinedPsf(psf.Psf):
         everyNth :integer
            How many psf instances to reuse
         usePsfs : array_like , optional
-           
+           existing PSF images to reuse.
+
         Returns
         -------
         psfImages : array
@@ -236,13 +239,17 @@ class SplinedPsf(psf.Psf):
             newImages += minpix
 
         finalImages = newImages
-        self.logger.info("psfsAt: fibers %s, for %d %s waves, returned %d %s unique psfs" % (fibers,
-                                                                                             len(waves), waves[0].dtype,
-                                                                                             len(interpWaves), finalImages.dtype))
+        self.logger.info("psfsAt: fibers %s, for %d %s waves, returned %d unique psfs" % (fibers,
+                                                                                          len(waves),
+                                                                                          waves[0].dtype,
+                                                                                          len(interpWaves)))
         return finalImages, centers, self.traceCenters(fibers, waves)
 
 
     def fiberGeometry(self, fiber, waveRange=None):
+        """ Return the wavelengths and positions of the pixels of the given fiber.
+        """
+        
         # Evaluate at image resolution
         pixelScale = self.detector.config['pixelScale']
         
@@ -308,7 +315,9 @@ class SplinedPsf(psf.Psf):
         chunkUp[chunkUp == psfToSpotPixRatio] = 0
         fiHeight += chunkUp[0] + psfToSpotPixRatio
         fiWidth += chunkUp[1] + psfToSpotPixRatio
-        self.logger.debug("trace    : %s %s -> %s %s" % (traceHeight, traceWidth, fiHeight, fiWidth))
+        self.logger.debug("trace    : %s(%s) %s %s -> %s %s" % (spectrum, isLinelist,
+                                                                traceHeight, traceWidth,
+                                                                fiHeight, fiWidth))
 
         # mm
         fiberImageOffset = np.asarray((yCenters.min(), xCenters.min()))
@@ -321,7 +330,8 @@ class SplinedPsf(psf.Psf):
         # pixels
         outImgOffset = fiberImagePixelOffset / psfToSpotPixRatio
         self.logger.debug("fiber offset: pix=%s base=%s, mm=%s out=%s" % (fiberImagePixelOffset,
-                                                                          fiberImageOffset/pixelScale, fiberImageOffset,
+                                                                          fiberImageOffset/pixelScale,
+                                                                          fiberImageOffset,
                                                                           outImgOffset))
         fiberImage = np.zeros((fiHeight, fiWidth), dtype='f4')
 
@@ -512,7 +522,8 @@ class SplinedPsf(psf.Psf):
         self.logger.info("reading and interpolating %s PSF spots: %s..." % (spotType, spotIDs))
         if spotType == 'jeg':
             import jegSpots
-
+            reload(jegSpots)
+            
             if spotArgs is None:
                 spotArgs = dict()
             rawSpots, spotInfo = jegSpots.readSpotFile(spotIDs, verbose=True, **spotArgs)
