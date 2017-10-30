@@ -66,10 +66,17 @@ class Slit(object):
              block2[::-1] +
              block1[::-1])
 
-    slits = slit1, slit1, slit1, slit1
-    
+    # The second slit type is identical to the first but with
+    # three blanked-off science fibers.
+    slit2 = list(slit1)
+    for f in (280, 309, 359):
+        slit2[f-1] = Fiber.BLANK
+    slit2 = tuple(slit2)
+
+    slits = slit1, slit1, slit2, slit2
+
     def __init__(self, slitId):
-        self.fiber0 = -325
+        self.fiber0 = 1
         scienceFibers = []
         engineeringFibers = []
 
@@ -86,7 +93,11 @@ class Slit(object):
         return self._scienceFibers + self.fiber0
     
     def scienceFiberToSlitPos(self, scienceFiberNum):
-        """ Return the slit position for the given science fiber """
+        """ Return the slit position for the given science fiber.
+        
+        This is only used for the engineering slits as LAM, which were 
+        sent defined in terms of the science fibers.
+        """
 
         if scienceFiberNum < 0:
             indexNum = scienceFiberNum + 300
@@ -98,15 +109,14 @@ class Slit(object):
 slit1 = Slit(1)
 
 # Science fiber numbers, -300 to +300:
-#LamSlit1Fibers = [-300, -240, -100, -30, -1, 1, 30, 100, 170, 240, 300]
-LamSlit1Fibers = [-300, -240, -239, -100, -30, -29, -1, 1, 30, 100, 170, 240, 300]
-LamSlit2Fibers = [-299, -290, -246, -194, -148, -112, -56, -10 -2,
-                   2, 10, 56, 112, 148, 194, 148, 194, 246, 290]
-LamSlit1 = [slit1.scienceFiberToSlitPos(f) for f in LamSlit1Fibers]
-LamSlit2 = [slit1.scienceFiberToSlitPos(f) for f in LamSlit2Fibers]
+
+# The illuminated fibers on LAM slit #1
+LamSlit1 = [2, 65, 191, 254, 315, 337, 400, 463, 589, 650]
 
 Lam1Flat = [PROBE(i,0.0,1.0,100.0,200.0,'SIMFLAT', ()) for i in LamSlit1]
 Lam1Arcs = [PROBE(i,0.0,1.0,100.0,200.0,'SIMARC', ()) for i in LamSlit1]
+Lam1Comb = [PROBE(i,0.0,1.0,100.0,200.0,'SIMCOMB', ()) for i in LamSlit1]
+Lam1Slope = [PROBE(i,0.0,1.0,100.0,200.0,'SIMSLOPE', ()) for i in LamSlit1]
 Lam1CdArcs = [PROBE(i,0.0,1.0,100.0,200.0,'SIMARC', ('CdI',)) for i in LamSlit1]
 Lam1HgArcs = [PROBE(i,0.0,1.0,100.0,200.0,'SIMARC', ('HgI',)) for i in LamSlit1]
 Lam1NeArcs = [PROBE(i,0.0,1.0,100.0,200.0,'SIMARC', ('NeI',)) for i in LamSlit1]
@@ -114,8 +124,9 @@ Lam1XeArcs = [PROBE(i,0.0,1.0,100.0,200.0,'SIMARC', ('XeI',)) for i in LamSlit1]
 Lam1KrArcs = [PROBE(i,0.0,1.0,100.0,200.0,'SIMARC', ('KrI',)) for i in LamSlit1]
 
 bundledField = slit1.scienceFibers
-centerRange = [slit1.scienceFiberToSlitPos(i) for i in range(-3,2)]
-edgeRange = [i for i in slit1.scienceFibers[:3]]
+
+centerRange = [slit1.scienceFiberToSlitPos(i) for i in -1,1]
+edgeRange = [slit1.scienceFiberToSlitPos(i) for i in -300,300]
 centerAndEdge = centerRange + edgeRange
 
 combField = [PROBE(i,0.0,1.0,100.0,200.0,'SIMCOMB', ()) for i in slit1.scienceFibers]
@@ -143,8 +154,9 @@ centerAndEdgeSky = [PROBE(i,0.0,1.0,100.0,200.0,'SKY', ()) for i in centerAndEdg
 quickComb = [PROBE(i,0.0,1.0,100.0,200.0,'SIMCOMB', ()) for i in (-fiberLim, -fiberLim/2, 0, 1, fiberLim+1)]
 quickFlat = [PROBE(i,0.0,1.0,100.0,200.0,'SIMFLAT', ()) for i in (-fiberLim, -fiberLim/2, 0, 1, fiberLim+1)]
 
-oneArc = (PROBE(0,0.0,1.0,100.0,200.0,'SIMARC', ()),)
-oneFlat = (PROBE(0,0.0,1.0,100.0,200.0,'SIMFLAT', ()),)
-oneSky = (PROBE(0,0.0,1.0,100.0,200.0,'SKY', ()),)
+oneArc = (PROBE(200,0.0,1.0,100.0,200.0,'SIMARC', ()),)
+oneFlat = (PROBE(200,0.0,1.0,100.0,200.0,'SIMFLAT', ()),)
+oneSlope = (PROBE(200,0.0,1.0,100.0,200.0,'SIMSLOPE', ()),)
+oneSky = (PROBE(200,0.0,1.0,100.0,200.0,'SKY', ()),)
 
 empty = []

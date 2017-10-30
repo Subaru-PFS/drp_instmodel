@@ -12,7 +12,7 @@ import pfs_instmodel.spectrum as pfsSpectrum
 reload(pfsSpectrum)
 
 def makeSim(band, fieldName, fiberFilter=None,
-            frd=23, focus=0, date='2013-04-18', psf=None, dtype='u2',
+            frd=23, focus=0, date='2016-10-26', psf=None, dtype='u2',
             addNoise=True, combSpacing=50, shiftPsfs=True,
             constantPsf=False, constantX=False,
             xOffset=0.0, yOffset=0.0,
@@ -56,6 +56,7 @@ def makeSim(band, fieldName, fiberFilter=None,
                             logger=logger)
     skyModel = pfsSky.StaticSkyModel(band) # plus field info....
     flatSpectrum = pfsSpectrum.FlatSpectrum(sim.detector, gain=20.0)
+    slopeSpectrum = pfsSpectrum.SlopeSpectrum(sim.detector, gain=20.0)
     combSpectrum = pfsSpectrum.CombSpectrum(spacing=combSpacing, 
                                             gain=200000.0)
     
@@ -79,6 +80,9 @@ def makeSim(band, fieldName, fiberFilter=None,
         elif f.type == 'SIMCOMB':
             fibers.append(f.fiberId)
             spectra.append(combSpectrum)
+        elif f.type == 'SIMSLOPE':
+            fibers.append(f.fiberId)
+            spectra.append(slopeSpectrum)
         elif f.type == 'SIMARC':
             fibers.append(f.fiberId)
             arcSpectrum = pfsSpectrum.ArcSpectrum(*f.args)
@@ -140,6 +144,14 @@ def expandRangeArg(arg):
         # print "after %s, r=%s" % (r, fullRange)
     return fullRange
 
+def str2bool(v):
+    if v.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected.')
+
 def main(args=None):
     """ called by __main__, or pass in a string as if it were a command line. 
 
@@ -181,7 +193,7 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
     parser.add_argument('-v', '--verbose', action='store_true')
     parser.add_argument('--focus', action='store', default=0, type=int)
     parser.add_argument('--frd', action='store', default=23, type=int)
-    parser.add_argument('--date', action='store', default='2013-04-18')
+    parser.add_argument('--date', action='store', default='2016-10-26')
     parser.add_argument('--dtype', action='store', default='u2')
     parser.add_argument('--xoffset', action='store', type=float, default=0.0,
                         help='shift in slit position along slit, in microns')
@@ -190,13 +202,17 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
     parser.add_argument('--noNoise', action='store_true')
     parser.add_argument('--allOutput', action='store_true',
                         help='whether to add (many) additional HDUs abut the simulation')
-    parser.add_argument('--realBias', action='store', default=True)
+    parser.add_argument('--realBias', action='store', type=str2bool, default=True)
+    parser.add_argument('--realFlat', action='store', type=str2bool, default=True,
+                        help='Apply an imaging flat. Use False/None to avoid.')
     parser.add_argument('--shiftPsfs', action='store_false')
     parser.add_argument('--imagetyp', action='store', default=None,
                         help='IMAGETYP,EXPTIME pair')
     parser.add_argument('--combSpacing', action='store', type=float, default=50)
-    parser.add_argument('--constantPsf', action='store', type=float, default=0, help='Use a single PSF for the entire field.')
-    parser.add_argument('--constantX', action='store_true', help='Use the middle X-coordinate for all of each fiber.')
+    parser.add_argument('--constantPsf', action='store', type=float, default=0,
+                        help='Use a single PSF for the entire field.')
+    parser.add_argument('--constantX', action='store_true',
+                        help='Use the middle X-coordinate for all of each fiber.')
     parser.add_argument('--compress', action='store', default=None,
                         help='fitsio FITS compression type. e.g. RICE')
     
@@ -231,7 +247,8 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
     if args.output != 'no':
         sim.writeTo(args.output, addNoise=not args.noNoise,
                     compress=args.compress, allOutput=args.allOutput,
-                    realBias=args.realBias, imagetyp=args.imagetyp)
+                    realBias=args.realBias, realFlat=args.realFlat,
+                    imagetyp=args.imagetyp)
     if args.ds9:
         displayImage(sim.image)
     return sim

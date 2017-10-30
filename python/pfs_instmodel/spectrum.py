@@ -79,6 +79,20 @@ class Spectrum(object):
         
         return self.flux(wave)[1]
     
+class SlopeSpectrum(Spectrum):
+    def __init__(self, detector, gain=1.0):
+        self.detector = detector
+        self.scale = 1e2 * gain
+
+    def flux(self, wave):
+        """ Return a flat spectrum, with a slight blue-up-to-red tilt. """
+
+        # Make 3800..12700 go to 1-(0.062) to 1+(0.27)
+        flux = wave/10000.0 - 1
+        flux = flux/10 + 1
+
+        return wave, flux * self.scale
+
 class FlatSpectrum(Spectrum):
     def __init__(self, detector, gain=1.0):
         self.detector = detector
@@ -102,7 +116,7 @@ class LineSpectrum(Spectrum):
         return self.linelist(wave.min(), wave.max())            
 
 class ArcSpectrum(LineSpectrum):
-    def __init__(self, lampset=None, gain=100.0):
+    def __init__(self, lampset=None, gain=2.0):
         """ Create a spectrum which will return a flux of gain at every ~spacing AA, 0 elsewhere. 
 
         Actually, return a comb spectrum with non-zero values at the full range endpoints and at as

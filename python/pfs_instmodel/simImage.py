@@ -140,7 +140,8 @@ class SimImage(object):
         
     def writeTo(self, outputFile=None, addNoise=True,
                 compress='RICE', allOutput=False,
-                imagetyp=None, realBias=None):
+                imagetyp=None, realBias=None, realFlat=None):
+        import fitsio
 
         # import pyfits
         
@@ -164,22 +165,16 @@ class SimImage(object):
 
         addCards = self.psf.getCards()
         
-        hdulist = self.exposure.writeto(outputFile, addNoise=addNoise,
-                                        realBias=realBias, imagetyp=imagetyp,
-                                        addCards=addCards,
-                                        compress=compress, allOutput=allOutput)
-        
-        # waveImage = self.waveImage()
-        # pyfits.append(outputFile, waveImage, extname='wavelengths', compress='RICE')
+        self.exposure.writeto(outputFile, addNoise=addNoise,
+                              realBias=realBias, realFlat=realFlat,
+                              imagetyp=imagetyp,
+                              addCards=addCards,
+                              compress=compress, allOutput=allOutput)
 
-        # lineGeometry = self.lineGeometry()
-        # pyfits.append(outputFile, lineGeometry, extname='lines')
-        
-def fiberInfo(self):
-    """ Return a single numpy array containing what we know about the fibers. """
+        if allOutput:
+            waveImage = self.waveImage()
+            fitsio.write(outputFile, waveImage, extname='wavelengths', compress='RICE')
 
-    nFibers = len(self.fibers)
-    s_i = sorted(self.fibers)
-
-    dtype = numpy.dtype([('id','i2')])
+            lineGeometry = self.lineGeometry()
+            fitsio.write(outputFile, lineGeometry, extname='lines')
 

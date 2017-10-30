@@ -1,11 +1,13 @@
-import astropy.io.fits as pyfits
+import logging
+import numpy as np
 import numpy
 import scipy.ndimage
 import scipy.signal
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 
-import pfs_tools
+import astropy.io.fits as pyfits
+
 import plotutils
 
 def XXradToIndices(rad, sampling=1.0, offset=0.0):
@@ -196,6 +198,126 @@ def distmap(arr, x0=None, y0=None):
 
     return dmap
     
+def genLagrangeCoeffs(xshift, order=4):
+    """ Return Lagrange coefficients for the #order points centered on the requested shift. 
+
+    Args
+    ----
+    xshift : float
+      How much to shift by. Must be (-1..0) or (0..1)
+    order : integer
+      The order of the Lagrange polynomial
+
+    Returns
+    -------
+    outSlice : slice
+      The slice to save the interpolated sum to
+    xSlices : list of slices, len=order
+      The per-y slices for the inputs
+    coeffs : list of floats, len=order
+      The coefficients to multiply the sliced data by
+    """
+
+    if xshift == 0:
+        raise ValueError('xshift must be non-0.')
+    if abs(xshift) >= 1:
+        raise ValueError('abs(xshift) must be less than 1.')
+
+    # We are trying to center the output between input points.
+    if xshift > 0:
+        x = 1 - xshift
+        xp = range(-order//2+1, order//2+1)
+        xlo = range(0, order)
+        xhi = range(-order, 0)
+    else:
+        x = -1 - xshift
+        xp = range(-order//2, order//2)
+        xlo = range(1, order+1)
+        xhi = range(-(order-1), 0)
+        xhi = xhi + [None]
+
+    outSlice = slice(order//2,-order//2)
+
+    xSlices = []
+    coeffs = []
+    for c_i, cn in enumerate(xp):
+        num = 1.0
+        denum = 1.0
+
+        for x_i, xn in enumerate(xp):
+            if x_i == c_i:
+                continue
+            num *= (x-xn)
+            denum *= (c_i-x_i)
+
+        coeffs.append(num/denum)
+        xSlices.append(slice(xlo[c_i], xhi[c_i]))
+
+    return outSlice, xSlices, coeffs
+
+def shiftSpotLagrange(img, dx, dy, order=4, kargs=None):
+    """ Shift a spot using order=4 Lagrange interpolation.
+
+    Args
+    ----
+    img : 2-d image
+      The spot image to shift. Assumed to have enough border to do so.
+    dx, dy : float
+      How much to shift the spot in each direction. should be (-1..1)
+    order : integer
+      The Lagrange polynomial order. 4 gives two input points on each side.
+    kargs : dict
+      Unused, declared to be compatible with other shift functions.
+
+    Returns
+    -------
+    outImg : the shifted spot
+    None   : compatibility turd.
+
+    Notes
+    -----
+
+    It turns out that:
+      out = img[slice0]
+      out += img[slice1]
+      out += img[slice2]
+
+    is _significantly_ slower than:
+      out = img[slice0] + img[slice1] + img[slice2]
+
+    Hence the eval string.
+    """
+
+    if abs(dx) < 1e-6:
+        outImg1 = img
+    else:
+        outSlice, xSlices, coeffs = genLagrangeCoeffs(dx)
+
+        outImg1 = np.zeros(shape=img.shape, dtype=img.dtype)
+
+        evalList = ['(']
+        for o in range(order):
+            evalList.append("coeffs[%d]*img[:,xSlices[%d]]%s" %
+                            (o, o, ")" if o == order-1 else " + "))
+        evalStr = ''.join(evalList)
+        outImg1[:,outSlice] = eval(evalStr)
+
+    if abs(dy) < 1e-6:
+        outImg = outImg1
+    else:
+        outSlice, ySlices, coeffs = genLagrangeCoeffs(dy)
+
+        outImg = np.zeros(shape=img.shape, dtype=img.dtype)
+
+        evalList = ["("]
+        for o in range(order):
+            evalList.append("coeffs[%d]*outImg1[ySlices[%d],:]%s" %
+                            (o, o, ")" if o == order-1 else " + "))
+        evalStr = ''.join(evalList)
+        outImg[outSlice,:] = eval(evalStr)
+
+    return outImg, None
+
 def shiftSpot1d(spot, dx, dy, kernels=None, kargs=None):
     """ Shift an image using seperable x&y kernels. 
 
@@ -211,18 +333,20 @@ def shiftSpot1d(spot, dx, dy, kernels=None, kargs=None):
     if not kargs:
         kargs = {}
     if kernels is None:
-        _, xkernel = make1dKernel(offset=dx, imSize=spot.shape[1], **kargs)
-        _, ykernel = make1dKernel(offset=dy, imSize=spot.shape[0], **kargs)
-        kernels = (xkernel, ykernel)
+        xkernel, ykernel = None, None
     else:
         xkernel, ykernel = kernels
 
     if dy != 0:
+        if not ykernel:
+            _, ykernel = make1dKernel(offset=dy, imSize=spot.shape[0], **kargs)
         sspot = scipy.ndimage.convolve1d(spot, ykernel, mode='constant', axis=0)
     else:
         sspot = spot
 
     if dx != 0:
+        if not xkernel:
+            _, xkernel = make1dKernel(offset=dx, imSize=spot.shape[1], **kargs)
         sspot = scipy.ndimage.convolve1d(sspot, xkernel, mode='constant', axis=1)
 
     if 'trim' in kargs:
@@ -257,6 +381,45 @@ def shiftSpotSpline(spot, dx, dy, kernels=None, kargs=None):
     sspot = scipy.ndimage.interpolation.shift(spot, (dy,dx), **kargs)
     return sspot, kernels
     
+
+def shiftSpotSplineX(spot, dx, dy, kernels=None, kargs=None):
+    """ shift an image in x only using the scipy 1d interpolation routines. """
+    
+    if not kargs:
+        kargs = {}
+
+    sspot = np.zeros(spot.shape)
+    x = np.arange(spot.shape[1], dtype='f4')
+    if dx < 0:
+        xint = x[1:] + dx
+        xout = np.arange(0,spot.shape[1]-1)
+    else:
+        xint = x[:-1] + dx
+        xout = np.arange(1,spot.shape[1])
+        
+    sp = scipy.interpolate.interp1d(x, spot, kind='cubic', assume_sorted=True)
+    sspot[:,xout] = sp(xint)
+        
+    kernels = []
+    return sspot, kernels
+
+def shiftSpot(spot, dx, dy, method=shiftSpotLagrange, kargs=None):
+    if isinstance(method, str):
+        if method == '1d':
+            method = shiftSpot1d
+        elif method == '2d':
+            method = shiftSpot2d
+        elif method == 'spline':
+            method = shiftSpotSpline
+        elif method == 'splinex':
+            method = shiftSpotSplineX
+        elif method == 'lagrange':
+            method = shiftSpotLagrange
+        else:
+            raise KeyError('unknown shift algorithm: %s' % (method))
+        
+    return method(spot, dx, dy, kargs=kargs)
+
 
 def hanningWindow(x, n):
     return numpy.hanning(len(x))
@@ -327,17 +490,48 @@ def padArray(arr, padTo, center=True):
 def unpadArray(arr, slice):
     return arr[slice, slice]
 
-def applyPixelResponse(arr, pixelSize):
-    kernelSize = pixelSize * 3
-    kern = numpy.zeros((kernelSize, kernelSize), dtype=arr.dtype)
-    kern[pixelSize:2*pixelSize, pixelSize:2*pixelSize] = 1
-    kern /= numpy.sum(kern)
-    
-    # out = scipy.signal.fftconvolve(arr, kern, mode='same')
-    out = scipy.ndimage.convolve(arr, kern, mode='constant')
+def rebin(a, *args):
+    """ integer factor rebin(a, *new_axis_sizes), taken from scipy cookbook. """
 
-    return out
+    shape = a.shape
+    lenShape = len(shape)
+    factor = numpy.asarray(shape)/numpy.asarray(args)
+    evList = ['a.reshape('] + \
+      ['args[%d],factor[%d],'%(i,i) for i in range(lenShape)] + \
+      [')'] + ['.sum(%d)'%(i+1) for i in range(lenShape)]
+      
+    binArray = eval(''.join(evList))
+    return binArray
     
+def applyPixelResponse(arr, pixelSize):
+    kernelSize = pixelSize
+    kern = numpy.ones((kernelSize, kernelSize), dtype='f4')
+    kern /= numpy.sum(kern)
+
+    origin = -pixelSize//2
+    if pixelSize%2 == 1:
+        origin += 1
+    out = scipy.ndimage.convolve(arr, kern,
+                                 origin=(origin, origin),
+                                 mode='constant', cval=0.0)
+    return out
+
+def rebinBy(img, binFactor):
+    """ Bin down an image by the given factor, first applying the new pixel response. """
+
+    c0 = centroid(img)
+    smoothedImg = applyPixelResponse(img.copy(), binFactor)
+    newShape = img.shape[0]//binFactor, img.shape[1]//binFactor
+    
+    newImg = rebin(smoothedImg, *newShape)
+    c1 = centroid(newImg)
+
+    dc = numpy.round(c1 * binFactor - c0, 4)
+    if numpy.any(dc != 0):
+        logging.warn('imag centroid moved: %s to %s (%s)', c0, c1*binFactor, c1)
+
+    return newImg
+
 def poo(arr, dx, dy, splines=None, binFactor=10, padTo=0, applyPixelResp=False, kargs=None):
     assert dx>=0 and dy>=0
 
@@ -349,9 +543,9 @@ def poo(arr, dx, dy, splines=None, binFactor=10, padTo=0, applyPixelResp=False, 
     # Get our unshifted, binned, reference image.
     if applyPixelResp:
         arrs = applyPixelResponse(arr, binFactor)
-        arr00 = pfs_tools.rebin(arrs, *newSize)
+        arr00 = rebin(arrs, *newSize)
     else:
-        arr00 = pfs_tools.rebin(arr, *newSize)
+        arr00 = rebin(arr, *newSize)
 
     if padTo:
         arr00unpadded = arr00.copy()
@@ -375,7 +569,7 @@ def poo(arr, dx, dy, splines=None, binFactor=10, padTo=0, applyPixelResp=False, 
                              slice(None,-dx if dx else None)]
     if applyPixelResp:
         arrPlaced = applyPixelResponse(arrPlaced, binFactor)
-    arrPlaced = pfs_tools.rebin(arrPlaced, *newSize)
+    arrPlaced = rebin(arrPlaced, *newSize)
 
     if padTo:
         arrShifted = unpadArray(arrShifted, padSlice)
@@ -400,7 +594,7 @@ def shiftSpotBy(spot, shiftBy, binTo,
         dx, dy = shiftBy, shiftBy
         
     binnedShape = (numpy.array(spot.shape,'i2')/(binnedOversample)).tolist()
-    binnedSpot = pfs_tools.rebin(spot, *binnedShape)
+    binnedSpot = rebin(spot, *binnedShape)
     if doNorm:
         binnedSpot = binnedSpot / binnedSpot.sum()
     binnedShift = (float(dx)/binnedOversample, 
@@ -436,7 +630,7 @@ def shiftSpotBy(spot, shiftBy, binTo,
     if applyPixelResp:
         placedSpot = applyPixelResponse(placedSpot, oversampleFactor)
 
-    placedSpot = pfs_tools.rebin(placedSpot, *binnedShape)
+    placedSpot = rebin(placedSpot, *binnedShape)
     if doNorm:
         placedSpot = placedSpot / placedSpot.sum()
 
@@ -635,7 +829,7 @@ def spotShow(im, scale=10, binning=2, figName='spot',
     p1.plot(fftx/scale, numpy.abs(ffty))
     p1.set_yscale('log')
 
-    im2 = pfs_tools.rebin(im1, 
+    im2 = rebin(im1, 
                           im.shape[0]/binning,
                           im.shape[0]/binning)
     binnedScale = float(scale)/binning
@@ -738,8 +932,8 @@ def spotShow2(spot0, scale1, scale2, figname='spot',
     size2 = scale2 * fullSize/unbinnedScale
     print "sizes = %s, %s" % (size1, size2)
 
-    spot1 = pfs_tools.rebin(spot0, size1, size1)
-    spot2 = pfs_tools.rebin(spot0, size2, size2)
+    spot1 = rebin(spot0, size1, size1)
+    spot2 = rebin(spot0, size2, size2)
 
     spot1 = spot1/spot1.sum()
     spot2 = spot2/spot2.sum()
@@ -871,7 +1065,7 @@ def spotgrid(spots, waves, fibers, trimRadius=75, figName='spot grid', vmax=0.6)
                 print("shape: %s; trying to bin to %d (needs %d)" 
                       % (trimmedSpot.shape, newWidth, newWidth*15))
 
-                bim = pfs_tools.rebin(trimmedSpot, newWidth, newWidth)
+                bim = rebin(trimmedSpot, newWidth, newWidth)
                 bim /= bim.max()
                 p.imshow(bim,
                          vmax=vmax)

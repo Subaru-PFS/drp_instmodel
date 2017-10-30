@@ -9,6 +9,7 @@ PROBETYPE = frozenset(('SKY',
                        'SIMFLAT',         #: sims only: we insert a quartz spectrum
                        'SIMCOMB',         #: sims only: we insert a comb spectrum.
                        'SIMARC',          #: sims only: we insert an arc spectrum
+                       'SIMSLOPE',
                        ))
 
 """ The external structure defining individual probes. We need to add some detail field(s), for

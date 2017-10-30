@@ -1,5 +1,8 @@
+from __future__ import division
+
 import glob
 import gzip
+import logging
 import os
 import re
 import sys
@@ -12,7 +15,8 @@ import scipy.ndimage
 import astropy.io.fits as fits
 
 import spotgames
-import pfs_tools
+
+jegLogger = logging.getLogger('jegSpots')
 
 from pfs_tools import pydebug
 """
@@ -27,13 +31,17 @@ OFFSETS :
 
 """
 
-def getDataPath(date='2013-04-18', band=None, frd=23, focus=0, spotDir=None):
+def getDataPath(date='2016-10-26', band='Red', frd=23, focus=0, slitFocus=0, fieldAngle=0, spotDir=None):
     """ Given """
     if not spotDir:
         spotDir = os.path.join(os.environ['DRP_INSTDATA_DIR'], 'data/spots/jeg')
-        
-    spotFile = os.path.join(spotDir, date, band, 
-                            "*.dat_foc%d_frd%d.imgstk" % (focus, frd))
+
+    if date > '2016-10-01':
+        spotFile = os.path.join(spotDir, date, band, 
+                                "*.dat_foc%d_frd%d_sfld%02d.imgstk" % (focus, frd, fieldAngle))
+    else:
+        spotFile = os.path.join(spotDir, date, band, 
+                                "*.dat_foc%d_frd%d.imgstk" % (focus, frd))
 
     files = glob.glob(spotFile) + glob.glob(spotFile + '.gz')
     if len(files) != 1:
@@ -45,10 +53,10 @@ def getDataPath(date='2013-04-18', band=None, frd=23, focus=0, spotDir=None):
 def resolveSpotPathSpec(pathSpec):
     if isinstance(pathSpec, basestring):
         return pathSpec
+    if pathSpec is None:
+        return getDataPath()
+    
     return getDataPath(**pathSpec)
-
-def displaySpot(spot, scale=15.0):
-    import xplot
 
 def makeFiberImage(fiberRadius=28, shape=(64,64), dtype='f4'):
     """ Return the image we convolve the spots with. """
@@ -70,26 +78,28 @@ def convolveWithFiber(spot, fiberImage=None):
     
     return scipy.ndimage.convolve(spot, fiberImage, mode='constant', cval=0.0)
 
-def getFiberIds(header, headerVersion):
+def getFiberIds(header, useArrayKeys):
     """ Given the header, return the fiberIDs. We assume that the spacing is proportional to the SINANGs. """
 
     nang = header['NANG']
     maxFiber = header['MAXFIBER']
-    if headerVersion == 1:
+    if useArrayKeys is False:
         angs = []
         for i in range(nang):
             ang = float(header['SINANG[%d]' % (i)])
             angs.append(ang)
-    else:
+    elif useArrayKeys is True:
         angs = header['SINANG[]']
         assert len(angs) == nang
-                        
+    else:
+        raise ValueError("useArrayKeys must be True or False.")
+    
     angs = numpy.array(angs)
     normAngs = angs / angs.max()
     fibers = (normAngs * (maxFiber-1)).astype('i2')
 
-    print "fiber angles: %s" % (angs)
-    print "fiber IDs   : %s" % (fibers)
+    jegLogger.info("fiber angles: %s" % (angs))
+    jegLogger.info("fiber IDs   : %s" % (fibers))
     
     return fibers
 
@@ -102,22 +112,38 @@ def clearSpotCache():
 def readSpotFile(pathSpec, doConvolve=None, doRebin=False, 
                  doNorm=True, 
                  doSwapaxes=True, doTrimSpots=True,
-                 doRecenter=True,
+                 doRecenter=None,
                  verbose=False, clearCache=False):
     """ Directly read some recent version of JEGs spots.
 
-    Parameters
-    -------
+    Args
+    ----
     pathSpec : dict
        Enough info to uniquely identify a jeg spot dataset.
        The keys are: (date, band, frd, focus). 
+    doConvolve : bool or None
+       Whether to convolve spots with a circular fiber tophat.
+       By default, set iff spot data version == 1.
+    doNorm : bool
+       Whether to normalize flux to the brightest spot's total.
+    doSwapaxes: bool
+       Whether to swap X&Y, so that the traces and CCD columns 
+       run vertically.
+    doTrimSpots : bool
+       Whether to trim 0-pixel borders from the input spots.
+    doRecenter : bool
+       Whether to "fix" the spot centers to the measured moments.
+       By default, set iff spot data version == 2.
+    doRebin : bool/integer
+       If not False, attempt to rebin pixels by the given factor.
 
     Returns
     -------
     arr : the table of spots, with wavelength(AA), fiberID, xc, yc, image
     metadata : the partially converted header from the .imgstk file.
 
-    The .imgstk file contains a few 1k-aligned sections:
+    The .imgstk file contains a few 1k-aligned sections, described by
+    a commented-out header section. For version 1:
     
     OFFSETS :
         HEADER: 0
@@ -141,23 +167,29 @@ def readSpotFile(pathSpec, doConvolve=None, doRebin=False,
 
     with fopen(path, 'r') as f:
         rawHeader = f.read(2*1024)
-        rawDesign = f.read((8-2)*1024)    # unused, so far.
-        rawPositions = f.read((32-8)*1024)
-        rawData = f.read()
 
     rawHeader = rawHeader.rstrip('\0\n')
     header = rawHeader.split('\n')
 
+    def k2Decimal(s):
+        """ Convert '8K' -> 8192 """
+        if s[-1] in {'K', 'k'}:
+            return int(s[:-1]) * 1024
+        else:
+            return int(s)
+        
     headerDict = {'TITLE':header.pop(0)}
     converters = {'SLIT_RADIUS':float,
+                  'SLIT-VPUPIL_DISTANCE':float,
                   'FOFFSET':float,
                   'FSLOPE':float,
                   'FRD_SIGMA':float,
                   'FOFFSET':float,
                   'XPIX':float,
                   'YPIX':float,
-
-                  'FRD_ON':bool,
+                  'IMPEAK':int,
+                  
+                  'FRD_ON':int,
 
                   'NIMAGE':int,
                   'NLAM':int,
@@ -165,6 +197,12 @@ def readSpotFile(pathSpec, doConvolve=None, doRebin=False,
                   'XSIZE':int,
                   'YSIZE':int,
 
+                  'HDROFFS':k2Decimal,
+                  'DESOFFS':k2Decimal,
+                  'SBOFFS':k2Decimal,
+                  'XYFOFFS':k2Decimal,
+                  'DATOFFS':k2Decimal,
+                  
                   'LAM[]': lambda _s : [float(x) for x in _s.split(' ')],
                   'SINANG[]': lambda _s : [float(x) for x in _s.split(' ')]
     }
@@ -178,13 +216,36 @@ def readSpotFile(pathSpec, doConvolve=None, doRebin=False,
         else:
             headerDict['LINE%03d'%(i)] = h
 
+    if 'LAM[1]' in headerDict:
+        dataVersion = 1
+    elif 'SBOFFS' in headerDict:
+        dataVersion = 3
+    else:
+        dataVersion = 2
+        
+    headerDict['DATA_VERSION'] = dataVersion
+    headerDict['FILENAME'] = os.path.basename(path)
+    
+    with fopen(path, 'r') as f:
+        _ = f.read(headerDict['DESOFFS'])
+        if dataVersion < 3:
+            rawDesign = f.read(headerDict['XYFOFFS']-headerDict['DESOFFS'])    # unused, so far.
+            rawPositions = f.read(headerDict['DATOFFS']-headerDict['XYFOFFS'])
+            rawData = f.read()
+        else:
+            rawDesign = f.read(headerDict['SBOFFS']-headerDict['DESOFFS'])     # unused, so far.
+            rawBrightness = f.read(headerDict['XYFOFFS']-headerDict['SBOFFS']) # unused, so far.
+            rawPositions = f.read(headerDict['DATOFFS']-headerDict['XYFOFFS'])
+            rawData = f.read()
+
     # Add in a temporary fiber range, until the .imgstk file specifies one
     headerDict['MAXFIBER'] = 325
-    print "  XXX: hardwired max(fiberid)==%d logic" % (headerDict['MAXFIBER'])
+    jegLogger.debug("  XXX: hardwired max(fiberid)==%d logic" % (headerDict['MAXFIBER']))
 
-    headerVersion = 1 if 'LAM[1]' in headerDict else 2
     if doConvolve is None:
-        doConvolve = headerVersion == 1
+        doConvolve = dataVersion == 1
+    if doRecenter is None:
+        doRecenter = dataVersion == 2
         
     nimage = headerDict['NIMAGE']
     xsize = headerDict['XSIZE']
@@ -193,7 +254,8 @@ def readSpotFile(pathSpec, doConvolve=None, doRebin=False,
 
     wavelengths = []
     nlam = headerDict['NLAM']
-    if headerVersion == 1:
+    useArrayKeys = dataVersion >= 2
+    if not useArrayKeys:
         for i in range(nlam):
             waveKey = "LAM[%d]" % (i)
             wavelength = float(headerDict[waveKey])
@@ -202,35 +264,68 @@ def readSpotFile(pathSpec, doConvolve=None, doRebin=False,
         wavelengths = headerDict['LAM[]']
         assert len(wavelengths) == nlam
                         
-    fiberIDs = getFiberIds(headerDict, headerVersion)
-        
-    data = numpy.fromstring(rawData, dtype='(%d,%d)u2' % (xsize,ysize), count=nimage).astype('f4')
-    rawspots = data.copy()
-    if doTrimSpots:
-        data = data[:,1:,1:]
-        tryFor = 127
-        data, trimmedPixels = trimSpots(data, tryFor=tryFor)
-        assert data.shape[-1] == tryFor, "found trimmed spots to be %d pixels, wanted %d" % (data.shape[-1], tryFor)
-        print("trimmed spots by %d pixels to %d pixels (%g mm)" % (trimmedPixels, xsize,
-                                                                   trimmedPixels * headerDict['XPIX']))
+    fiberIDs = getFiberIds(headerDict, useArrayKeys)
+    nfibers = len(fiberIDs)
+    
+    if dataVersion < 3:
+        data = numpy.fromstring(rawData, dtype='(%d,%d)u2' % (xsize,ysize), count=nimage).astype('f4')
+    elif dataVersion == 3:
+        data = numpy.fromstring(rawData, dtype='(%d,%d)f4' % (xsize,ysize), count=nimage).astype('f4')
     else:
-        # The input spots 
-        data = data[:,1:,1:]
+        raise ValueError("unknown spot file version: %s" % (dataVersion))
+    jegLogger.info("raw spot version %d data type %s, range: %g..%g",
+                   dataVersion, data.dtype, data.min(), data.max())
+
+    rawspots = data.copy()
+    if doRebin is not False:
+        newSize = xsize//doRebin
+        if newSize*doRebin != xsize:
+            raise ValueError('doRebin must evenly divide the raw spot size')
+
+        newData = numpy.empty(shape=(data.shape[0], newSize, newSize), dtype=data.dtype)
+        for i in range(data.shape[0]):
+            tspot = spotgames.rebinBy(data[i], doRebin)
+            newData[i,:,:] = tspot
+            
+        data = newData
+        xsize = ysize = newSize
+        headerDict['XPIX'] *= doRebin
+        headerDict['YPIX'] *= doRebin
+        
+    if doTrimSpots:
+        if xsize % 2 == 0 and dataVersion < 3:
+            jegLogger.info("trimming outer pixel of %s spots" % (xsize))
+            data = data[:,:-1,:-1]
+        extents = dataWidth(data)
+        jegLogger.info("spot extents: %s" % (str(extents)))
+        
+        if not isinstance(doTrimSpots, bool):
+            tryFor = doTrimSpots
+        else:
+            tryFor = None
+            
+        data, trimmedPixels = trimSpots(data, tryFor=tryFor, leaveBorder=3)
+        if doTrimSpots > 1:
+            assert data.shape[-1] == tryFor, ("found trimmed spots to be %d pixels, wanted %d" %
+                                              (data.shape[-1], tryFor))
+        jegLogger.info("trimmed spots by %d pixels to %s pixels (%g mm)" % (2*trimmedPixels, data.shape[-1],
+                                                                            data.shape[0] * headerDict['XPIX']))
 
     xsize, ysize = data.shape[1:]
     headerDict['XSIZE'] = xsize
     headerDict['YSIZE'] = ysize
 
-    print("convolving with fiber image: %s" % (doConvolve))
     if doConvolve:
+        jegLogger.info("convolving with fiber image: %s" % (doConvolve))
         fiberImage = makeFiberImage()
 
     spots = []
     symSpots = []
     maxFlux = max([data[d].sum() for d in range(data.shape[0])])
-    print("max spot = %0.2f" % (maxFlux))
+    jegLogger.info("max spot = %0.2f" % (maxFlux))
+
     for i in range(data.shape[0]):
-        fiberIdx = fiberIDs[i / nlam]
+        fiberIdx = fiberIDs[i // nlam]
         wavelength = wavelengths[i % nlam]
         xc = positions[i,0]
         yc = -positions[i,1]
@@ -241,15 +336,15 @@ def readSpotFile(pathSpec, doConvolve=None, doRebin=False,
         else:
             spot = data[i,:,:]
 
-        if doRecenter:
-            assert spot.shape[0] == spot.shape[1]
-            spotw = spot.shape[0]/2
-            ctr = spotgames.centroid(spot)
-            assert numpy.abs(ctr[0] - spotw) < 0.1, "centroid too far from center (%g %g)" % (ctr[0], spotw)
-            assert numpy.abs(ctr[1] - spotw) < 0.1, "centroid too far from center (%g %g)" % (ctr[0], spotw)
+        assert spot.shape[0] == spot.shape[1]
+        spotw = spot.shape[0]/2
+        ctr0 = spotgames.centroid(spot)
+        #assert numpy.abs(ctr0[0] - spotw) < 0.1, "centroid Y too far from center (%g %g)" % (ctr0[0], spotw)
+        #assert numpy.abs(ctr0[1] - spotw) < 0.1, "centroid X too far from center (%g %g)" % (ctr0[1], spotw)
 
+        if doRecenter:
             pspot, spotSlice = spotgames.padArray(spot, padTo=spot.shape[0]*2)
-            pspot, _ = spotgames.shiftSpot1d(pspot, spotw-ctr[0], spotw-ctr[1], kargs=dict(n=spotw*3/2))
+            pspot, _ = spotgames.shiftSpot1d(pspot, spotw-ctr0[0], spotw-ctr0[1], kargs=dict(n=spotw*3/2))
             spot = pspot[spotSlice, spotSlice]
             ctr2 = spotgames.centroid(spot)
 
@@ -257,43 +352,53 @@ def readSpotFile(pathSpec, doConvolve=None, doRebin=False,
             if fluxMin < 0:
                 spot -= fluxMin
                 
-            print("recentered spot %i by (%0.5f, %0.5f) to (%0.5f, %0.5f) [min=%0.5f]" %
-                  (i,
-                   spotw-ctr[0], spotw-ctr[1],
-                   ctr2[0], ctr2[1],
-                   fluxMin))
+            jegLogger.debug("recentered spot %i by (%0.5f, %0.5f) to (%0.5f, %0.5f) [min=%0.5f]" %
+                            (i,
+                             spotw-ctr0[0], spotw-ctr0[1],
+                             ctr2[0], ctr2[1],
+                             fluxMin))
 
         # Rotate x-up mechanical view to y-up detector view (dispersing along columns)
-        spot = numpy.swapaxes(spot,0,1)
-        xc, yc = yc, xc
+        if doSwapaxes:
+            spot = numpy.swapaxes(spot,0,1)
+            xc, yc = yc, xc
 
-        rawSpot = numpy.swapaxes(rawspots[i,:,:],0,1)
-
-        rawSum = spot.sum()
-        if doNorm:
-            # Normalize the flux of each spot, w.r.t. the brightest spot.
-            spot /= maxFlux
-        
-        spots.append((fiberIdx, wavelength, xc, yc, focus, rawSpot, spot))
-        if verbose:
-            ctr = spotgames.centroid(spot)
-            print("spot  %d (%d, %0.2f) at (%0.2f %0.2f %0.3f) (%g,%g), max=%0.2f sum=%0.2f, rawSum=%0.2f" % 
-                  (i, fiberIdx, wavelength, xc, yc, focus,
-                   ctr[0], ctr[1],
-                   spot.max(), spot.sum(), rawSum))
-        if fiberIdx != 0:
-            rspot = spot[:,::-1]
-            assert(numpy.all(rspot[:,::-1] == spot))
+            rawSpot = numpy.swapaxes(rawspots[i,:,:],0,1)
             
-            symSpots.append((-fiberIdx, wavelength, -xc, yc, focus, rawSpot[:,::-1], spot[:,::-1]))
+        if doNorm:
+            if doNorm == 'peak':
+                # Normalize the flux of each spot w.r.t. this spot peak.
+                spot /= spot.max()
+            else:
+                # Normalize the flux of each spot, w.r.t. the brightest spot.
+                spot /= maxFlux
+            jegLogger.debug("normalized to %g..%g sum=%g...." % (spot.min(), spot.max(), spot.sum()))
+        
+        ctr = spotgames.centroid(spot)
+        dCtr = numpy.abs(ctr - numpy.array(spot.shape).T/2.0)
+        if numpy.any(dCtr > 0.01):
+            jegLogger.warn("spot  %d (%d, %0.2f) at (%0.2f %0.2f %0.3f) (%0.4f,%0.4f) (%0.4f, %0.4f), sum=%0.3f" % 
+                           (i, fiberIdx, wavelength, xc, yc, focus,
+                            ctr[0], ctr[1], dCtr[0], dCtr[1],
+                            spot.sum()))
+
+        spots.append((fiberIdx, wavelength, xc, yc, focus, rawSpot, spot, ctr))
+            
+        if fiberIdx != 0:
+            flipCtr = ctr.copy()
+            flipCtr[0] = spot.shape[1]/2 - (flipCtr[0] - spot.shape[1]/2)
+            symSpots.append((-fiberIdx, wavelength, -xc, yc, focus, rawSpot[:,::-1], spot[:,::-1], flipCtr))
 
     allSpots = spots + symSpots    
-    spotw = spots[0][-1].shape[0]
+    spotw = spots[0][-2].shape[0]
     spotDtype = numpy.dtype([('fiberIdx','i2'),
                              ('wavelength','f8'),
                              ('spot_xc','f8'), ('spot_yc','f8'), ('spot_focus','f4'),
-                             ('rawspot', '(%d,%d)u2' % (rawSpot.shape[0],rawSpot.shape[1])),
-                             ('spot', '(%d,%d)f4' % (spotw,spotw))])
+                             ('rawspot', '(%d,%d)%s' % (rawSpot.shape[0],
+                                                        rawSpot.shape[1],
+                                                        rawSpot.dtype)),
+                             ('spot', '(%d,%d)f4' % (spotw,spotw)),
+                             ('ctr', '2f4')])
 
     tarr = numpy.array(allSpots, dtype=spotDtype)
 
@@ -318,18 +423,36 @@ def dataWidth(spots):
     mxt = startWidth - mx
     return max(mn, mxt), min(mn, mxt)
 
-def trimSpots(spots, tryFor=None):
+def borderWidth(spots):
+    """ Return the number of all-zero pixels around the edge of the image. """
+    
+    assert spots.shape[-2] == spots.shape[-1], "input spots must be square"
+    
+    startWidth = spots.shape[-1]
+    nz = numpy.where(spots > 0)
+    mn = min(nz[1].min(), nz[2].min())
+    mx = max(nz[1].max(), nz[2].max())
+    mxt = startWidth - mx - 1
+
+    return min(mn, mxt)
+
+def trimSpots(spots, tryFor=None, leaveBorder=1):
     """ Return a spot array with the outer 0-level pixels trimmed off. """
 
     startWidth = spots.shape[-1]
-    _, trimPix = dataWidth(spots)
+    trimPix = borderWidth(spots)
+    trimPix -= leaveBorder
 
+    if trimPix <= 0:
+        raise RuntimeError("cannot trim spots by %d pixels" % (trimPix))
+        
     if tryFor is not None:
-        if tryFor < startWidth - trimPix*2:
+        if tryFor < startWidth - 2*trimPix:
             raise RuntimeError("cannot safely trim spots to %s pixels" % (tryFor))
-        trimPix = (startWidth-tryFor)/2
+        trimPix = (startWidth-tryFor)//2
 
-    print("trimming spots by %d pixels from %d to %d pixels" % (trimPix, startWidth, startWidth-trimPix*2)) 
+    jegLogger.debug("trimming border by %d pixels; image goes from %d to %d pixels" %
+                    (trimPix, startWidth, startWidth-trimPix*2)) 
     nspots = spots[:,trimPix:startWidth-trimPix,trimPix:startWidth-trimPix]
 
     return nspots, trimPix
@@ -351,7 +474,7 @@ def oversampleSpots(spots, factor):
     newSpots = numpy.zeros(shape=(spots.shape[0], newWidth, newWidth),
                            dtype=spots.dtype)
 
-    ix1 = (numpy.arange(newWidth,dtype='f4')/factor).astype('i4')
+    ix1 = (numpy.arange(newWidth,dtype='f4')//factor).astype('i4')
     ix = numpy.tile(ix1, (newWidth,1))
     ixy = (ix, ix.T)
 
@@ -365,7 +488,7 @@ def oversampleSpots(spots, factor):
 
     return newSpots
 
-def writeSpotFITS(pathSpec, outDir, data):
+def writeSpotFITS(pathSpec, outDir, data, headerDict):
 #    raise NotImplementedError("writeSpotFITS() no longer needed or tested")
 
     phdu = fits.PrimaryHDU()

@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 
-import logging
 import os
-import time
 
 from astropy.io import fits as pyfits
 import numpy as np
@@ -13,15 +11,17 @@ import scipy.interpolate as spInterp
 import scipy.ndimage
 import scipy.ndimage.interpolation
 
-import psf
-import pfs_tools
-from pfs_tools import pydebug
 import spotgames
+from spectrum import LineSpectrum
+
+import psf
+reload(psf)
+
 
 class SplinedPsf(psf.Psf):
     def __init__(self, detector, spotType='jeg', spotID=None, logger=None,
                  slitOffset=(0.0, 0.0),
-                 doTrimSpots=True):
+                 doTrimSpots=True, doRebin=False):
         """ Create or read in our persisted form. By default use JEG's models. 
 
         Parameters
@@ -33,6 +33,8 @@ class SplinedPsf(psf.Psf):
            Whether to load 'jeg' or 'zemax' spot images.
         spotID : list/string/dict, optional
            If spotType is set, some dataset identifier. Opaque to us.
+        doRebin : bool/integer
+           How much to unbin raw spots by.
         slitOffset : pair
            X, wavelength offset of the slit. Used for dithered flats.
         """
@@ -51,7 +53,7 @@ class SplinedPsf(psf.Psf):
         self.slitOffset = slitOffset
 
         if spotType:
-            self.loadFromSpots(spotType, spotID, spotArgs=dict(doTrimSpots=doTrimSpots))
+            self.loadFromSpots(spotType, spotID, spotArgs=dict(doTrimSpots=doTrimSpots, doRebin=doRebin))
 
         
     def __str__(self):
@@ -102,6 +104,15 @@ class SplinedPsf(psf.Psf):
         x = self.evalSpline(self.xcCoeffs, fibers[fiberIdx], waves[waveIdx])
         y = self.evalSpline(self.ycCoeffs, fibers[fiberIdx], waves[waveIdx])
 
+        # Chip gap
+        halfGap = self.detector.config['interCcdGap'] / 2
+        x0 = self.evalSpline(self.xcCoeffs, [0], [waves[0]])
+        
+        neg_w = x < x0
+        pos_w = x > x0
+        x[neg_w] += halfGap
+        x[pos_w] -= halfGap
+        
         return (x[fiberIdx][:, waveIdx], 
                 y[fiberIdx][:, waveIdx])
     
@@ -171,7 +182,7 @@ class SplinedPsf(psf.Psf):
 
         return rows, waves
     
-    def psfsAt(self, fibers, waves=None, usePsfs=None):
+    def psfsAt(self, fibers, waves=None, usePsfs=None, everyNth=1):
         """ Return a stack of PSFs, instantiated on a rectangular grid.
 
         Parameters
@@ -180,8 +191,11 @@ class SplinedPsf(psf.Psf):
            the fiber IDs we want PSFs for
         waves : array_like, AA, optional
            the wavelengths we want PSFs as. If not set, uses the native wavelength grid.
+        everyNth :integer
+           How many psf instances to reuse
         usePsfs : array_like , optional
-           
+           existing PSF images to reuse.
+
         Returns
         -------
         psfImages : array
@@ -193,26 +207,34 @@ class SplinedPsf(psf.Psf):
 
         """
 
+        if isinstance(fibers, int):
+            fibers = [fibers]
+            
         if waves is None:
             waves = np.unique(self.wave)
             
         waveSign = 1 if waves[-1] > waves[0] else -1
         interpWaves = waves[::waveSign]
+        psfWaves = interpWaves[::everyNth]
         
         centers = [(x,y) for x in fibers for y in waves]
         if usePsfs is not None:
             newImages = usePsfs
         else:
-            newImages = np.zeros(shape=(len(fibers)*len(interpWaves),
+            newImages = np.zeros(shape=(len(fibers)*len(psfWaves),
                                         self.imshape[0],
-                                        self.imshape[1]), dtype='f4')
+                                        self.imshape[1]), dtype='f8')
             self.logger.debug("psfsAt: fibers %s for %d waves, in %s %s array" % (fibers, len(interpWaves),
                                                                                   newImages.shape,
                                                                                   newImages.dtype))
             for ix in range(self.imshape[0]):
                 for iy in range(self.imshape[1]):
-                    newImages[:, iy, ix] = self.evalSpline(self.coeffs[iy, ix], fibers, interpWaves).flat
-
+                    newImages[::, iy, ix] = self.evalSpline(self.coeffs[iy, ix],
+                                                            fibers, psfWaves).flat
+            if False and everyNth > 1:
+                for i in range(1,everyNth):
+                    newImages[i::everyNth,:,:] = newImages[::everyNth,:,:]
+                    
         lo_w = newImages < -0.01
         if np.any(lo_w):
             minpix = newImages[lo_w].min()
@@ -220,13 +242,17 @@ class SplinedPsf(psf.Psf):
             newImages += minpix
 
         finalImages = newImages
-        self.logger.info("psfsAt: fibers %s, for %d %s waves, returned %d %s unique psfs" % (fibers,
-                                                                                             len(waves), waves[0].dtype,
-                                                                                             len(interpWaves), finalImages.dtype))
+        self.logger.info("psfsAt: fibers %s, for %d %s waves, returned %d unique psfs" % (fibers,
+                                                                                          len(waves),
+                                                                                          waves[0].dtype,
+                                                                                          len(interpWaves)))
         return finalImages, centers, self.traceCenters(fibers, waves)
 
 
     def fiberGeometry(self, fiber, waveRange=None):
+        """ Return the wavelengths and positions of the pixels of the given fiber.
+        """
+        
         # Evaluate at image resolution
         pixelScale = self.detector.config['pixelScale']
         
@@ -244,9 +270,11 @@ class SplinedPsf(psf.Psf):
 
     def fiberImage(self, fiber, spectrum, outExp=None, waveRange=None, 
                    returnUnbinned=False,
-                   shiftPsfs=True):
+                   shiftPsfs=True, everyNth=1):
         """ Return an interpolated image of a fiber """
 
+        fiber -= 326
+        
         # Evaluate at highest resolution
         pixelScale = self.spotScale
         
@@ -259,14 +287,15 @@ class SplinedPsf(psf.Psf):
                                                         pixelScale=pixelScale)
         self.logger.debug("allwaves: %s %d", allPixelWaves[0].dtype, len(allPixelWaves[0]))
 
-        isLinelist = spectrum.__class__.__name__ == "CombSpectrum"
+        isLinelist = isinstance(spectrum, LineSpectrum)
+        
         waves, flux = spectrum.flux(allPixelWaves[0])
 
         self.logger.debug("waves: %s %d %d", waves.dtype, len(waves), waves.nbytes)
         self.logger.debug("flux:  %s %d %d", flux.dtype, len(flux), flux.nbytes)
         
         # Get the PSFs and their locations on the oversampled pixels.
-        fiberPsfs, psfIds, centers = self.psfsAt([fiber], waves)
+        fiberPsfs, psfIds, centers = self.psfsAt([fiber], waves, everyNth=everyNth)
 
         xCenters, yCenters = [c[0] for c in centers]
         
@@ -289,7 +318,9 @@ class SplinedPsf(psf.Psf):
         chunkUp[chunkUp == psfToSpotPixRatio] = 0
         fiHeight += chunkUp[0] + psfToSpotPixRatio
         fiWidth += chunkUp[1] + psfToSpotPixRatio
-        self.logger.debug("trace    : %s %s -> %s %s" % (traceHeight, traceWidth, fiHeight, fiWidth))
+        self.logger.debug("trace    : %s(%s) %s %s -> %s %s" % (spectrum, isLinelist,
+                                                                traceHeight, traceWidth,
+                                                                fiHeight, fiWidth))
 
         # mm
         fiberImageOffset = np.asarray((yCenters.min(), xCenters.min()))
@@ -302,7 +333,8 @@ class SplinedPsf(psf.Psf):
         # pixels
         outImgOffset = fiberImagePixelOffset / psfToSpotPixRatio
         self.logger.debug("fiber offset: pix=%s base=%s, mm=%s out=%s" % (fiberImagePixelOffset,
-                                                                          fiberImageOffset/pixelScale, fiberImageOffset,
+                                                                          fiberImageOffset/pixelScale,
+                                                                          fiberImageOffset,
                                                                           outImgOffset))
         fiberImage = np.zeros((fiHeight, fiWidth), dtype='f4')
 
@@ -315,11 +347,8 @@ class SplinedPsf(psf.Psf):
                                                ('intx','i4'),('inty','i4'),
                                                ('wavelength','f8'),('flux','f4')])
 
-        # Construct a mask to remove residual flux shifted by the truncated sinc.
-        #
-        spotMask = fiberPsfs[0]*0
-        spotSlice = slice(10, -10)
-        spotMask[spotSlice, spotSlice] = 1
+        ymin = 1
+        ymax = -1
         
         for i in range(len(waves)):
             specWave = waves[i]
@@ -328,7 +357,7 @@ class SplinedPsf(psf.Psf):
             if specFlux == 0.0:
                 continue
             
-            rawPsf = fiberPsfs[i]
+            rawPsf = fiberPsfs[i/everyNth]
 
             # in mm
             xc = xCenters[i]
@@ -340,82 +369,79 @@ class SplinedPsf(psf.Psf):
 
             # Keep the shift to the smallest fraction possible, or rather keep the integer steps 
             # exact.
-            inty = int(yPixOffset)
-            intx = int(xPixOffset)
+            inty = int(np.rint(yPixOffset))
+            intx = int(np.rint(xPixOffset))
 
             fracy = yPixOffset - inty
             fracx = xPixOffset - intx
+            if fracy < ymin:
+                ymin = fracy
+            elif fracy > ymax:
+                ymax = fracy
 
-            if shiftPsfs:
-                if False:
-                    shiftedPsf, kernels = spotgames.shiftSpot1d(rawPsf, fracx, fracy)
+            # Trouble if we shift continuum significantly in y.
+            if not isLinelist:
+                if abs(fracy) > 1e-5:
+                    self.logger.warn('%d: yc=%g yPixOffset=%g fracy=%g', i, yc, yPixOffset, fracy)
                 else:
-                    if True:
-                        shiftedPsf, kernels = spotgames.shiftSpot1d(rawPsf, fracx, fracy, kargs=dict(n=spotRad))
-                        shiftedPsf *= spotMask
-                    else:
-                        shiftedPsf = scipy.ndimage.interpolation.shift(rawPsf,(fracy,fracx))
+                    fracy = 0
+                
+            if shiftPsfs:
+                if True:
+                    shiftedPsf, kernels = spotgames.shiftSpot(rawPsf, fracx, fracy)
+                elif False:
+                    shiftedPsf, kernels = spotgames.shiftSpot(rawPsf, fracx, fracy, method='1d',
+                                                              kargs=dict(n=spotRad))
+                else:
+                    shiftedPsf = scipy.ndimage.interpolation.shift(rawPsf,(fracy,fracx))
 
-                    _c0x, _c0y = spotgames.centroid(rawPsf)
-                    dxc = _c0x - spotRad
-                    dyc = _c0y - spotRad
-                    if isLinelist:
-                        _c1x, _c1y = spotgames.centroid(shiftedPsf)
-                        self.logger.debug("%5d %6.1f   c0: %0.5f,%0.5f  cdiff: %0.5f,%0.5f   diff: %0.5f,%0.5f   pix: %0.5f,%0.5f cnts: %0.4f,%0.4f,%d",
-                                          i, specWave,
-                                          _c0x-spotRad, _c0y-spotRad,
-                                          _c1x-spotRad+intx-xPixOffset, _c1y-spotRad+inty-yPixOffset,
-                                          _c1x-_c0x-fracx, _c1y-_c0y-fracy,
-                                          xc/pixelScale, yc/pixelScale,
-                                          rawPsf.sum(), shiftedPsf.sum(), np.sum(shiftedPsf<0))
-                        if np.sum(shiftedPsf < 0) > 0:
-                            self.logger.debug('%d low pixels, min=%g',
-                                              np.sum(shiftedPsf < 0),
-                                              np.min(shiftedPsf))
-                    shiftedPsf[shiftedPsf<0] = 0 # CPL
-                            
+                _c0x, _c0y = spotgames.centroid(rawPsf)
+                dxc = _c0x - spotRad
+                dyc = _c0y - spotRad
+                if isLinelist:
+                    _c1x, _c1y = spotgames.centroid(shiftedPsf)
+                    self.logger.debug("%5d %6.1f   c0: %0.5f,%0.5f  cdiff: %0.5f,%0.5f"
+                                      "    diff: %0.5f,%0.5f   pix: %0.5f,%0.5f cnts: %0.4f,%0.4f,%d",
+                                      i, specWave,
+                                      _c0x-spotRad, _c0y-spotRad,
+                                      _c1x-spotRad+intx-xPixOffset, _c1y-spotRad+inty-yPixOffset,
+                                      _c1x-_c0x-fracx, _c1y-_c0y-fracy,
+                                      xc/pixelScale, yc/pixelScale,
+                                      rawPsf.sum(), shiftedPsf.sum(), np.sum(shiftedPsf<0))
+                    if np.sum(shiftedPsf < 0) > 0:
+                        self.logger.debug('%d low pixels, min=%g',
+                                          np.sum(shiftedPsf < 0),
+                                          np.min(shiftedPsf))
+
                 spot = specFlux * shiftedPsf
             else:
                 spot = specFlux * rawPsf
                 
-            if False and (isLinelist or i % 1000 == 0 or i > len(waves)-2):
-                self.logger.debug("%5d %6.1f (%3.3f, %3.3f) (%0.2f %0.2f) %0.2f %0.2f %0.2f" % (i, specWave,
-                                                                                                xc/pixelScale, yc/pixelScale, 
-                                                                                                xPixOffset,
-                                                                                                yPixOffset,
-                                                                                                rawPsf.sum(), spot.sum(),
-                                                                                                specFlux))
+            if (isLinelist or i % 1000 == 0 or i > len(waves)-2):
+                self.logger.debug("%5d %6.1f (%3.3f, %3.3f) (%0.2f %0.2f) %0.2f %0.2f %0.2f",
+                                  i, specWave,
+                                  xc/pixelScale, yc/pixelScale, 
+                                  xPixOffset, yPixOffset,
+                                  rawPsf.sum(), spot.sum(),
+                                  specFlux)
+                
             self.placeSubimage(fiberImage, spot, (inty, intx))
             geometry[i] = (xc,yc,dxc,dyc,intx,inty,specWave,specFlux)
 
-            if False and isLinelist:
-                # mc1 = pfs_tools.centroid(fiberImage[inty-spotRad:inty+spotRad, intx-spotRad:intx+spotRad])
-                mc2 = pfs_tools.centroid(spot)
-                self.logger.debug("(%0.3f, %0.3f) (%0.3f, %0.3f)",
-                                  xc / pixelScale, yc / pixelScale,
-                                  mc2[0] + intx,
-                                  mc2[1] + inty)
-                
         # transfer flux from oversampled fiber image to final resolution output image
         resampledFiber = self.addOversampledImage(fiberImage, outExp, outImgOffset, psfToSpotPixRatio)
 
         if returnUnbinned:
-            return outExp, fiberImagePixelOffset[0], fiberImagePixelOffset[1], geometry, fiberImage, resampledFiber
+            return (outExp, fiberImagePixelOffset[0], fiberImagePixelOffset[1], geometry,
+                    fiberImage, resampledFiber)
         else:
             return outExp, fiberImagePixelOffset[0], fiberImagePixelOffset[1], geometry
 
     def addOversampledImage(self, inImg, outExp, outOffset, outScale):
         """ Add the outScale-oversampled inImg to outImg at the given offset. 
-
-        Must convolve with the pixel response of the oversampled pixel.
         """
 
-        pixelKernel = np.ones((outScale, outScale), dtype='f4') / (outScale*outScale)
-        pixImg = scipy.ndimage.convolve(inImg, pixelKernel, mode='constant', cval=0.0)
-                                
-        resampled = pfs_tools.rebin(pixImg, pixImg.shape[0]/outScale, pixImg.shape[1]/outScale)
-        self.logger.debug("addOversampled kernel shape: %s, out type: %s",
-                          pixelKernel.shape, resampled.dtype)
+        resampled = spotgames.rebinBy(inImg, outScale)
         parentIdx, childIdx = self.trimRect(outExp, resampled, outOffset)
         try:
             outExp.addFlux(resampled[childIdx], outSlice=parentIdx, addNoise=True)
@@ -429,7 +455,6 @@ class SplinedPsf(psf.Psf):
 
         try:
             outImg[parentIdx] += subImg[childIdx]
-            # exp.addFlux(subImg[childy, childx], outSlice=(parenty, parentx), addNoise=True)
         except Exception, e:
             self.logger.warn("failed to place child at %s: %s" % (subOffset, e))
     
@@ -488,43 +513,10 @@ class SplinedPsf(psf.Psf):
             child[0] -= childOffset
             child[1] -= childOffset
 
-        if parent[1]-parent[0] != child[1]-child[0]:
-            pydebug.debug_here()
-            
+        assert parent[1]-parent[0] == child[1]-child[0]
+
         return (slice(parent[0], parent[1]+1),
                 slice(child[0], child[1]+1))
-
-    def _frac(self, n):
-        """ Return the fractional part of a float. """
-
-        return np.modf(n)[0]
-    
-    def _sincfunc(self, x, dx):
-        dampfac = 3.25
-        if dx != 0.0:
-            return np.exp(-((x+dx)/dampfac)**2) * np.sin(np.pi*(x+dx)) / (np.pi * (x+dx))
-        else:
-            xx = np.zeros(len(x))
-            xx[len(x)/2] = 1.0
-            return xx
-
-    def _sincshift(self, image, dx, dy):
-        """ UNUSED & UNTESTED from boss -- for comparison only, etc. etc. """
-        
-        sincrad = 10
-        s = np.arange(-sincrad, sincrad+1)
-        sincx = self._sincfunc(s, dx)
-
-        #- If we're shifting just in x, do faster 1D convolution with wraparound                                
-	    #- WARNING: can introduce edge effects if PSF isn't nearly 0 at edge                                    
-        if abs(dy) < 1e-6:
-            newimage = scipy.signal.convolve(image.ravel(), sincx, mode='same')
-            return newimage.reshape(image.shape)
-
-        sincy = self._sincfunc(s, dy)
-        kernel = np.outer(sincy, sincx)
-        newimage = scipy.signal.convolve2d(image, kernel, mode='same')
-        return newimage
 
     def loadFromSpots(self, spotType='jeg', spotIDs=None, spotArgs=None):
         """ Generate ourself from a semi-digested pfs_instdata spot file. 
@@ -534,7 +526,8 @@ class SplinedPsf(psf.Psf):
         self.logger.info("reading and interpolating %s PSF spots: %s..." % (spotType, spotIDs))
         if spotType == 'jeg':
             import jegSpots
-
+            reload(jegSpots)
+            
             if spotArgs is None:
                 spotArgs = dict()
             rawSpots, spotInfo = jegSpots.readSpotFile(spotIDs, verbose=True, **spotArgs)
@@ -579,8 +572,10 @@ class SplinedPsf(psf.Psf):
         self.coeffs = coeffs
 
         # Shift offsets to origin.
-        self.xc = self.rawSpots['spot_xc'] + self.detector.config['ccdSize'][1] * self.detector.config['pixelScale'] / 2
-        self.yc = self.rawSpots['spot_yc'] + self.detector.config['ccdSize'][0] * self.detector.config['pixelScale'] / 2
+        self.xc = (self.rawSpots['spot_xc'] +
+                   self.detector.config['ccdSize'][1]*self.detector.config['pixelScale']/2)
+        self.yc = (self.rawSpots['spot_yc'] +
+                   self.detector.config['ccdSize'][0]*self.detector.config['pixelScale']/2)
 
         # Add slit shift offsets.
         slitOffset = self.calcSlitOffset()
@@ -655,7 +650,10 @@ class SplinedPsf(psf.Psf):
         pass
         
     def setConstantSpot(self, spot=None, spotScale=None):
-        """ Set ourself to use a single PSF over the whole focal plane. Uses the existing .fiber and .wave maps. """
+        """ Set ourself to use a single PSF over the whole focal plane. 
+
+        Uses the existing .fiber and .wave maps. 
+        """
 
         if spot is None:
             spotFiber = 0
@@ -671,10 +669,11 @@ class SplinedPsf(psf.Psf):
             rad = spotgames.radToImageIndices(spotRad, sampling=0.1)
             spot = spotgames.gaussianFiber(rad, sigma=1.0, alpha=alpha)
             spot /= spot.sum()
-            self.logger.warn("set constant PSF to given spot, with alpha=%s. shape=%s from %s (%s..%s)" % (alpha,
-                                                                                                           spot.shape,
-                                                                                                           spotShape,
-                                                                                                           rad.min(), rad.max()))
+            self.logger.warn("set constant PSF to given spot, with alpha=%s. shape=%s from %s (%s..%s)" %
+                             (alpha,
+                              spot.shape,
+                              spotShape,
+                              rad.min(), rad.max()))
             
         imshape = spot.shape
         self.spots = [spot]
@@ -688,10 +687,8 @@ class SplinedPsf(psf.Psf):
         for ix in range(imshape[0]):
             for iy in range(imshape[1]):
                 spotval = float(spot[iy,ix])
-                #coeffs[iy, ix] = freezeVal(spotval)
                 coeffs[iy, ix] = spotval
         self.coeffs = coeffs
-        tx = ty = imshape[0]/2
 
     def setConstantX(self):
         """ Force spot x positions to be for the center spot on their trace. """

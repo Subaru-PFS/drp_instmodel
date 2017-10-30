@@ -1,3 +1,4 @@
+import glob
 import numpy
 import os
 import time
@@ -63,14 +64,14 @@ class Exposure(object):
             return time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime(t))
                                     
     def writeto(self, outputFile, doCombine=True, doWriteAll=True,
-                addNoise=True, compress='RICE', realBias=None,
+                addNoise=True, compress='RICE',
+                realBias=None, realFlat=None,
                 addCards=(),
                 imagetyp=None, allOutput=False):
 
-
-        self.readout(addNoise=addNoise, realBias=realBias)
-        if realBias is not None:
-            outIm = self.biasExp.replaceActiveFlux(self.pixelImage)
+        self.readout(addNoise=addNoise, realBias=realBias, realFlat=realFlat)
+        if realBias:
+            outIm = self.biasExp.replaceActiveFlux(self.pixelImage, leadingRows=True)
             hdr = self.biasExp.header
         else:
             outIm = self.pixelImage
@@ -90,7 +91,10 @@ class Exposure(object):
         for c in addCards:
             hdr.set(*c)
             
-        hdu0 = pyfits.CompImageHDU(outIm, header=hdr, name='image')
+        hdu0 = pyfits.CompImageHDU(outIm, name='image')
+        hdu0.header.extend(hdr)
+        
+        # hdu0.data = outIm
         hdulist.append(hdu0)
             
         if allOutput:
@@ -109,16 +113,40 @@ class Exposure(object):
         """ Load a real detector bias, return its active image. """
 
         dataRoot = os.environ.get('DRP_INSTDATA_DIR', '.')
-        filepath = os.path.join(dataRoot, 'data', 'pfs', 'PFSA00715%d%d%d.fits' %
-                                (biasID, 9, 2 if self.detector.band == 'Red' else 1))
+        fileglob = os.path.join(dataRoot, 'data', 'pfs', 'biases', 'PF?A0*%d%d%d.fits' %
+                                (biasID, 1, 2 if self.detector.band == 'Red' else 1))
+
+        print("looking for biases %s" % (fileglob))
+        filepaths = glob.glob(fileglob)
+        filepath = filepaths[0]
 
         print("loading bias %s" % (filepath))
         self.biasExp = geom.Exposure(obj=filepath)
         print("  bias geom: %s" % (self.biasExp))
 
-        return self.biasExp.finalImage(leadingRows=True)
+        if self._flux.shape[0] == 4174:
+            self.biasExp.leadinRows = 50
         
-    def readout(self, addNoise=True, realBias=None):
+        return self.biasExp.finalImage(leadingRows=False)
+        
+    def loadFlat(self):
+        """ Load a real detector flat, return its active image. """
+
+        dataRoot = os.environ.get('DRP_INSTDATA_DIR', '.')
+        fileglob = os.path.join(dataRoot, 'data', 'pfs', 'flats', 'pfsFlat-*-%d%s.fits' %
+                                (1, self.detector.band[0].lower()))
+
+        print("looking for flats %s" % (fileglob))
+        filepaths = glob.glob(fileglob)
+        filepath = filepaths[0]
+        print("fetching flat %s" % (filepath))
+        flat = pyfits.getdata(filepath)
+
+        return flat
+    
+    def readout(self, addNoise=True,
+                realBias=None, realFlat=None):
+        
         if self.pixelImage is not None:
             return
 
@@ -128,14 +156,16 @@ class Exposure(object):
             if len(lo_w[0]) > 0:
                 print("%d low pixels, min=%f" % (len(lo_w[0]), 
                                                  self._flux.min()))
-
+                self._flux += -self._flux.min()
+                
             noisyFlux = numpy.random.poisson(self._flux)
             noise = noisyFlux - self._flux
             self.addPlane('shotnoise', noise)
         else:
             noisyFlux = self._flux
             
-        self.detector.readout(self, noisyFlux, ontoBias=realBias)
+        self.detector.readout(self, noisyFlux,
+                              ontoBias=realBias, applyFlat=realFlat)
 
     def addPlane(self, name, im):
         if name in self.planes:

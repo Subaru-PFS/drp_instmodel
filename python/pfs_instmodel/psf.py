@@ -17,7 +17,7 @@ class Psf(object):
         ims, ids, ctrs =  self.psfsAt([fiber], [wave])
         return ims[0]
     
-    def fiberImages(self, fibers, spectra=None, outImg=None, waveRange=None):
+    def fiberImages(self, fibers, spectra=None, outExp=None, waveRange=None):
         """ Return and/or place an image of the given spectra through the given fibers. 
 
         Parameters
@@ -28,16 +28,19 @@ class Psf(object):
            
         """
 
-        if outImg is None:
-            outImg = self.detector.simBias().image
+        if outExp is None:
+            outExp = self.detector.simBias().image
 
         if spectra is None:
             spectra = [None] * len(fibers)
+        if not isinstance(spectra, (tuple, list)):
+            spectra = [spectra] * len(fibers)
+            
         for i, fiber in enumerate(fibers):
-            self.fiberImage(fiber, spectra[i], outImg=outImg, 
+            self.fiberImage(fiber, spectra[i], outExp=outExp, 
                             waveRange=waveRange)
 
-        return outImg
+        return outExp
 
     def scalePsf(self, rawPsf, xc, yc, doRescaleFlux=False, doDetails=False):
         """ Given an oversampled image scale it to the detector grid after shifting it. """
