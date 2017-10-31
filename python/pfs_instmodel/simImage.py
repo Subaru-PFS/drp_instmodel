@@ -1,3 +1,8 @@
+from __future__ import print_function
+from __future__ import division
+from builtins import range
+from builtins import object
+
 import logging
 import os
 import numpy

@@ -1,3 +1,8 @@
+from __future__ import division
+from __future__ import print_function
+from __future__ import absolute_import
+
+from builtins import range
 import logging
 import numpy as np
 import numpy
@@ -8,7 +13,7 @@ import matplotlib.gridspec as gridspec
 
 import astropy.io.fits as pyfits
 
-import plotutils
+from . import plotutils
 
 def XXradToIndices(rad, sampling=1.0, offset=0.0):
     """ Return the indices for an odd-width vector. """
@@ -75,7 +80,7 @@ def gaussianFiber(rad, sigma, alpha):
     f = tophat(rad, alpha).astype('f8')
 
     w = f.shape[0]
-    c = w/2
+    c = w//2
     f = f[c-2*alpha:c+2*alpha, c-2*alpha:c+2*alpha]
     
     spot = scipy.ndimage.convolve(g, f, mode='constant')
@@ -176,10 +181,10 @@ def imextent(im, scale=1.0, doCenter=False):
     """ return (l,r,b,t) indices for the pixel centers. """
 
     rows,cols = im.shape
-    rows /= scale
-    cols /= scale
-    x0 = 0 if doCenter==False else -cols/2.0
-    y0 = 0 if doCenter==False else -rows/2.0
+    rows //= scale
+    cols //= scale
+    x0 = 0 if doCenter is False else -cols//2.0
+    y0 = 0 if doCenter is False else -rows//2.0
     
     return (x0, x0+cols, y0, y0+rows)
 
@@ -234,7 +239,7 @@ def genLagrangeCoeffs(xshift, order=4):
         xp = range(-order//2, order//2)
         xlo = range(1, order+1)
         xhi = range(-(order-1), 0)
-        xhi = xhi + [None]
+        xhi = list(xhi) + [None]
 
     outSlice = slice(order//2,-order//2)
 
@@ -478,7 +483,7 @@ def padArray(arr, padTo, center=True):
     #print "old size=%d, new=%d" % (arr.shape[0], padTo)
     newSize = numpy.array([padTo, padTo])
     if center:
-        offset = (padTo-arr.shape[0])/2
+        offset = (padTo-arr.shape[0])//2
     else:
         offset = 0
     parr = numpy.zeros(newSize, dtype=arr.dtype)
@@ -495,7 +500,7 @@ def rebin(a, *args):
 
     shape = a.shape
     lenShape = len(shape)
-    factor = numpy.asarray(shape)/numpy.asarray(args)
+    factor = numpy.asarray(shape)//numpy.asarray(args)
     evList = ['a.reshape('] + \
       ['args[%d],factor[%d],'%(i,i) for i in range(lenShape)] + \
       [')'] + ['.sum(%d)'%(i+1) for i in range(lenShape)]
@@ -536,8 +541,8 @@ def poo(arr, dx, dy, splines=None, binFactor=10, padTo=0, applyPixelResp=False, 
     assert dx>=0 and dy>=0
 
     # Trim raw image to multiples of binFactor pixels.
-    maxSize = binFactor*(numpy.array(arr.shape,dtype='i4')/binFactor)
-    newSize = (maxSize / binFactor).tolist()
+    maxSize = binFactor*(numpy.array(arr.shape,dtype='i4')//binFactor)
+    newSize = (maxSize // binFactor).tolist()
     arr = arr[:maxSize[0],:maxSize[1]].copy()
 
     # Get our unshifted, binned, reference image.
@@ -593,7 +598,7 @@ def shiftSpotBy(spot, shiftBy, binTo,
     except:
         dx, dy = shiftBy, shiftBy
         
-    binnedShape = (numpy.array(spot.shape,'i2')/(binnedOversample)).tolist()
+    binnedShape = (numpy.array(spot.shape,'i2')//(binnedOversample)).tolist()
     binnedSpot = rebin(spot, *binnedShape)
     if doNorm:
         binnedSpot = binnedSpot / binnedSpot.sum()
@@ -611,7 +616,7 @@ def shiftSpotBy(spot, shiftBy, binTo,
     if numpy.abs(binnedShift[0]) >= 1 or numpy.abs(binnedShift[1]) >= 1:
         idx = int(binnedShift[0])
         idy = int(binnedShift[1])
-        print "cannot interpolate more than 1 pixel, moving by %d,%d first" % (idx,idy)
+        print("cannot interpolate more than 1 pixel, moving by %d,%d first" % (idx,idy))
         binnedShift = (binnedShift[0]-idx, binnedShift[1]-idy)
         tSpot = numpy.zeros(binnedSpot.shape, dtype='f4')
         tSpot[idy:,idx:] = binnedSpot[slice(None,-idy if idy else None),
@@ -619,11 +624,11 @@ def shiftSpotBy(spot, shiftBy, binTo,
         binnedSpot = tSpot
 
     # interpolation-shift the binned image
-    print "shifting %s by %g,%g" % (binnedSpot.shape, binnedShift[0], binnedShift[1])
+    print("shifting %s by %g,%g" % (binnedSpot.shape, binnedShift[0], binnedShift[1]))
     shiftedSpot, kernels = shiftFunc(binnedSpot, *binnedShift)
 
     # And pixel-shift (and optionally apply pixel response) then pixel-bin a comparison image
-    print "placing %s by %d,%d" % (spot.shape, dx,dy)
+    print("placing %s by %d,%d" % (spot.shape, dx,dy))
     placedSpot = numpy.zeros(spot.shape, dtype='f4')
     placedSpot[dy:,dx:] = spot[slice(None,-dy if dy else None),
                                slice(None,-dx if dx else None)]
@@ -677,14 +682,14 @@ def saveForBin(spotDict, bin, filebase):
             hdu.header['YSHIFT'] = dir
             hdu.header['TYPE'] = 'placed'
             hdus.append(hdu)
-            print "added placed hdu for (%d,%d,%d)" % (bin, s, dir)
+            print("added placed hdu for (%d,%d,%d)" % (bin, s, dir))
             hdu = pyfits.ImageHDU(sparts[0].astype('f4'))
             hdu.header['XSHIFT'] = s
             hdu.header['YSHIFT'] = dir
             hdu.header['TYPE'] = 'shifted'
             hdus.append(hdu)
-            print "added shifted hdu for (%d,%d,%d)" % (bin, s, dir)
-    print "writing %d HDUs" % (len(hdus))
+            print("added shifted hdu for (%d,%d,%d)" % (bin, s, dir))
+    print("writing %d HDUs" % (len(hdus)))
     
     hdulist = pyfits.HDUList(hdus)
     hdulist.writeto(filename, clobber=True)
@@ -708,7 +713,7 @@ def gatherPoo(spot, splines=None, applyPixelResp=False, kargs=None):
     all = {}
     for bin,pad in tries:
         for shift in range(bin):
-            print "processing %s with kargs=%s" % ((bin,pad,shift), kargs)
+            print("processing %s with kargs=%s" % ((bin,pad,shift), kargs))
             ret = poo(spot, shift, 0, 
                       splines=splines,
                       applyPixelResp=applyPixelResp,
@@ -728,7 +733,7 @@ def gatherPoo2(spot, bin, splines=None, pad=0, applyPixelResp=False, kargs=None)
     all = {}
     for xshift in range(bin):
         for yshift in range(bin):
-            print "processing %s with kargs=%s" % ((bin,pad,xshift,yshift), kargs)
+            print("processing %s with kargs=%s" % ((bin,pad,xshift,yshift), kargs))
             ret = poo(spot, xshift, yshift, 
                       splines=splines,
                       applyPixelResp=applyPixelResp,
@@ -791,7 +796,7 @@ def spotShowImages(im, fftim, iim, imbox, fig, plotids, resClip=0,
         print("imr range: %g %g" % (residIm.min(), residIm.max()))
             
         ticks = numpy.sort(numpy.append(numpy.linspace(-resClip,resClip,4),[0]))
-        print "setting ticks to %s" % (ticks)
+        print("setting ticks to %s" % (ticks))
         # fig.colorbar(im3, ticks=ticks)
         fig.colorbar(im3)
 
@@ -819,7 +824,7 @@ def spotShow(im, scale=10, binning=2, figName='spot',
 
     im1 = im/im.max() + 1e-6
     fftx, ffty, fftim = imfreq1d(im1, sampling=1.0/scale)
-    print "x,y,im: ", fftx.shape, ffty.shape, fftim.shape
+    print("x,y,im: ", fftx.shape, ffty.shape, fftim.shape)
     iim = freq2im(fftim, doAbs=True)
     imbox = imextent(im1, scale=scale, doCenter=True)
     spotShowImages(im1, fftim, iim, imbox, fig, [sgs[0,0],sgs[0,1],sgs[0,2]],
@@ -830,14 +835,14 @@ def spotShow(im, scale=10, binning=2, figName='spot',
     p1.set_yscale('log')
 
     im2 = rebin(im1, 
-                          im.shape[0]/binning,
-                          im.shape[0]/binning)
+                im.shape[0]//binning,
+                im.shape[0]//binning)
     binnedScale = float(scale)/binning
 
     im2 /= (binning*binning)
     im2 = im2/im2.max() + 1e-6
     fftx, ffty, fftim = imfreq1d(im2, sampling=1.0/binnedScale)
-    print "x,y,im: ", fftx.shape, ffty.shape, fftim.shape
+    print("x,y,im: ", fftx.shape, ffty.shape, fftim.shape)
     #fftim[im2.shape[0]/2, im2.shape[1]/binning] = 0
     iim = freq2im(fftim, doAbs=True)
     imbox = imextent(im2, scale=binnedScale, doCenter=True)
@@ -873,13 +878,13 @@ def frdShow(frds,
             raise RuntimeError("you did not specify a unique spot (%d)" % (len(spot_w)))
 
         spots.append(d['spot'][spot_w][0])
-        print "spot %d max=%g sum=%g" % (f, spots[-1].max(), spots[-1].sum())
+        print("spot %d max=%g sum=%g" % (f, spots[-1].max(), spots[-1].sum()))
 
     p1 = fig.add_subplot(1,1,1)
     
     refSpot = spots[0]
     normScale = 1.0*refSpot.max()
-    midline = refSpot.shape[0]/2
+    midline = refSpot.shape[0]//2
     x = (numpy.arange(2*midline)-midline)/10.0
     colors = ['b','g','r']
     p1.xaxis.grid(True, which='major',
@@ -928,9 +933,9 @@ def spotShow2(spot0, scale1, scale2, figname='spot',
     fullSize = spot0.shape[0]
     spot0 = spot0/spot0.sum()
 
-    size1 = scale1 * fullSize/unbinnedScale
-    size2 = scale2 * fullSize/unbinnedScale
-    print "sizes = %s, %s" % (size1, size2)
+    size1 = scale1 * fullSize//unbinnedScale
+    size2 = scale2 * fullSize//unbinnedScale
+    print("sizes = %s, %s" % (size1, size2))
 
     spot1 = rebin(spot0, size1, size1)
     spot2 = rebin(spot0, size2, size2)
@@ -972,10 +977,10 @@ def spotShow2(spot0, scale1, scale2, figname='spot',
         placedSpot2 = numpy.zeros(spot2.shape)
         shiftedSpot2 = numpy.zeros(spot2.shape)
     diffIm2 = placedSpot2 - shiftedSpot2
-    print "flux=%g,%g,resid=%g" % (placedSpot2.sum(),shiftedSpot2.sum(),
-                                   numpy.abs(diffIm2).sum())
+    print("flux=%g,%g,resid=%g" % (placedSpot2.sum(),shiftedSpot2.sum(),
+                                   numpy.abs(diffIm2).sum()))
 
-    trimRad = spot2.shape[0]/2
+    trimRad = spot2.shape[0]//2
     xr = numpy.arange(spot1.shape[0]) - (spot1.shape[0]+1)/2
     mx,my = numpy.meshgrid(xr,xr)
     trimMask = ((mx < -trimRad) | (mx > trimRad) |
@@ -1016,7 +1021,7 @@ def plot2bins(spot, bin1, bin2, trimmedSize=None,
     assert spot.shape == (fullSize, fullSize)
 
     if trimmedSize:
-        inset = (fullSize-trimmedSize)/2
+        inset = (fullSize-trimmedSize)//2
         spot = spot[inset:-inset,inset:-inset].astype('f8')
         
     return spotShow2(spot, bin1, bin2, 
@@ -1041,7 +1046,7 @@ def spotgrid(spots, waves, fibers, trimRadius=75, figName='spot grid', vmax=0.6)
             sidx = numpy.where((spots['wavelength'] == w) & (spots['fiberIdx'] == f))
             p = fig.add_subplot(rows, cols, (rows-w_i-1)*cols+f_i+1)
             spotIm = spots['spot'][sidx[0][0]] / spots['spot'].max()
-            spotCtr = (spotIm.shape[0]+1)/2
+            spotCtr = (spotIm.shape[0]+1)//2
             trimmedSpot = spotIm[spotCtr-trimRadius:spotCtr+trimRadius,
                                  spotCtr-trimRadius:spotCtr+trimRadius]
             p.imshow(trimmedSpot,
@@ -1103,7 +1108,7 @@ def stretchSpan(span, factor=1.5):
     span *= factor
     span += off
     
-    print span
+    print(span)
     return span
     
 def plotProj(x,y,z,figname=None,figsize=None):

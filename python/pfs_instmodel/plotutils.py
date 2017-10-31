@@ -1,3 +1,5 @@
+from __future__ import division
+
 import numpy
 
 def asinh(inputArray, scaleMin=None, scaleMax=None, nonLinear=None, doNorm=True):

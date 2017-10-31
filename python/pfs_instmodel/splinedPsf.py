@@ -1,5 +1,10 @@
 #!/usr/bin/env python
 
+from __future__ import division
+from __future__ import print_function
+from __future__ import absolute_import
+
+from builtins import range
 import os
 
 from astropy.io import fits as pyfits
@@ -11,10 +16,10 @@ import scipy.interpolate as spInterp
 import scipy.ndimage
 import scipy.ndimage.interpolation
 
-import spotgames
-from spectrum import LineSpectrum
+from . import spotgames
+from .spectrum import LineSpectrum
 
-import psf
+from . import psf
 reload(psf)
 
 
@@ -306,7 +311,7 @@ class SplinedPsf(psf.Psf):
         traceWidth = int((xCenters.max() - xCenters.min())/pixelScale) + 1
         traceHeight = int((yCenters.max() - yCenters.min())/pixelScale) + 1
         spotWidth = fiberPsfs[0].shape[-1]
-        spotRad = spotWidth / 2
+        spotRad = spotWidth // 2
         self.logger.debug("spot size: %s %s %s %s" % (spotWidth, spotRad, psfToSpotRatio, psfToSpotPixRatio))
         self.logger.debug("trace    : %s %s" % (traceHeight, traceWidth))
         
@@ -331,7 +336,7 @@ class SplinedPsf(psf.Psf):
         fiberImagePixelOffset -= expandDown
         
         # pixels
-        outImgOffset = fiberImagePixelOffset / psfToSpotPixRatio
+        outImgOffset = fiberImagePixelOffset // psfToSpotPixRatio
         self.logger.debug("fiber offset: pix=%s base=%s, mm=%s out=%s" % (fiberImagePixelOffset,
                                                                           fiberImageOffset/pixelScale,
                                                                           fiberImageOffset,
@@ -357,7 +362,7 @@ class SplinedPsf(psf.Psf):
             if specFlux == 0.0:
                 continue
             
-            rawPsf = fiberPsfs[i/everyNth]
+            rawPsf = fiberPsfs[i//everyNth]
 
             # in mm
             xc = xCenters[i]
@@ -445,8 +450,9 @@ class SplinedPsf(psf.Psf):
         parentIdx, childIdx = self.trimRect(outExp, resampled, outOffset)
         try:
             outExp.addFlux(resampled[childIdx], outSlice=parentIdx, addNoise=True)
-        except Exception, e:
-            self.logger.warn("failed to place child at %s): %s" % (outOffset, e))
+        except Exception as e:
+            self.logger.warn("failed to place child at %s, slices=%s,%s): %s" %
+                             (outOffset, childIdx, parentIdx, e))
 
         return resampled
     
@@ -455,7 +461,7 @@ class SplinedPsf(psf.Psf):
 
         try:
             outImg[parentIdx] += subImg[childIdx]
-        except Exception, e:
+        except Exception as e:
             self.logger.warn("failed to place child at %s: %s" % (subOffset, e))
     
     def trimRect(self, parent, child, childOffset=(0,0)):
@@ -525,7 +531,7 @@ class SplinedPsf(psf.Psf):
         
         self.logger.info("reading and interpolating %s PSF spots: %s..." % (spotType, spotIDs))
         if spotType == 'jeg':
-            import jegSpots
+            from . import jegSpots
             reload(jegSpots)
             
             if spotArgs is None:
@@ -657,7 +663,7 @@ class SplinedPsf(psf.Psf):
 
         if spot is None:
             spotFiber = 0
-            spotWave = sorted(self.wave)[len(self.wave)/2]
+            spotWave = sorted(self.wave)[len(self.wave)//2]
             spotId = np.where((self.fiber == spotFiber) & (self.wave == spotWave))[0]
             spot = self.spots[int(spotId)]
 
@@ -697,7 +703,7 @@ class SplinedPsf(psf.Psf):
         yy = np.unique(self.wave)
 
         xc = self.xc.reshape(len(xx), len(yy))
-        xc[:,:] = xc[:,len(yy)/2:len(yy)/2+1]
+        xc[:,:] = xc[:,len(yy)//2:len(yy)//2+1]
         self.xcCoeffs = self.buildSpline(self.xcCoeffs.__class__,
                                          xx, yy, xc)
         self.logger.warn("set constant X")

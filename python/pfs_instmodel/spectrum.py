@@ -1,3 +1,7 @@
+from __future__ import division
+from builtins import range
+
+from builtins import object
 import numpy
 import os
 import scipy
@@ -149,7 +153,7 @@ class ArcSpectrum(LineSpectrum):
         dataRoot = os.environ.get('DRP_INSTDATA_DIR', '.')
         filepath = os.path.join(dataRoot, 'data', 'lines', 'nist_all.txt')
 
-        self.lines = numpy.genfromtxt(filepath, usecols=range(3),
+        self.lines = numpy.genfromtxt(filepath, usecols=list(range(3)),
                                       dtype=[('wave', 'f4'),
                                              ('name', 'S5',),
                                              ('flux', 'f4')])

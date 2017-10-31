@@ -1,3 +1,5 @@
+from __future__ import print_function
+from builtins import object
 import glob
 import numpy
 import os
@@ -34,7 +36,7 @@ class Exposure(object):
         return "Exposure(rows=%s, cols=%s, dtype=%s, planes=%s)" % (self._flux.shape[0],
                                                                     self._flux.shape[1],
                                                                     self._flux.dtype,
-                                                                    self.planes.keys())
+                                                                    list(self.planes.keys()))
     @property 
     def mask(self):
         return self._mask
