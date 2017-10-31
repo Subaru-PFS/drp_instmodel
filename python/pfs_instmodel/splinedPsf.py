@@ -311,7 +311,7 @@ class SplinedPsf(psf.Psf):
         traceWidth = int((xCenters.max() - xCenters.min())/pixelScale) + 1
         traceHeight = int((yCenters.max() - yCenters.min())/pixelScale) + 1
         spotWidth = fiberPsfs[0].shape[-1]
-        spotRad = spotWidth / 2
+        spotRad = spotWidth // 2
         self.logger.debug("spot size: %s %s %s %s" % (spotWidth, spotRad, psfToSpotRatio, psfToSpotPixRatio))
         self.logger.debug("trace    : %s %s" % (traceHeight, traceWidth))
         
@@ -336,7 +336,7 @@ class SplinedPsf(psf.Psf):
         fiberImagePixelOffset -= expandDown
         
         # pixels
-        outImgOffset = fiberImagePixelOffset / psfToSpotPixRatio
+        outImgOffset = fiberImagePixelOffset // psfToSpotPixRatio
         self.logger.debug("fiber offset: pix=%s base=%s, mm=%s out=%s" % (fiberImagePixelOffset,
                                                                           fiberImageOffset/pixelScale,
                                                                           fiberImageOffset,
@@ -451,7 +451,8 @@ class SplinedPsf(psf.Psf):
         try:
             outExp.addFlux(resampled[childIdx], outSlice=parentIdx, addNoise=True)
         except Exception as e:
-            self.logger.warn("failed to place child at %s): %s" % (outOffset, e))
+            self.logger.warn("failed to place child at %s, slices=%s,%s): %s" %
+                             (outOffset, childIdx, parentIdx, e))
 
         return resampled
     

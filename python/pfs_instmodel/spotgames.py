@@ -239,7 +239,7 @@ def genLagrangeCoeffs(xshift, order=4):
         xp = range(-order//2, order//2)
         xlo = range(1, order+1)
         xhi = range(-(order-1), 0)
-        xhi = xhi + [None]
+        xhi = list(xhi) + [None]
 
     outSlice = slice(order//2,-order//2)
 
@@ -500,7 +500,7 @@ def rebin(a, *args):
 
     shape = a.shape
     lenShape = len(shape)
-    factor = numpy.asarray(shape)/numpy.asarray(args)
+    factor = numpy.asarray(shape)//numpy.asarray(args)
     evList = ['a.reshape('] + \
       ['args[%d],factor[%d],'%(i,i) for i in range(lenShape)] + \
       [')'] + ['.sum(%d)'%(i+1) for i in range(lenShape)]
