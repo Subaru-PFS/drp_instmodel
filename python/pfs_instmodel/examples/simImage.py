@@ -9,7 +9,7 @@ import logging
 import os
 import re
 
-import pfs_tools.par
+import pfs_tools
 import pfs_instmodel.simImage as simImage
 import pfs_instmodel.sky as pfsSky
 import pfs_instmodel.spectrum as pfsSpectrum
@@ -122,7 +122,8 @@ def loadField(fieldName):
     """
     
     # Decide on where to save field definitions, and add the usual path crap
-    fields = pfs_tools.par.loadParFile(os.path.join(os.environ["DRP_INSTMODEL_DIR"], "examples", "sampleField.py"))
+    fields = pfs_tools.schema.loadParFile(os.path.join(os.environ["DRP_INSTMODEL_DIR"],
+                                                       "examples", "sampleField.py"))
     return fields[fieldName]
     
 def expandRangeArg(arg):
