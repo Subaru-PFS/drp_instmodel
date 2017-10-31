@@ -62,7 +62,7 @@ class Detector(object):
         """ Deal with saturated pixels. Set flags, spread flux, etc. """
         pass
     
-    def readout(self, exp, flux, ontoBias=None,
+    def readout(self, exp, flux, exptime=1.0, ontoBias=None,
                 applyFlat=None):
         """ 'Readout' an exposure: add bad columns, hot pixels, etc. """
 

@@ -146,12 +146,13 @@ class Exposure(object):
 
         return flat
     
-    def readout(self, addNoise=True,
+    def readout(self, exptime=1.0, addNoise=True,
                 realBias=None, realFlat=None):
         
         if self.pixelImage is not None:
             return
 
+        self._flux *= exptime
         if addNoise:
             print("adding noise=%s" % (addNoise))
             lo_w = numpy.where(self._flux < 0)
@@ -166,7 +167,7 @@ class Exposure(object):
         else:
             noisyFlux = self._flux
             
-        self.detector.readout(self, noisyFlux,
+        self.detector.readout(self, noisyFlux, exptime=exptime,
                               ontoBias=realBias, applyFlat=realFlat)
 
     def addPlane(self, name, im):
