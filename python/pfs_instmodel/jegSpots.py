@@ -13,7 +13,9 @@ import re
 import sys
 import time
 
-import numpy
+from collections import OrderedDict
+
+import numpy as np
 import scipy.signal
 import scipy.ndimage
 
@@ -72,14 +74,14 @@ def resolveSpotPathSpec(pathSpec):
 def makeFiberImage(fiberRadius=28, shape=(64,64), dtype='f4'):
     """ Return the image we convolve the spots with. """
     
-    im = numpy.zeros(shape, dtype=dtype)
+    im = np.zeros(shape, dtype=dtype)
     spotRadius = shape[0]//2
 
-    x,y = numpy.meshgrid(numpy.arange(-spotRadius,spotRadius+1),
-                         numpy.arange(-spotRadius,spotRadius+1))
-    d = numpy.sqrt(x**2 + y**2)
+    x,y = np.meshgrid(np.arange(-spotRadius,spotRadius+1),
+                      np.arange(-spotRadius,spotRadius+1))
+    d = np.sqrt(x**2 + y**2)
 
-    im[numpy.where(d <= fiberRadius)] = 1
+    im[np.where(d <= fiberRadius)] = 1
 
     return im
     
@@ -105,7 +107,7 @@ def getFiberIds(header, useArrayKeys):
     else:
         raise ValueError("useArrayKeys must be True or False.")
     
-    angs = numpy.array(angs)
+    angs = np.array(angs)
     normAngs = angs / angs.max()
     fibers = (normAngs * (maxFiber-1)).astype('i2')
 
@@ -414,7 +416,7 @@ def readSpotFile(pathSpec, doConvolve=None, doRebin=False,
     nimage = headerDict['NIMAGE']
     xsize = headerDict['XSIZE']
     ysize = headerDict['YSIZE']
-    positions = numpy.fromstring(rawPositions, dtype='3f4', count=nimage)
+    positions = np.fromstring(rawPositions, dtype='3f4', count=nimage)
 
     wavelengths = []
     nlam = headerDict['NLAM']
@@ -429,16 +431,16 @@ def readSpotFile(pathSpec, doConvolve=None, doRebin=False,
         assert len(wavelengths) == nlam
                         
     fiberIDs = getFiberIds(headerDict, useArrayKeys)
-    nfibers = len(fiberIDs)
     
     if dataVersion < 3:
-        data = numpy.fromstring(rawData, dtype='(%d,%d)u2' % (xsize,ysize), count=nimage).astype('f4')
+        data = np.fromstring(rawData, dtype='(%d,%d)u2' % (xsize,ysize), count=nimage).astype('f4')
     elif dataVersion == 3:
-        data = numpy.fromstring(rawData, dtype='(%d,%d)f4' % (xsize,ysize), count=nimage).astype('f4')
+        data = np.fromstring(rawData, dtype='(%d,%d)f4' % (xsize,ysize), count=nimage).astype('f4')
     else:
         raise ValueError("unknown spot file version: %s" % (dataVersion))
     jegLogger.info("raw spot version %d data type %s, range: %g..%g",
                    dataVersion, data.dtype, data.min(), data.max())
+
 
     rawspots = data.copy()
     if doRebin is not False:
@@ -446,7 +448,7 @@ def readSpotFile(pathSpec, doConvolve=None, doRebin=False,
         if newSize*doRebin != xsize:
             raise ValueError('doRebin must evenly divide the raw spot size')
 
-        newData = numpy.empty(shape=(data.shape[0], newSize, newSize), dtype=data.dtype)
+        newData = np.empty(shape=(data.shape[0], newSize, newSize), dtype=data.dtype)
         for i in range(data.shape[0]):
             tspot = spotgames.rebinBy(data[i], doRebin)
             newData[i,:,:] = tspot
@@ -503,8 +505,8 @@ def readSpotFile(pathSpec, doConvolve=None, doRebin=False,
         assert spot.shape[0] == spot.shape[1]
         spotw = spot.shape[0]//2
         ctr0 = spotgames.centroid(spot)
-        #assert numpy.abs(ctr0[0] - spotw) < 0.1, "centroid Y too far from center (%g %g)" % (ctr0[0], spotw)
-        #assert numpy.abs(ctr0[1] - spotw) < 0.1, "centroid X too far from center (%g %g)" % (ctr0[1], spotw)
+        #assert np.abs(ctr0[0] - spotw) < 0.1, "centroid Y too far from center (%g %g)" % (ctr0[0], spotw)
+        #assert np.abs(ctr0[1] - spotw) < 0.1, "centroid X too far from center (%g %g)" % (ctr0[1], spotw)
 
         if doRecenter:
             pspot, spotSlice = spotgames.padArray(spot, padTo=spot.shape[0]*2)
@@ -524,10 +526,10 @@ def readSpotFile(pathSpec, doConvolve=None, doRebin=False,
 
         # Rotate x-up mechanical view to y-up detector view (dispersing along columns)
         if doSwapaxes:
-            spot = numpy.swapaxes(spot,0,1)
+            spot = np.swapaxes(spot,0,1)
             xc, yc = yc, xc
 
-            rawSpot = numpy.swapaxes(rawspots[i,:,:],0,1)
+            rawSpot = np.swapaxes(rawspots[i,:,:],0,1)
             
         if doNorm:
             if doNorm == 'peak':
@@ -539,15 +541,15 @@ def readSpotFile(pathSpec, doConvolve=None, doRebin=False,
             jegLogger.debug("normalized to %g..%g sum=%g...." % (spot.min(), spot.max(), spot.sum()))
         
         ctr = spotgames.centroid(spot)
-        dCtr = numpy.abs(ctr - numpy.array(spot.shape).T/2.0)
-        if numpy.any(dCtr > 0.01):
+        dCtr = np.abs(ctr - np.array(spot.shape).T/2.0)
+        if np.any(dCtr > 0.01):
             jegLogger.warn("spot  %d (%d, %0.2f) at (%0.2f %0.2f %0.3f) (%0.4f,%0.4f) (%0.4f, %0.4f), sum=%0.3f" % 
                            (i, fiberIdx, wavelength, xc, yc, focus,
                             ctr[0], ctr[1], dCtr[0], dCtr[1],
                             spot.sum()))
 
         spots.append((fiberIdx, wavelength, xc, yc, focus, rawSpot, spot, ctr))
-            
+
         if fiberIdx != 0:
             flipCtr = ctr.copy()
             flipCtr[0] = spot.shape[1]/2 - (flipCtr[0] - spot.shape[1]/2)
@@ -555,20 +557,21 @@ def readSpotFile(pathSpec, doConvolve=None, doRebin=False,
 
     allSpots = spots + symSpots    
     spotw = spots[0][-2].shape[0]
-    spotDtype = numpy.dtype([('fiberIdx','i2'),
-                             ('wavelength','f8'),
-                             ('spot_xc','f8'), ('spot_yc','f8'), ('spot_focus','f4'),
-                             ('rawspot', '(%d,%d)%s' % (rawSpot.shape[0],
-                                                        rawSpot.shape[1],
-                                                        rawSpot.dtype)),
-                             ('spot', '(%d,%d)f4' % (spotw,spotw)),
-                             ('ctr', '2f4')])
+    spotDtype = np.dtype([('fiberIdx','i2'),
+                          ('wavelength','f8'),
+                          ('spot_xc','f8'), ('spot_yc','f8'), ('spot_focus','f4'),
+                          ('spot_frd','f4'),
+                          ('rawspot', '(%d,%d)%s' % (rawSpot.shape[0],
+                                                     rawSpot.shape[1],
+                                                     rawSpot.dtype)),
+                          ('spot', '(%d,%d)f4' % (spotw,spotw)),
+                          ('ctr', '2f4')])
 
-    tarr = numpy.array(allSpots, dtype=spotDtype)
+    tarr = np.array(allSpots, dtype=spotDtype)
 
     # Now clean up... later steps expect to have fiber IDs and wavelengths in order
-    arr = numpy.sort(tarr, order=('fiberIdx','wavelength'))
-    assert(numpy.all(arr['spot'] >= 0)), "spots must be non-negative."
+    arr = np.sort(tarr, order=('fiberIdx','wavelength'))
+    assert(np.all(arr['spot'] >= 0)), "spots must be non-negative."
     
     _spotCache[path] = (arr, headerDict)
 
@@ -580,7 +583,7 @@ def dataWidth(spots):
     assert spots.shape[-2] == spots.shape[-1], "input spots must be square"
     
     startWidth = spots.shape[-1]
-    nz = numpy.where(spots > 0)
+    nz = np.where(spots > 0)
     mn = min(nz[1].min(), nz[2].min())
     mx = max(nz[1].max(), nz[2].max())
 
@@ -593,7 +596,7 @@ def borderWidth(spots):
     assert spots.shape[-2] == spots.shape[-1], "input spots must be square"
     
     startWidth = spots.shape[-1]
-    nz = numpy.where(spots > 0)
+    nz = np.where(spots > 0)
     mn = min(nz[1].min(), nz[2].min())
     mx = max(nz[1].max(), nz[2].max())
     mxt = startWidth - mx - 1
@@ -635,11 +638,11 @@ def oversampleSpots(spots, factor):
                                                 factor))
 
     newWidth = spots.shape[1]*factor
-    newSpots = numpy.zeros(shape=(spots.shape[0], newWidth, newWidth),
+    newSpots = np.zeros(shape=(spots.shape[0], newWidth, newWidth),
                            dtype=spots.dtype)
 
-    ix1 = (numpy.arange(newWidth,dtype='f4')//factor).astype('i4')
-    ix = numpy.tile(ix1, (newWidth,1))
+    ix1 = (np.arange(newWidth,dtype='f4')//factor).astype('i4')
+    ix = np.tile(ix1, (newWidth,1))
     ixy = (ix, ix.T)
 
     for i in range(spots.shape[0]):
