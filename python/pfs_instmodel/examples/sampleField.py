@@ -1,6 +1,7 @@
+from __future__ import (division)
+
 from builtins import range
 from builtins import object
-from __future__ import (division)
 
 import numpy as np
 from pfs_instmodel.schema.probes import PROBE
@@ -110,7 +111,7 @@ class Slit(object):
             
         return self.scienceFibers[indexNum]
 
-slit1 = Slit(1)
+Sm1Slit = Slit(1).scienceFibers
 
 # Science fiber numbers, -300 to +300:
 
@@ -126,16 +127,20 @@ Lam1HgArcs = [PROBE(i,0.0,1.0,100.0,200.0,'SIMARC', ('HgI',)) for i in LamSlit1]
 Lam1NeArcs = [PROBE(i,0.0,1.0,100.0,200.0,'SIMARC', ('NeI',)) for i in LamSlit1]
 Lam1XeArcs = [PROBE(i,0.0,1.0,100.0,200.0,'SIMARC', ('XeI',)) for i in LamSlit1]
 Lam1KrArcs = [PROBE(i,0.0,1.0,100.0,200.0,'SIMARC', ('KrI',)) for i in LamSlit1]
+Lam1Sky = [PROBE(i,0.0,1.0,100.0,200.0,'SKY', ()) for i in LamSlit1]
 
-bundledField = slit1.scienceFibers
+Sm1SlitFlat = [PROBE(i,0.0,1.0,100.0,200.0,'SIMFLAT', ()) for i in Sm1Slit]
+Sm1SlitArcs = [PROBE(i,0.0,1.0,100.0,200.0,'SIMARC', ()) for i in Sm1Slit]
+Sm1SlitComb = [PROBE(i,0.0,1.0,100.0,200.0,'SIMCOMB', ()) for i in Sm1Slit]
+Sm1SlitSlope = [PROBE(i,0.0,1.0,100.0,200.0,'SIMSLOPE', ()) for i in Sm1Slit]
+Sm1SlitCdArcs = [PROBE(i,0.0,1.0,100.0,200.0,'SIMARC', ('CdI',)) for i in Sm1Slit]
+Sm1SlitHgArcs = [PROBE(i,0.0,1.0,100.0,200.0,'SIMARC', ('HgI',)) for i in Sm1Slit]
+Sm1SlitNeArcs = [PROBE(i,0.0,1.0,100.0,200.0,'SIMARC', ('NeI',)) for i in Sm1Slit]
+Sm1SlitXeArcs = [PROBE(i,0.0,1.0,100.0,200.0,'SIMARC', ('XeI',)) for i in Sm1Slit]
+Sm1SlitKrArcs = [PROBE(i,0.0,1.0,100.0,200.0,'SIMARC', ('KrI',)) for i in Sm1Slit]
+Sm1Sky = [PROBE(i,0.0,1.0,100.0,200.0,'SKY', ()) for i in Sm1Slit]
 
-centerRange = [slit1.scienceFiberToSlitPos(i) for i in (-1,1)]
-edgeRange = [slit1.scienceFiberToSlitPos(i) for i in (-300,300)]
-centerAndEdge = centerRange + edgeRange
-
-combField = [PROBE(i,0.0,1.0,100.0,200.0,'SIMCOMB', ()) for i in slit1.scienceFibers]
-flatField = [PROBE(i,0.0,1.0,100.0,200.0,'SIMFLAT', ()) for i in slit1.scienceFibers]
-skyField =  [PROBE(i,0.0,1.0,100.0,200.0,'SKY', ()) for i in slit1.scienceFibers]
+bundledField = Sm1Slit
 
 combFieldx2 = [PROBE(i,0.0,1.0,100.0,200.0,'SIMCOMB', ()) for i in keepEven(bundledField)]
 flatFieldx2 = [PROBE(i,0.0,1.0,100.0,200.0,'SIMFLAT', ()) for i in keepEven(bundledField)]
@@ -151,16 +156,12 @@ arcFieldx40 = [PROBE(i,0.0,1.0,100.0,200.0,'SIMARC', ()) for i in keepNth(bundle
 flatFieldx40 = [PROBE(i,0.0,1.0,100.0,200.0,'SIMFLAT', ()) for i in keepNth(bundledField, 40)]
 skyFieldx40 =  [PROBE(i,0.0,1.0,100.0,200.0,'SKY', ()) for i in keepNth(bundledField, 40)]
 
-centerAndEdgeFlat = [PROBE(i,0.0,1.0,100.0,200.0,'SIMFLAT', ()) for i in centerAndEdge]
-centerAndEdgeComb = [PROBE(i,0.0,1.0,100.0,200.0,'SIMCOMB', ()) for i in centerAndEdge]
-centerAndEdgeSky = [PROBE(i,0.0,1.0,100.0,200.0,'SKY', ()) for i in centerAndEdge]
+# quickComb = [PROBE(i,0.0,1.0,100.0,200.0,'SIMCOMB', ()) for i in (-fiberLim, -fiberLim//2, 0, 1, fiberLim+1)]
+# quickFlat = [PROBE(i,0.0,1.0,100.0,200.0,'SIMFLAT', ()) for i in (-fiberLim, -fiberLim//2, 0, 1, fiberLim+1)]
 
-quickComb = [PROBE(i,0.0,1.0,100.0,200.0,'SIMCOMB', ()) for i in (-fiberLim, -fiberLim//2, 0, 1, fiberLim+1)]
-quickFlat = [PROBE(i,0.0,1.0,100.0,200.0,'SIMFLAT', ()) for i in (-fiberLim, -fiberLim//2, 0, 1, fiberLim+1)]
-
-oneArc = (PROBE(200,0.0,1.0,100.0,200.0,'SIMARC', ()),)
-oneFlat = (PROBE(200,0.0,1.0,100.0,200.0,'SIMFLAT', ()),)
-oneSlope = (PROBE(200,0.0,1.0,100.0,200.0,'SIMSLOPE', ()),)
-oneSky = (PROBE(200,0.0,1.0,100.0,200.0,'SKY', ()),)
+oneArc = (PROBE(315,0.0,1.0,100.0,200.0,'SIMARC', ()),)
+oneFlat = (PROBE(315,0.0,1.0,100.0,200.0,'SIMFLAT', ()),)
+oneSlope = (PROBE(315,0.0,1.0,100.0,200.0,'SIMSLOPE', ()),)
+oneSky = (PROBE(315,0.0,1.0,100.0,200.0,'SKY', ()),)
 
 empty = []
