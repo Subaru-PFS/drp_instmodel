@@ -119,6 +119,159 @@ def clearSpotCache():
     global _spotCache
     _spotCache.clear()
 
+class OneSpot(object):
+    """
+    XTENSION= 'IMAGE   '
+    BITPIX  =                  -32
+    NAXIS   =                    2
+    NAXIS1  =                   99
+    NAXIS2  =                   99
+    PCOUNT  =                    0
+    GCOUNT  =                    1
+    INHERIT =                    T
+    LAMBDA  =              620.000
+    FIBER   =                    2
+    SIGFRD  =              0.02130
+    DETSIG  =              0.00600
+    RPFI    =                8.000
+    SUBYIN  =                 1.50
+    RSQPUP  =                 0.63
+    XBAR    =            -31.37818
+    YBAR    =            -30.19866
+    DXBAR   =             0.000003
+    DYBAR   =             0.000001
+    RMAX    =                 32.0
+    PEAK    =              17550.6
+    RMSD    =               0.0173
+    RMSDFIB =               0.0482
+    DE50    =               0.0388
+    DE98    =               0.0860
+    FIBXD   =               0.0569
+    FIBYD   =               0.0566
+    FIBDX_Y =              -0.0015
+    FIBDY_X =               0.0011
+    """
+    
+    def __init__(self, hdu, doSwapaxes=True):
+        self.spot = hdu.read()
+        self.header = hdu.read_header()
+        self.wavelength = self.header['LAMBDA']
+        self.fiberIdx = self.header['FIBER']
+        self.frd = self.header['SIGFRD']
+        self.xc = self.header['XBAR']
+        self.yc = self.header['YBAR']
+
+        if doSwapaxes:
+            self.xc, self.yc = self.yc, self.xc
+            self.spot = np.rot90(self.spot)  # np.swapaxes(self.spot,0,1)
+
+def _readSpotHDUs(hdus):
+    pass
+
+def _readOneSpotHDU(hdu, focus, doSwapAxes=True):
+    rawspot = hdu.read()
+    header = hdu.read_header()
+
+    xc = header['XBAR']
+    yc = header['YBAR']
+
+    if doSwapAxes:
+        xc, yc = yc, xc
+        rawspot = np.rot90(rawspot)  # np.swapaxes(self.spot,0,1)
+
+    return (header['FIBER'],header['LAMBDA'],
+            xc, yc, focus, header['SIGFRD'],
+            rawspot, rawspot, (0.0,0.0)), header
+
+def _readFitsFile(pathSpec, doNorm=True):
+    import fitsio
+
+    spotFile = fitsio.FITS(pathSpec, mode='r')
+    hdu0 = spotFile[0].read_header()
+
+    """
+    HEADVERS=                    1
+    SPECNUM =                    1
+    DEWARNAM= 'RED'
+    DETNUM  =                    2
+    FOCUS   =               0.0000
+    DATE    = '2017-10-31'
+    MNSIGFRD=               0.0220
+    SGSGFRD =               0.0027
+    COBSGFRD=               0.0070
+    SEEDF   =                -1374
+    SEEDC   =                -4324
+    EXTSIZ  =                43200
+    NEXT    =                43800
+    NFIBSIM =                  600
+    FIB0    =                    0
+    FIBH    =                  599
+    LAM0    =                620.0
+    LAMINC  =                 5.00
+    NLAM    =                   73
+    PIXSIZE =               0.0030
+    RFIBER  =               0.0280
+    NRAY    =                14911
+    HEXRINGS=                   12
+    HEXPTS  =                  469
+    """
+
+    headerDict = OrderedDict()
+    for card in hdu0.records():
+        headerDict[card['name']] = card['value']
+
+    headerDict['DATA_VERSION'] = 100 + headerDict['HEADVERS']
+    headerDict['FILENAME'] = pathSpec
+    headerDict['XPIX'] = headerDict['YPIX'] = headerDict['PIXSIZE']
+    
+    nlam = headerDict['NLAM']
+    wavelengths = np.linspace(headerDict['LAM0'],
+                              headerDict['LAM0'] + (nlam-1)*headerDict['LAMINC'],
+                              num=nlam)
+    nspots = nlam * headerDict['NFIBSIM']
+    allSpots = []  # [OneSpot(spotFile[i]) for i in range(1,nspots+1)]
+    for i in range(1, nspots+1):
+
+        spotParts, header = _readOneSpotHDU(spotFile[i], headerDict['FOCUS'])
+        allSpots.append(spotParts)
+
+    spotw = allSpots[0][-2].shape[0]
+    spotDtype = np.dtype([('fiberIdx','i2'),
+                          ('wavelength','f8'),
+                          ('spot_xc','f8'), ('spot_yc','f8'), ('spot_focus','f4'),
+                          ('spot_frd','f4'),
+                          ('rawspot', '(%d,%d)f4' % (spotw, spotw)),
+                          ('spot', '(%d,%d)f4' % (spotw,spotw)),
+                          ('ctr', '2f4')])
+
+    tarr = np.array(allSpots, dtype=spotDtype)
+
+    # Now clean up... later steps expect to have fiber IDs and wavelengths in order
+    arr = np.sort(tarr, order=('fiberIdx','wavelength'))
+    assert(np.all(arr['spot'] >= 0)), "spots must be non-negative."
+
+    if doNorm:
+        maxFlux = max([arr[d]['spot'].sum() for d in range(len(arr))])
+        # Normalize the flux of each spot, w.r.t. the brightest spot.
+        arr['spot'] /= maxFlux
+        jegLogger.debug("normalized to %g..%g by=%g...." % (arr['spot'].min(),
+                                                            arr['spot'].max(),
+                                                            maxFlux))
+        
+    
+    return arr, headerDict
+
+def _readJegFile(pathSpec):
+    """
+    The .imgstk file contains a few 1k-aligned sections, described by
+    a commented-out header section. For version 1:
+    
+    OFFSETS :
+        HEADER: 0
+        DESIGN FILE: 2K
+        X,Y,FOC (NIMAGE*3 floats): 8K
+        DATA (NIMAGE*XSIZE*YSIZE u-shorts) 32K
+    """
 
 def readSpotFile(pathSpec, doConvolve=None, doRebin=False, 
                  doNorm=True, 
