@@ -38,7 +38,7 @@ OFFSETS :
 
 """
 
-def getDataPath(date='2016-10-26', band='Red', frd=23, focus=0, slitFocus=0, fieldAngle=0, spotDir=None):
+def getDataPath(date=None, band='Red', frd=23, focus=0, slitFocus=0, fieldAngle=0, spotDir=None):
     """ Return complete data path for the specified spots. 
 
     The file format changed on 2017-10-30 from a homebrew binary to FITS.
@@ -46,26 +46,31 @@ def getDataPath(date='2016-10-26', band='Red', frd=23, focus=0, slitFocus=0, fie
     if not spotDir:
         spotDir = os.path.join(os.environ['DRP_INSTDATA_DIR'], 'data/spots/jeg')
 
-    if date > '2017-10-29':
+    if date is None:
+        date = '2017-11-09'
+
+    if date >= '2017-10-29':
         spotFile = os.path.join(spotDir, date, band, 
-                                "PFSsim*_f%3d_*.fits" % (focus))
+                                "PFSsim*_f%03d_*.fits" % (focus))
+        filetype = 'FITS'
     elif date > '2016-10-01':
         spotFile = os.path.join(spotDir, date, band, 
                                 "*.dat_foc%d_frd%d_sfld%02d.imgstk" % (focus, frd, fieldAngle))
     else:
         spotFile = os.path.join(spotDir, date, band, 
                                 "*.dat_foc%d_frd%d.imgstk" % (focus, frd))
+        filetype = 'JEG'
 
     files = glob.glob(spotFile) + glob.glob(spotFile + '.gz')
     if len(files) != 1:
         raise RuntimeError("There is not a unique JEG spotfile matching %s{.gz}; found %d" % 
                            (spotFile, len(files)))
 
-    return files[0]
+    return files[0], filetype
 
 def resolveSpotPathSpec(pathSpec):
     if isinstance(pathSpec, basestring):
-        return pathSpec
+        return pathSpec, 'unknown'
     if pathSpec is None:
         return getDataPath()
     
@@ -308,28 +313,22 @@ def readSpotFile(pathSpec, doConvolve=None, doRebin=False,
     arr : the table of spots, with wavelength(AA), fiberID, xc, yc, image
     metadata : the partially converted header from the .imgstk file.
 
-    The .imgstk file contains a few 1k-aligned sections, described by
-    a commented-out header section. For version 1:
-    
-    OFFSETS :
-        HEADER: 0
-        DESIGN FILE: 2K
-        X,Y,FOC (NIMAGE*3 floats): 8K
-        DATA (NIMAGE*XSIZE*YSIZE u-shorts) 32K
-        
     """
 
-    path = resolveSpotPathSpec(pathSpec)
+    path, filetype = resolveSpotPathSpec(pathSpec)
     if clearCache:
         clearSpotCache()
 
     if path in _spotCache:
         return _spotCache[path]
-    
+
     if path.endswith('.gz'):
         fopen = gzip.open
     else:
         fopen = open
+
+    if filetype == 'FITS':
+        return _readFitsFile(path)
 
     with fopen(path, 'r') as f:
         rawHeader = f.read(2*1024)
@@ -475,7 +474,7 @@ def readSpotFile(pathSpec, doConvolve=None, doRebin=False,
             assert data.shape[-1] == tryFor, ("found trimmed spots to be %d pixels, wanted %d" %
                                               (data.shape[-1], tryFor))
         jegLogger.info("trimmed spots by %d pixels to %s pixels (%g mm)" % (2*trimmedPixels, data.shape[-1],
-                                                                            data.shape[0] * headerDict['XPIX']))
+                                                                            data.shape[0]*headerDict['XPIX']))
 
     xsize, ysize = data.shape[1:]
     headerDict['XSIZE'] = xsize
