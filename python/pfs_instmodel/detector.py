@@ -29,6 +29,13 @@ class Detector(object):
         self.config = pfs_tools.configFile.readfile(filepath)
         self.dtype = dtype
 
+    @property
+    def xcOffset(self):
+        return self.config['ccdSize'][1]*self.config['pixelScale']/2
+    @property
+    def ycOffset(self):
+        return self.config['ccdSize'][0]*self.config['pixelScale']/2
+
     def makeExposure(self, addBias=True, addNoise=True, dtype=None):
 
         if dtype is None:
