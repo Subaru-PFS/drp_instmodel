@@ -674,6 +674,8 @@ class SplinedPsf(psf.Psf):
     def buildSpline(self, splineType, x, y, z):
         if splineType is spInterp.RectBivariateSpline:
             return splineType(x, y, z)
+        elif splineType is spInterp.InterpolatedUnivariateSpline:
+            return splineType(y, z)
         elif splineType is spInterp.RegularGridInterpolator:
             return splineType((x, y), z, method='linear')
         elif splineType is float:
@@ -685,6 +687,8 @@ class SplinedPsf(psf.Psf):
         splineType = spline.__class__
         if splineType is spInterp.RectBivariateSpline:
             return spline(x, y)
+        elif splineType is spInterp.InterpolatedUnivariateSpline:
+            return spline(y)
         elif splineType is spInterp.RegularGridInterpolator:
             x = np.asarray(x).flatten()
             y = np.asarray(y).flatten()
