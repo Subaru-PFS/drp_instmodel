@@ -305,8 +305,6 @@ class SplinedPsf(psf.Psf):
                    shiftPsfs=True, everyNth=1):
         """ Return an interpolated image of a fiber """
 
-        fiber -= 326
-        
         # Evaluate at highest resolution
         pixelScale = self.spotScale
         
