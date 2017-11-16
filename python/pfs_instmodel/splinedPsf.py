@@ -6,6 +6,10 @@ from __future__ import absolute_import
 
 from builtins import range
 import os
+try:
+    from importlib import reload
+except:
+    pass
 
 from astropy.io import fits as pyfits
 import numpy as np
