@@ -322,13 +322,13 @@ def readSpotFile(pathSpec, doConvolve=None, doRebin=False,
     if path in _spotCache:
         return _spotCache[path]
 
+    if filetype == 'FITS':
+        return _readFitsFile(path)
+
     if path.endswith('.gz'):
         fopen = gzip.open
     else:
         fopen = open
-
-    if filetype == 'FITS':
-        return _readFitsFile(path)
 
     with fopen(path, 'r') as f:
         rawHeader = f.read(2*1024)
