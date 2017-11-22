@@ -13,7 +13,9 @@ import re
 import sys
 import time
 
-import numpy
+from collections import OrderedDict
+
+import numpy as np
 import scipy.signal
 import scipy.ndimage
 
@@ -36,28 +38,39 @@ OFFSETS :
 
 """
 
-def getDataPath(date='2016-10-26', band='Red', frd=23, focus=0, slitFocus=0, fieldAngle=0, spotDir=None):
-    """ Given """
+def getDataPath(date=None, band='Red', frd=23, focus=0, slitFocus=0, fieldAngle=0, spotDir=None):
+    """ Return complete data path for the specified spots. 
+
+    The file format changed on 2017-10-30 from a homebrew binary to FITS.
+    """
     if not spotDir:
         spotDir = os.path.join(os.environ['DRP_INSTDATA_DIR'], 'data/spots/jeg')
 
-    if date > '2016-10-01':
+    if date is None:
+        date = '2017-11-09'
+
+    if date >= '2017-10-29':
+        spotFile = os.path.join(spotDir, date, band, 
+                                "PFSsim*_f%03d_*.fits" % (focus))
+        filetype = 'FITS'
+    elif date > '2016-10-01':
         spotFile = os.path.join(spotDir, date, band, 
                                 "*.dat_foc%d_frd%d_sfld%02d.imgstk" % (focus, frd, fieldAngle))
     else:
         spotFile = os.path.join(spotDir, date, band, 
                                 "*.dat_foc%d_frd%d.imgstk" % (focus, frd))
+        filetype = 'JEG'
 
     files = glob.glob(spotFile) + glob.glob(spotFile + '.gz')
     if len(files) != 1:
         raise RuntimeError("There is not a unique JEG spotfile matching %s{.gz}; found %d" % 
                            (spotFile, len(files)))
 
-    return files[0]
+    return files[0], filetype
 
 def resolveSpotPathSpec(pathSpec):
     if isinstance(pathSpec, basestring):
-        return pathSpec
+        return pathSpec, 'unknown'
     if pathSpec is None:
         return getDataPath()
     
@@ -66,14 +79,14 @@ def resolveSpotPathSpec(pathSpec):
 def makeFiberImage(fiberRadius=28, shape=(64,64), dtype='f4'):
     """ Return the image we convolve the spots with. """
     
-    im = numpy.zeros(shape, dtype=dtype)
+    im = np.zeros(shape, dtype=dtype)
     spotRadius = shape[0]//2
 
-    x,y = numpy.meshgrid(numpy.arange(-spotRadius,spotRadius+1),
-                         numpy.arange(-spotRadius,spotRadius+1))
-    d = numpy.sqrt(x**2 + y**2)
+    x,y = np.meshgrid(np.arange(-spotRadius,spotRadius+1),
+                      np.arange(-spotRadius,spotRadius+1))
+    d = np.sqrt(x**2 + y**2)
 
-    im[numpy.where(d <= fiberRadius)] = 1
+    im[np.where(d <= fiberRadius)] = 1
 
     return im
     
@@ -99,7 +112,7 @@ def getFiberIds(header, useArrayKeys):
     else:
         raise ValueError("useArrayKeys must be True or False.")
     
-    angs = numpy.array(angs)
+    angs = np.array(angs)
     normAngs = angs / angs.max()
     fibers = (normAngs * (maxFiber-1)).astype('i2')
 
@@ -113,6 +126,159 @@ def clearSpotCache():
     global _spotCache
     _spotCache.clear()
 
+class OneSpot(object):
+    """
+    XTENSION= 'IMAGE   '
+    BITPIX  =                  -32
+    NAXIS   =                    2
+    NAXIS1  =                   99
+    NAXIS2  =                   99
+    PCOUNT  =                    0
+    GCOUNT  =                    1
+    INHERIT =                    T
+    LAMBDA  =              620.000
+    FIBER   =                    2
+    SIGFRD  =              0.02130
+    DETSIG  =              0.00600
+    RPFI    =                8.000
+    SUBYIN  =                 1.50
+    RSQPUP  =                 0.63
+    XBAR    =            -31.37818
+    YBAR    =            -30.19866
+    DXBAR   =             0.000003
+    DYBAR   =             0.000001
+    RMAX    =                 32.0
+    PEAK    =              17550.6
+    RMSD    =               0.0173
+    RMSDFIB =               0.0482
+    DE50    =               0.0388
+    DE98    =               0.0860
+    FIBXD   =               0.0569
+    FIBYD   =               0.0566
+    FIBDX_Y =              -0.0015
+    FIBDY_X =               0.0011
+    """
+    
+    def __init__(self, hdu, doSwapaxes=True):
+        self.spot = hdu.read()
+        self.header = hdu.read_header()
+        self.wavelength = self.header['LAMBDA']
+        self.fiberIdx = self.header['FIBER']
+        self.frd = self.header['SIGFRD']
+        self.xc = self.header['XBAR']
+        self.yc = self.header['YBAR']
+
+        if doSwapaxes:
+            self.xc, self.yc = self.yc, self.xc
+            self.spot = np.rot90(self.spot)  # np.swapaxes(self.spot,0,1)
+
+def _readSpotHDUs(hdus):
+    pass
+
+def _readOneSpotHDU(hdu, focus, doSwapAxes=True):
+    rawspot = hdu.read()
+    header = hdu.read_header()
+
+    xc = header['XBAR']
+    yc = header['YBAR']
+
+    if doSwapAxes:
+        xc, yc = yc, xc
+        rawspot = np.rot90(rawspot)  # np.swapaxes(self.spot,0,1)
+
+    return (header['FIBER'],header['LAMBDA'],
+            xc, yc, focus, header['SIGFRD'],
+            rawspot, rawspot, (0.0,0.0)), header
+
+def _readFitsFile(pathSpec, doNorm=True):
+    import fitsio
+
+    spotFile = fitsio.FITS(pathSpec, mode='r')
+    hdu0 = spotFile[0].read_header()
+
+    """
+    HEADVERS=                    1
+    SPECNUM =                    1
+    DEWARNAM= 'RED'
+    DETNUM  =                    2
+    FOCUS   =               0.0000
+    DATE    = '2017-10-31'
+    MNSIGFRD=               0.0220
+    SGSGFRD =               0.0027
+    COBSGFRD=               0.0070
+    SEEDF   =                -1374
+    SEEDC   =                -4324
+    EXTSIZ  =                43200
+    NEXT    =                43800
+    NFIBSIM =                  600
+    FIB0    =                    0
+    FIBH    =                  599
+    LAM0    =                620.0
+    LAMINC  =                 5.00
+    NLAM    =                   73
+    PIXSIZE =               0.0030
+    RFIBER  =               0.0280
+    NRAY    =                14911
+    HEXRINGS=                   12
+    HEXPTS  =                  469
+    """
+
+    headerDict = OrderedDict()
+    for card in hdu0.records():
+        headerDict[card['name']] = card['value']
+
+    headerDict['DATA_VERSION'] = 100 + headerDict['HEADVERS']
+    headerDict['FILENAME'] = pathSpec
+    headerDict['XPIX'] = headerDict['YPIX'] = headerDict['PIXSIZE']
+    
+    nlam = headerDict['NLAM']
+    wavelengths = np.linspace(headerDict['LAM0'],
+                              headerDict['LAM0'] + (nlam-1)*headerDict['LAMINC'],
+                              num=nlam)
+    nspots = nlam * headerDict['NFIBSIM']
+    allSpots = []  # [OneSpot(spotFile[i]) for i in range(1,nspots+1)]
+    for i in range(1, nspots+1):
+
+        spotParts, header = _readOneSpotHDU(spotFile[i], headerDict['FOCUS'])
+        allSpots.append(spotParts)
+
+    spotw = allSpots[0][-2].shape[0]
+    spotDtype = np.dtype([('fiberIdx','i2'),
+                          ('wavelength','f8'),
+                          ('spot_xc','f8'), ('spot_yc','f8'), ('spot_focus','f4'),
+                          ('spot_frd','f4'),
+                          ('rawspot', '(%d,%d)f4' % (spotw, spotw)),
+                          ('spot', '(%d,%d)f4' % (spotw,spotw)),
+                          ('ctr', '2f4')])
+
+    tarr = np.array(allSpots, dtype=spotDtype)
+
+    # Now clean up... later steps expect to have fiber IDs and wavelengths in order
+    arr = np.sort(tarr, order=('fiberIdx','wavelength'))
+    assert(np.all(arr['spot'] >= 0)), "spots must be non-negative."
+
+    if doNorm:
+        maxFlux = max([arr[d]['spot'].sum() for d in range(len(arr))])
+        # Normalize the flux of each spot, w.r.t. the brightest spot.
+        arr['spot'] /= maxFlux
+        jegLogger.debug("normalized to %g..%g by=%g...." % (arr['spot'].min(),
+                                                            arr['spot'].max(),
+                                                            maxFlux))
+        
+    
+    return arr, headerDict
+
+def _readJegFile(pathSpec):
+    """
+    The .imgstk file contains a few 1k-aligned sections, described by
+    a commented-out header section. For version 1:
+    
+    OFFSETS :
+        HEADER: 0
+        DESIGN FILE: 2K
+        X,Y,FOC (NIMAGE*3 floats): 8K
+        DATA (NIMAGE*XSIZE*YSIZE u-shorts) 32K
+    """
 
 def readSpotFile(pathSpec, doConvolve=None, doRebin=False, 
                  doNorm=True, 
@@ -147,24 +313,18 @@ def readSpotFile(pathSpec, doConvolve=None, doRebin=False,
     arr : the table of spots, with wavelength(AA), fiberID, xc, yc, image
     metadata : the partially converted header from the .imgstk file.
 
-    The .imgstk file contains a few 1k-aligned sections, described by
-    a commented-out header section. For version 1:
-    
-    OFFSETS :
-        HEADER: 0
-        DESIGN FILE: 2K
-        X,Y,FOC (NIMAGE*3 floats): 8K
-        DATA (NIMAGE*XSIZE*YSIZE u-shorts) 32K
-        
     """
 
-    path = resolveSpotPathSpec(pathSpec)
+    path, filetype = resolveSpotPathSpec(pathSpec)
     if clearCache:
         clearSpotCache()
 
     if path in _spotCache:
         return _spotCache[path]
-    
+
+    if filetype == 'FITS':
+        return _readFitsFile(path)
+
     if path.endswith('.gz'):
         fopen = gzip.open
     else:
@@ -255,7 +415,7 @@ def readSpotFile(pathSpec, doConvolve=None, doRebin=False,
     nimage = headerDict['NIMAGE']
     xsize = headerDict['XSIZE']
     ysize = headerDict['YSIZE']
-    positions = numpy.fromstring(rawPositions, dtype='3f4', count=nimage)
+    positions = np.fromstring(rawPositions, dtype='3f4', count=nimage)
 
     wavelengths = []
     nlam = headerDict['NLAM']
@@ -270,16 +430,16 @@ def readSpotFile(pathSpec, doConvolve=None, doRebin=False,
         assert len(wavelengths) == nlam
                         
     fiberIDs = getFiberIds(headerDict, useArrayKeys)
-    nfibers = len(fiberIDs)
     
     if dataVersion < 3:
-        data = numpy.fromstring(rawData, dtype='(%d,%d)u2' % (xsize,ysize), count=nimage).astype('f4')
+        data = np.fromstring(rawData, dtype='(%d,%d)u2' % (xsize,ysize), count=nimage).astype('f4')
     elif dataVersion == 3:
-        data = numpy.fromstring(rawData, dtype='(%d,%d)f4' % (xsize,ysize), count=nimage).astype('f4')
+        data = np.fromstring(rawData, dtype='(%d,%d)f4' % (xsize,ysize), count=nimage).astype('f4')
     else:
         raise ValueError("unknown spot file version: %s" % (dataVersion))
     jegLogger.info("raw spot version %d data type %s, range: %g..%g",
                    dataVersion, data.dtype, data.min(), data.max())
+
 
     rawspots = data.copy()
     if doRebin is not False:
@@ -287,7 +447,7 @@ def readSpotFile(pathSpec, doConvolve=None, doRebin=False,
         if newSize*doRebin != xsize:
             raise ValueError('doRebin must evenly divide the raw spot size')
 
-        newData = numpy.empty(shape=(data.shape[0], newSize, newSize), dtype=data.dtype)
+        newData = np.empty(shape=(data.shape[0], newSize, newSize), dtype=data.dtype)
         for i in range(data.shape[0]):
             tspot = spotgames.rebinBy(data[i], doRebin)
             newData[i,:,:] = tspot
@@ -314,7 +474,7 @@ def readSpotFile(pathSpec, doConvolve=None, doRebin=False,
             assert data.shape[-1] == tryFor, ("found trimmed spots to be %d pixels, wanted %d" %
                                               (data.shape[-1], tryFor))
         jegLogger.info("trimmed spots by %d pixels to %s pixels (%g mm)" % (2*trimmedPixels, data.shape[-1],
-                                                                            data.shape[0] * headerDict['XPIX']))
+                                                                            data.shape[0]*headerDict['XPIX']))
 
     xsize, ysize = data.shape[1:]
     headerDict['XSIZE'] = xsize
@@ -344,8 +504,8 @@ def readSpotFile(pathSpec, doConvolve=None, doRebin=False,
         assert spot.shape[0] == spot.shape[1]
         spotw = spot.shape[0]//2
         ctr0 = spotgames.centroid(spot)
-        #assert numpy.abs(ctr0[0] - spotw) < 0.1, "centroid Y too far from center (%g %g)" % (ctr0[0], spotw)
-        #assert numpy.abs(ctr0[1] - spotw) < 0.1, "centroid X too far from center (%g %g)" % (ctr0[1], spotw)
+        #assert np.abs(ctr0[0] - spotw) < 0.1, "centroid Y too far from center (%g %g)" % (ctr0[0], spotw)
+        #assert np.abs(ctr0[1] - spotw) < 0.1, "centroid X too far from center (%g %g)" % (ctr0[1], spotw)
 
         if doRecenter:
             pspot, spotSlice = spotgames.padArray(spot, padTo=spot.shape[0]*2)
@@ -365,10 +525,10 @@ def readSpotFile(pathSpec, doConvolve=None, doRebin=False,
 
         # Rotate x-up mechanical view to y-up detector view (dispersing along columns)
         if doSwapaxes:
-            spot = numpy.swapaxes(spot,0,1)
+            spot = np.swapaxes(spot,0,1)
             xc, yc = yc, xc
 
-            rawSpot = numpy.swapaxes(rawspots[i,:,:],0,1)
+            rawSpot = np.swapaxes(rawspots[i,:,:],0,1)
             
         if doNorm:
             if doNorm == 'peak':
@@ -380,15 +540,15 @@ def readSpotFile(pathSpec, doConvolve=None, doRebin=False,
             jegLogger.debug("normalized to %g..%g sum=%g...." % (spot.min(), spot.max(), spot.sum()))
         
         ctr = spotgames.centroid(spot)
-        dCtr = numpy.abs(ctr - numpy.array(spot.shape).T/2.0)
-        if numpy.any(dCtr > 0.01):
+        dCtr = np.abs(ctr - np.array(spot.shape).T/2.0)
+        if np.any(dCtr > 0.01):
             jegLogger.warn("spot  %d (%d, %0.2f) at (%0.2f %0.2f %0.3f) (%0.4f,%0.4f) (%0.4f, %0.4f), sum=%0.3f" % 
                            (i, fiberIdx, wavelength, xc, yc, focus,
                             ctr[0], ctr[1], dCtr[0], dCtr[1],
                             spot.sum()))
 
         spots.append((fiberIdx, wavelength, xc, yc, focus, rawSpot, spot, ctr))
-            
+
         if fiberIdx != 0:
             flipCtr = ctr.copy()
             flipCtr[0] = spot.shape[1]/2 - (flipCtr[0] - spot.shape[1]/2)
@@ -396,20 +556,21 @@ def readSpotFile(pathSpec, doConvolve=None, doRebin=False,
 
     allSpots = spots + symSpots    
     spotw = spots[0][-2].shape[0]
-    spotDtype = numpy.dtype([('fiberIdx','i2'),
-                             ('wavelength','f8'),
-                             ('spot_xc','f8'), ('spot_yc','f8'), ('spot_focus','f4'),
-                             ('rawspot', '(%d,%d)%s' % (rawSpot.shape[0],
-                                                        rawSpot.shape[1],
-                                                        rawSpot.dtype)),
-                             ('spot', '(%d,%d)f4' % (spotw,spotw)),
-                             ('ctr', '2f4')])
+    spotDtype = np.dtype([('fiberIdx','i2'),
+                          ('wavelength','f8'),
+                          ('spot_xc','f8'), ('spot_yc','f8'), ('spot_focus','f4'),
+                          ('spot_frd','f4'),
+                          ('rawspot', '(%d,%d)%s' % (rawSpot.shape[0],
+                                                     rawSpot.shape[1],
+                                                     rawSpot.dtype)),
+                          ('spot', '(%d,%d)f4' % (spotw,spotw)),
+                          ('ctr', '2f4')])
 
-    tarr = numpy.array(allSpots, dtype=spotDtype)
+    tarr = np.array(allSpots, dtype=spotDtype)
 
     # Now clean up... later steps expect to have fiber IDs and wavelengths in order
-    arr = numpy.sort(tarr, order=('fiberIdx','wavelength'))
-    assert(numpy.all(arr['spot'] >= 0)), "spots must be non-negative."
+    arr = np.sort(tarr, order=('fiberIdx','wavelength'))
+    assert(np.all(arr['spot'] >= 0)), "spots must be non-negative."
     
     _spotCache[path] = (arr, headerDict)
 
@@ -421,7 +582,7 @@ def dataWidth(spots):
     assert spots.shape[-2] == spots.shape[-1], "input spots must be square"
     
     startWidth = spots.shape[-1]
-    nz = numpy.where(spots > 0)
+    nz = np.where(spots > 0)
     mn = min(nz[1].min(), nz[2].min())
     mx = max(nz[1].max(), nz[2].max())
 
@@ -434,7 +595,7 @@ def borderWidth(spots):
     assert spots.shape[-2] == spots.shape[-1], "input spots must be square"
     
     startWidth = spots.shape[-1]
-    nz = numpy.where(spots > 0)
+    nz = np.where(spots > 0)
     mn = min(nz[1].min(), nz[2].min())
     mx = max(nz[1].max(), nz[2].max())
     mxt = startWidth - mx - 1
@@ -476,11 +637,11 @@ def oversampleSpots(spots, factor):
                                                 factor))
 
     newWidth = spots.shape[1]*factor
-    newSpots = numpy.zeros(shape=(spots.shape[0], newWidth, newWidth),
+    newSpots = np.zeros(shape=(spots.shape[0], newWidth, newWidth),
                            dtype=spots.dtype)
 
-    ix1 = (numpy.arange(newWidth,dtype='f4')//factor).astype('i4')
-    ix = numpy.tile(ix1, (newWidth,1))
+    ix1 = (np.arange(newWidth,dtype='f4')//factor).astype('i4')
+    ix = np.tile(ix1, (newWidth,1))
     ixy = (ix, ix.T)
 
     for i in range(spots.shape[0]):

@@ -9,14 +9,14 @@ import logging
 import os
 import re
 
-import pfs_tools
+import pfs_tools.schema
 import pfs_instmodel.simImage as simImage
 import pfs_instmodel.sky as pfsSky
 import pfs_instmodel.spectrum as pfsSpectrum
 reload(pfsSpectrum)
 
 def makeSim(band, fieldName, fiberFilter=None,
-            frd=23, focus=0, date='2016-10-26', psf=None, dtype='u2',
+            frd=None, focus=0, date=None, psf=None, dtype='u2',
             addNoise=True, combSpacing=50, shiftPsfs=True,
             constantPsf=False, constantX=False,
             xOffset=0.0, yOffset=0.0,
@@ -196,9 +196,10 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
     parser.add_argument('-o', '--output', action='store', default=None)
     parser.add_argument('-f', '--fibers', action='store', default=None)
     parser.add_argument('-v', '--verbose', action='store_true')
+    parser.add_argument('--exptime', action='store', default=1, type=float)
     parser.add_argument('--focus', action='store', default=0, type=int)
     parser.add_argument('--frd', action='store', default=23, type=int)
-    parser.add_argument('--date', action='store', default='2016-10-26')
+    parser.add_argument('--date', action='store')
     parser.add_argument('--dtype', action='store', default='u2')
     parser.add_argument('--xoffset', action='store', type=float, default=0.0,
                         help='shift in slit position along slit, in microns')
@@ -251,6 +252,7 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
                   logger=logger)
     if args.output != 'no':
         sim.writeTo(args.output, addNoise=not args.noNoise,
+                    exptime=args.exptime,
                     compress=args.compress, allOutput=args.allOutput,
                     realBias=args.realBias, realFlat=args.realFlat,
                     imagetyp=args.imagetyp)

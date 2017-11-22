@@ -66,12 +66,13 @@ class Exposure(object):
             return time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime(t))
                                     
     def writeto(self, outputFile, doCombine=True, doWriteAll=True,
+                exptime=1.0,
                 addNoise=True, compress='RICE',
                 realBias=None, realFlat=None,
                 addCards=(),
                 imagetyp=None, allOutput=False):
 
-        self.readout(addNoise=addNoise, realBias=realBias, realFlat=realFlat)
+        self.readout(addNoise=addNoise, realBias=realBias, realFlat=realFlat, exptime=exptime)
         if realBias:
             outIm = self.biasExp.replaceActiveFlux(self.pixelImage, leadingRows=True)
             hdr = self.biasExp.header

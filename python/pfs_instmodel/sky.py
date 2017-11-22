@@ -79,6 +79,9 @@ class StaticSkyModel(SkyModel):
         filepath = os.path.join(dataRoot, 'data', 'sky', 'sumire%sskyHR.dat' % (self.band.upper()))
 
         self.native = numpy.genfromtxt(filepath, skip_footer=20, comments='\\')
+
+        # We now use angstroms
+        self.native[:,0] /= 10.0
         self.skySpline = scipy.interpolate.InterpolatedUnivariateSpline(self.getNativeWavelengths(),
                                                                         self.getNativeFlux(),
                                                                         k=2)
@@ -92,6 +95,7 @@ class StaticSkyModel(SkyModel):
         filepath = os.path.join(dataRoot, 'data', 'sky', 'MKextinction.dat')
 
         a = numpy.genfromtxt(filepath, comments='\\')
+        a[:,0] /= 10.0          # AA -> nm
         w = numpy.where((a[:,0] >= self.minWave) & (a[:,0] <= self.maxWave))
         self.extinctionSpline = scipy.interpolate.InterpolatedUnivariateSpline(a[w,0], a[w,1], k=3)
 
