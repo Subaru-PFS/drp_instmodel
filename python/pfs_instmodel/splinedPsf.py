@@ -410,7 +410,7 @@ class SplinedPsf(psf.Psf):
                 ymax = fracy
 
             # Trouble if we shift continuum significantly in y.
-            if not isLinelist:
+            if False and not isLinelist:
                 if abs(fracy) > 1e-5:
                     self.logger.warn('%d: yc=%g yPixOffset=%g fracy=%g', i, yc, yPixOffset, fracy)
                 else:

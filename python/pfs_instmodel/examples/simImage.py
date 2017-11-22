@@ -9,7 +9,7 @@ import logging
 import os
 import re
 
-import pfs_tools
+import pfs_tools.schema
 import pfs_instmodel.simImage as simImage
 import pfs_instmodel.sky as pfsSky
 import pfs_instmodel.spectrum as pfsSpectrum
