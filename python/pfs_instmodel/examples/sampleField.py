@@ -143,6 +143,7 @@ Sm1Sky = [PROBE(i,0.0,1.0,100.0,200.0,'SKY', ()) for i in Sm1Slit]
 bundledField = Sm1Slit
 
 combFieldx2 = [PROBE(i,0.0,1.0,100.0,200.0,'SIMCOMB', ()) for i in keepEven(bundledField)]
+arcFieldx2 = [PROBE(i,0.0,1.0,100.0,200.0,'SIMARC', ()) for i in keepEven(bundledField)]
 flatFieldx2 = [PROBE(i,0.0,1.0,100.0,200.0,'SIMFLAT', ()) for i in keepEven(bundledField)]
 skyFieldx2 =  [PROBE(i,0.0,1.0,100.0,200.0,'SKY', ()) for i in keepEven(bundledField)]
 
