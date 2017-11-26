@@ -300,8 +300,33 @@ class SplinedPsf(psf.Psf):
         
         return pixelWaves, centers
 
+    def genFiberImage(self, fiber, spectrum, everyNth=1):
+        """ Return an oversampled fiber image.
+
+        Args:
+         fiber : integer
+           The holeId.
+         spectrum: Spectrum
+           The lambda -> flux map
+         everyNth : integer
+           How tightly to fully interpolate spots. 
+
+        Returns:
+          fiberImage : ndarray
+            the oversampled fiberimage, trimmed to the full-pixel grid
+          imageOffset: (x, y)
+            the offsets into the full detector image.
+          geometry : tuple
+            stuff
+
+        """
+
+        pass
+
+    def placeFiberImage(self):
+        pass
+    
     def fiberImage(self, fiber, spectrum, outExp=None, waveRange=None, 
-                   returnUnbinned=False,
                    shiftPsfs=True, everyNth=1):
         """ Return an interpolated image of a fiber """
 
