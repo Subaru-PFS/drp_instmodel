@@ -559,14 +559,15 @@ class SplinedPsf(psf.Psf):
 
             if spotArgs is None:
                 spotArgs = dict()
-            rawSpots, spotInfo = jegSpots.readSpotFile(spotIDs, verbose=True, **spotArgs)
-            assert spotInfo['XPIX'] == spotInfo['YPIX']
+            rawSpots, spotsInfo = jegSpots.readSpotFile(spotIDs, verbose=True, **spotArgs)
+            assert spotsInfo['XPIX'] == spotsInfo['YPIX']
 
             self.wave = rawSpots['wavelength']
             self.fiber = rawSpots['fiberIdx']
             self.spots = rawSpots['spot'].astype('float32')
-            self.spotScale = spotInfo['XPIX']
-
+            self.spotScale = spotsInfo['XPIX']
+            self.spotsInfo = spotsInfo
+            
             if len(self.fiber) == 600:
                 perFiberCoeffs = True
         else:
