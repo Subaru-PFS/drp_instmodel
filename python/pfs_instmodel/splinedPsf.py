@@ -28,7 +28,7 @@ reload(psf)
 
 class SpotCoeffs(object):
     """ Trivial wrapper around pixel and position spline coefficients, so that we can 
-        treat per-fiber (1-d) splines the same as spares (2-d) splines. 
+        treat per-fiber (1-d) splines the same as sparse (2-d) splines. 
     """
     def __init__(self, pixelCoeffs, xcCoeffs, ycCoeffs):
         self.pixelCoeffs = pixelCoeffs
@@ -461,11 +461,7 @@ class SplinedPsf(psf.Psf):
         # transfer flux from oversampled fiber image to final resolution output image
         resampledFiber = self.addOversampledImage(fiberImage, outExp, outImgOffset, psfToSpotPixRatio)
 
-        if returnUnbinned:
-            return (outExp, fiberImagePixelOffset[0], fiberImagePixelOffset[1], geometry,
-                    fiberImage, resampledFiber)
-        else:
-            return outExp, fiberImagePixelOffset[0], fiberImagePixelOffset[1], geometry
+        return outExp, fiberImagePixelOffset[0], fiberImagePixelOffset[1], geometry
 
     def addOversampledImage(self, inImg, outExp, outOffset, outScale):
         """ Add the outScale-oversampled inImg to outImg at the given offset. 
