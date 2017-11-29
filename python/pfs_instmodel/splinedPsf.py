@@ -780,3 +780,60 @@ class SplinedPsf(psf.Psf):
         self.xcCoeffs = self.buildSpline(self.xcCoeffs.__class__,
                                          xx, yy, xc)
         self.logger.warn("set constant X")
+
+    def makeDetectorMap(self, fname):
+        """ Create a DetectorMap file for DRP. 
+
+        Why here? We know about the millimeters from the optical model and
+        the pixels of the detector. 
+
+        """
+        import lsst.afw.geom as afwGeom
+        import pfs.drp.stella.utils as drpUtils
+
+        def rangeOf(arr):
+            return np.array((np.min(arr), np.max(arr)),)
+
+        pixelScale = self.detector.config['pixelScale']
+        ccdCenter = self.detector.config['ccdCenter']
+        ccdSize = self.detector.config['ccdSize']
+        # ### FIXME CPL HACK: the detector ccdSize and ccdCenter are (y,x)!!!!
+        ccdCenter = ccdCenter[1], ccdCenter[0]
+        ccdSize = ccdSize[1], ccdSize[0]
+        def xMmToPixel(xc):
+            return xc / pixelScale + ccdCenter[1]
+
+        spots = self.rawSpots
+        
+        minX, maxX = rangeOf(spots['spot_xc']) / pixelScale + ccdCenter[0]
+        minY, maxY = rangeOf(spots['spot_yc']) / pixelScale + ccdCenter[1]
+        bbox = afwGeom.BoxI(afwGeom.PointI(minX, minY), afwGeom.PointI(maxX, maxY))
+
+        # Per RHL, we want the detectort geometry here.
+        bbox = afwGeom.BoxI(afwGeom.PointI(0,0), afwGeom.PointI(ccdSize[0]-1, ccdSize[1]-1))
+
+        fiberIds = np.unique(spots['fiberIdx'])
+        fiberIds.sort()
+
+        fiber0 = np.where(spots['fiberIdx'] == min(spots['fiberIdx']))
+        nKnots = len(fiber0[0])
+
+        lam0 = self.spotsInfo['LAM0']
+        dlam = self.spotsInfo['LAMINC']
+        lams = np.linspace(lam0, lam0+(nKnots-1)*dlam, nKnots)
+
+        dmapIO = drpUtils.detectorMap.DetectorMapIO(bbox, fiberIds.astype('i4'), nKnots) 
+
+        for i in range(len(fiberIds)):
+            holeId = fiberIds[i]
+            fiber_w = np.where(spots['fiberIdx'] == holeId)
+            xcKnot = xMmToPixel(spots[fiber_w]['spot_yc'])
+            xc = xMmToPixel(spots[fiber_w]['spot_xc'])
+
+            wlKnot = xcKnot
+            wl = lams
+
+            dmapIO.setXCenter(holeId, xcKnot, xc)
+            dmapIO.setWavelength(holeId, wlKnot, wl)
+
+        return dmapIO.getDetectorMap()
