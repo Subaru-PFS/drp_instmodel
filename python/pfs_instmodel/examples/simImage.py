@@ -17,6 +17,7 @@ reload(pfsSpectrum)
 
 def makeSim(band, fieldName, fiberFilter=None,
             frd=None, focus=0, date=None, psf=None, dtype='u2',
+            everyNth=20,
             addNoise=True, combSpacing=50, shiftPsfs=True,
             constantPsf=False, constantX=False,
             xOffset=0.0, yOffset=0.0,
@@ -50,10 +51,13 @@ def makeSim(band, fieldName, fiberFilter=None,
 
     if logger is None:
         logger = logging.getLogger()
-        
+
+    logger.info("args everyNth: %s", everyNth)
+    
     simID = dict(band=band, frd=frd, focus=focus, date=date)
 
     sim = simImage.SimImage(band, simID=simID, psf=psf, dtype=dtype,
+                            everyNth=everyNth,
                             addNoise=addNoise,
                             constantPsf=constantPsf, constantX=constantX,
                             slitOffset=(xOffset/1000.0, yOffset/1000.0),
@@ -201,6 +205,7 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
     parser.add_argument('--frd', action='store', default=23, type=int)
     parser.add_argument('--date', action='store')
     parser.add_argument('--dtype', action='store', default='u2')
+    parser.add_argument('--everyNth', action='store', default=20, type=int)
     parser.add_argument('--xoffset', action='store', type=float, default=0.0,
                         help='shift in slit position along slit, in microns')
     parser.add_argument('--yoffset', action='store', type=float, default=0.0,
@@ -241,6 +246,7 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
                   fiberFilter=fibers,
                   frd=args.frd, focus=args.focus, date=args.date,
                   dtype=args.dtype,
+                  everyNth=args.everyNth,
                   addNoise=not args.noNoise,
                   combSpacing=args.combSpacing,
                   shiftPsfs=args.shiftPsfs,

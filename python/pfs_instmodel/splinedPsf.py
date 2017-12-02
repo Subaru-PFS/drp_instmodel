@@ -37,7 +37,7 @@ class SpotCoeffs(object):
 
 class SplinedPsf(psf.Psf):
     def __init__(self, detector, spotType='jeg', spotID=None, logger=None,
-                 slitOffset=(0.0, 0.0),
+                 slitOffset=(0.0, 0.0), everyNth=20,
                  doTrimSpots=True, doRebin=False):
         """ Create or read in our persisted form. By default use JEG's models. 
 
@@ -65,9 +65,9 @@ class SplinedPsf(psf.Psf):
 
         self.spotID = spotID
         self.slitOffset = slitOffset
-
+        self.everyNth = everyNth
         self.perFiberCoeffs = None
-        
+
         if spotType:
             self.loadFromSpots(spotType, spotID, spotArgs=dict(doTrimSpots=doTrimSpots, doRebin=doRebin))
 
@@ -211,8 +211,8 @@ class SplinedPsf(psf.Psf):
             waves.append(fiberWaves.astype('f8'))
 
         return rows, waves
-    
-    def psfsAt(self, fibers, waves=None, usePsfs=None, everyNth=1):
+
+    def psfsAt(self, fibers, waves=None, usePsfs=None, everyNth=None, doFill=True):
         """ Return a stack of PSFs, instantiated on a rectangular grid.
 
         Parameters
@@ -240,32 +240,52 @@ class SplinedPsf(psf.Psf):
         if isinstance(fibers, int):
             fibers = [fibers]
         coeffs = self.getCoeffs(fibers)
-            
+
+        if everyNth is None:
+            everyNth = self.everyNth
+        self.logger.info('everyNth: %s', everyNth)
+
         if waves is None:
             waves = np.unique(self.wave)
-            
+
+        # Why did I think I needed to do this? Check. XXXCPL
         waveSign = 1 if waves[-1] > waves[0] else -1
-        interpWaves = waves[::waveSign]
-        psfWaves = interpWaves[::everyNth]
-        
+
+        allWaves = waves[::waveSign]
+        psfWaves = allWaves[::everyNth]
+
         centers = [(x,y) for x in fibers for y in waves]
         if usePsfs is not None:
             newImages = usePsfs
         else:
-            newImages = np.zeros(shape=(len(fibers)*len(psfWaves),
+            newImages = np.zeros(shape=(len(fibers)*len(allWaves),
                                         self.imshape[0],
                                         self.imshape[1]), dtype='f8')
-            self.logger.debug("psfsAt: fibers %s for %d waves, in %s %s array" % (fibers, len(interpWaves),
-                                                                                  newImages.shape,
-                                                                                  newImages.dtype))
+            self.logger.debug("psfsAt: fibers %s for %d/%d waves, in %s %s array" % (fibers, len(psfWaves),
+                                                                                     len(allWaves),
+                                                                                     newImages.shape,
+                                                                                     newImages.dtype))
             for ix in range(self.imshape[0]):
                 for iy in range(self.imshape[1]):
-                    newImages[::, iy, ix] = self.evalSpline(coeffs.pixelCoeffs[iy, ix],
-                                                            fibers, psfWaves).flat
-            if False and everyNth > 1:
-                for i in range(1,everyNth):
-                    newImages[i::everyNth,:,:] = newImages[::everyNth,:,:]
-                    
+                    newImages[::everyNth, iy, ix] = self.evalSpline(coeffs.pixelCoeffs[iy, ix],
+                                                                    fibers, psfWaves).flat
+                    if everyNth > 1:
+                        newImages[-1:, iy, ix] = self.evalSpline(coeffs.pixelCoeffs[iy, ix],
+                                                                 fibers, allWaves[-1]).flat
+
+            if everyNth > 1 and doFill:
+                nSpots = len(newImages)
+                nBlocks = nSpots/everyNth
+                for block_i in range(nBlocks+1):
+                    i0 = block_i * everyNth
+                    i1 = i0 + everyNth
+                    if i1 > nSpots-1:
+                        i1 = nSpots-1
+                    dimg = (newImages[i1] - newImages[i0]) / (i1-i0)
+                    # print("%d/%d %d: %d %d" % (block_i, nBlocks, nSpots, i0, i1))
+                    for i in range(i0+1, i1):
+                        newImages[i,:,:] = newImages[i-1,:,:] + dimg
+
         lo_w = newImages < -0.01
         if np.any(lo_w):
             minpix = newImages[lo_w].min()
@@ -276,8 +296,7 @@ class SplinedPsf(psf.Psf):
         self.logger.info("psfsAt: fibers %s, for %d %s waves, returned %d unique psfs" % (fibers,
                                                                                           len(waves),
                                                                                           waves[0].dtype,
-                                                                                          len(interpWaves)))
-
+                                                                                          len(psfWaves)))
         return finalImages, centers, self.traceCenters(fibers, waves)
 
 
@@ -325,9 +344,12 @@ class SplinedPsf(psf.Psf):
 
     def placeFiberImage(self):
         pass
+
+    def addFibers(self, fibers, spectra, everyNth=1):
+        pass
     
     def fiberImage(self, fiber, spectrum, outExp=None, waveRange=None, 
-                   shiftPsfs=True, everyNth=1):
+                   shiftPsfs=True, everyNth=None):
         """ Return an interpolated image of a fiber """
 
         # Evaluate at highest resolution
@@ -411,8 +433,8 @@ class SplinedPsf(psf.Psf):
 
             if specFlux == 0.0:
                 continue
-            
-            rawPsf = fiberPsfs[i//everyNth]
+
+            rawPsf = fiberPsfs[i]
 
             # in mm
             xc = xCenters[i]

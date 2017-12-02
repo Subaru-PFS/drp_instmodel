@@ -25,6 +25,7 @@ _______
 class SimImage(object):
     def __init__(self, band, sky=None, psf=None, simID=None,
                  addNoise=True, dtype='i4',
+                 everyNth=20,
                  constantPsf=False, constantX=False,
                  slitOffset=(0.0, 0.0),
                  logger=None):
@@ -36,6 +37,7 @@ class SimImage(object):
         self.detector = pfsDet.Detector(band)
         self.sky = sky if sky else pfsSky.StaticSkyModel(band)
         self.psf = psf if psf else pfsPsf.SplinedPsf(self.detector, spotID=simID,
+                                                     everyNth=everyNth,
                                                      slitOffset=slitOffset,
                                                      logger=logger)
         if constantPsf:
