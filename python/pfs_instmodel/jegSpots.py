@@ -188,7 +188,7 @@ def _readOneSpotHDU(hdu, focus, doSwapAxes=True):
 
     return (header['FIBER'],header['LAMBDA'],
             xc, yc, focus, header['SIGFRD'],
-            rawspot, rawspot, (0.0,0.0)), header
+            rawspot, rawspot, (0.0,0.0), header['RPFI']), header
 
 def _readFitsFile(pathSpec, doNorm=True):
     import fitsio
@@ -223,13 +223,20 @@ def _readFitsFile(pathSpec, doNorm=True):
     HEXPTS  =                  469
     """
 
+    if "needVignettingHACK": # CPLXXX
+        dataRoot = os.environ.get('DRP_INSTDATA_DIR', '.')
+        vigFile = os.path.join(dataRoot, 'data', 'sky', 'vignetting.dat')
+
+        a = np.genfromtxt(vigFile, comments='\\')
+        vignettingSpline = scipy.interpolate.PchipInterpolator(a[:,0], a[:,1])
+
+
     headerDict = OrderedDict()
     for card in hdu0.records():
         headerDict[card['name']] = card['value']
 
     headerDict['DATA_VERSION'] = 100 + headerDict['HEADVERS']
     headerDict['FILENAME'] = pathSpec
-    headerDict['XPIX'] = headerDict['YPIX'] = headerDict['PIXSIZE']
     
     nlam = headerDict['NLAM']
     wavelengths = np.linspace(headerDict['LAM0'],
@@ -237,21 +244,39 @@ def _readFitsFile(pathSpec, doNorm=True):
                               num=nlam)
     nspots = nlam * headerDict['NFIBSIM']
     allSpots = []  # [OneSpot(spotFile[i]) for i in range(1,nspots+1)]
+    allHeaders = []
+    vigLambda = None
     for i in range(1, nspots+1):
-
         spotParts, header = _readOneSpotHDU(spotFile[i], headerDict['FOCUS'])
-        allSpots.append(spotParts)
+        if "needVignettingHACK": # CPLXXX
+            vignettingFactor = vignettingSpline(header['SUBYIN'])
+            spotParts = list(spotParts)
+            spotParts[7] *= vignettingFactor
+            spotParts = tuple(spotParts)
+            if vigLambda is None:
+                vigLambda = header['LAMBDA']
+            if vigLambda == header['LAMBDA']:
+                jegLogger.debug('spot %d/%f @ %g: vignetting %g' % (header['FIBER'],
+                                                                    header['LAMBDA'],
+                                                                    header['SUBYIN'],
+                                                                    vignettingFactor))
 
-    spotw = allSpots[0][-2].shape[0]
+        allSpots.append(spotParts)
+        allHeaders.append(header)
+        jegLogger.debug("HDU %-3d: %d %f", i, header['FIBER'], header['LAMBDA'])
+
+    spotw = allSpots[0][-3].shape[0]
     spotDtype = np.dtype([('fiberIdx','i2'),
-                          ('wavelength','f8'),
-                          ('spot_xc','f8'), ('spot_yc','f8'), ('spot_focus','f4'),
+                          ('wavelength','f4'),
+                          ('spot_xc','f4'), ('spot_yc','f4'), ('spot_focus','f4'),
                           ('spot_frd','f4'),
                           ('rawspot', '(%d,%d)f4' % (spotw, spotw)),
                           ('spot', '(%d,%d)f4' % (spotw,spotw)),
-                          ('ctr', '2f4')])
+                          ('ctr', '2f4'),
+                          ('radPfi', 'f4')])
 
     tarr = np.array(allSpots, dtype=spotDtype)
+    headerDict['YPIX'], headerDict['XPIX'] = spotw, spotw
 
     # Now clean up... later steps expect to have fiber IDs and wavelengths in order
     arr = np.sort(tarr, order=('fiberIdx','wavelength'))
