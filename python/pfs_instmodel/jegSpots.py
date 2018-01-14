@@ -70,7 +70,13 @@ def getDataPath(date=None, band='Red', frd=23, focus=0, slitFocus=0, fieldAngle=
 
 def resolveSpotPathSpec(pathSpec):
     if isinstance(pathSpec, basestring):
-        return pathSpec, 'unknown'
+        if 'fits' in pathSpec:
+            filetype = 'FITS'
+        elif 'imgstk' in pathSpec:
+            filetype = 'JEG'
+        else:
+            filetype = 'unknown'
+        return pathSpec, filetype
     if pathSpec is None:
         return getDataPath()
     
@@ -286,11 +292,10 @@ def _readFitsFile(pathSpec, doNorm=True):
         maxFlux = max([arr[d]['spot'].sum() for d in range(len(arr))])
         # Normalize the flux of each spot, w.r.t. the brightest spot.
         arr['spot'] /= maxFlux
-        jegLogger.debug("normalized to %g..%g by=%g...." % (arr['spot'].min(),
-                                                            arr['spot'].max(),
+        maxSpot = max([arr[d]['spot'].sum() for d in range(len(arr))])
+        minSpot = min([arr[d]['spot'].sum() for d in range(len(arr))])
+        jegLogger.debug("normalized to %g..%g by=%g...." % (minSpot, maxSpot,
                                                             maxFlux))
-        
-    
     return arr, headerDict
 
 def _readJegFile(pathSpec):
