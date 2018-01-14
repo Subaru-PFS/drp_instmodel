@@ -166,6 +166,8 @@ skyFieldx40 =  [PROBE(i,0.0,1.0,100.0,200.0,'SKY', ()) for i in keepNth(bundledF
 # quickFlat = [PROBE(i,0.0,1.0,100.0,200.0,'SIMFLAT', ()) for i in (-fiberLim, -fiberLim//2, 0, 1, fiberLim+1)]
 
 oneArc = (PROBE(315,0.0,1.0,100.0,200.0,'SIMARC', ()),)
+oneNe = (PROBE(315,0.0,1.0,100.0,200.0,'SIMARC', ('NeI',)),)
+oneHg = (PROBE(315,0.0,1.0,100.0,200.0,'SIMARC', ('HgI',)),)
 oneFlat = (PROBE(315,0.0,1.0,100.0,200.0,'SIMFLAT', ()),)
 oneSlope = (PROBE(315,0.0,1.0,100.0,200.0,'SIMSLOPE', ()),)
 oneSky = (PROBE(315,0.0,1.0,100.0,200.0,'SKY', ()),)
