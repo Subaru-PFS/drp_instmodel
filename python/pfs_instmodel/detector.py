@@ -24,9 +24,10 @@ class Detector(object):
         # Map self.band to a filename using some mapper. For now, hardcode
         dataRoot = os.environ.get('DRP_INSTDATA_DIR', '.')
         filepath = os.path.join(dataRoot, 'data', 'detectors', '%s.py' % (detectorName))
-        
+
         self.band = detectorName
         self.config = pfs_tools.configFile.readfile(filepath)
+        self.readThroughputSpline()
         self.dtype = dtype
 
     @property
@@ -90,8 +91,8 @@ class Detector(object):
         rimage[saturatedPixels] = 65535
         rimage[lowPixels] = 0
         exp.pixelImage = rimage
-        
-    def getResponseSpline(self):
+
+    def readThroughputSplineJEG(self):
         """ Read in JEG's preliminary detector response.
 
         This is saved in a text file, whose meat is:
@@ -109,4 +110,33 @@ class Detector(object):
         filepath = os.path.join(dataRoot, 'data', 'sky', 'sumire%s.dat' % (self.band.upper()))
 
         a = numpy.genfromtxt(filepath, comments='\\')
-        return scipy.interpolate.InterpolatedUnivariateSpline(a[:,1], a[:,4], k=3)
+        a[:,1] *= 0.1
+        self.throughputSpline = scipy.interpolate.InterpolatedUnivariateSpline(a[:,1], a[:,4],
+                                                                               ext='zeros',k=3)
+        return self.throughputSpline
+
+    def readThroughputSpline(self):
+        """ Read in Yabe's throughput data, as taken from Hirata's ETC.
+
+        630.0   0.0000  1.0000  1.0000  1.0000  1.0000  0.0000
+        640.0   0.1008  1.0000  1.0000  1.0000  1.0000  0.1008
+        650.0   0.2357  1.0000  1.0000  1.0000  1.0000  0.2357
+
+        We use the first and the last columns.
+        """
+
+        # Map self.band to a filename using some mapper. For now, hardcode
+        dataRoot = os.environ.get('DRP_INSTDATA_DIR', '.')
+        filepath = os.path.join(dataRoot, 'data', 'sky', 'yabe%s.dat' % (self.band))
+
+        a = numpy.genfromtxt(filepath, comments='\\')
+
+        # pchip extrapolation only works if two end points are the same.
+        assert a[0,6] == a[1,6]
+        assert a[-1,6] == a[-2,6]
+        self.throughputSpline = scipy.interpolate.PchipInterpolator(a[:,0], a[:,6],
+                                                                    extrapolate=True)
+        return self.throughputSpline
+
+    def throughput(self, waves):
+        return self.throughputSpline(waves)
