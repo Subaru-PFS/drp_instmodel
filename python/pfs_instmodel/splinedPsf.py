@@ -6,10 +6,11 @@ from __future__ import absolute_import
 
 from builtins import range
 import os
-try:
-    from importlib import reload
-except:
-    pass
+import time
+
+from past.builtins import reload
+
+import logging
 
 from astropy.io import fits as pyfits
 import numpy as np

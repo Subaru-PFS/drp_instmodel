@@ -2,9 +2,9 @@ from __future__ import print_function
 from __future__ import division
 from builtins import range
 from builtins import object
+from past.builtins import reload
 
 import logging
-import os
 import numpy
 
 import pfs_instmodel.detector as pfsDet
@@ -186,4 +186,3 @@ class SimImage(object):
 
             lineGeometry = self.lineGeometry()
             fitsio.write(outputFile, lineGeometry, extname='lines')
-

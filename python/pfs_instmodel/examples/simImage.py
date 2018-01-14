@@ -2,7 +2,7 @@
 
 from __future__ import division
 from builtins import range
-from past.builtins import basestring
+from past.builtins import basestring, reload
 
 import argparse
 import logging
