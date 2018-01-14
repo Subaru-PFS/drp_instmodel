@@ -975,6 +975,18 @@ class SplinedPsf(psf.Psf):
             wlKnot = xcKnot
             wl = lams
 
+            assert len(lams) == len(wlKnot)
+            assert len(lams) == len(xc)
+            assert len(lams) == len(xcKnot)
+
+            if holeId <= 315:
+                xc -= ccdGap
+            xc += xOffset
+
+            midY = len(lams)//2
+            self.logger.debug("hole %d: xcKnot, xc, wl: %s %s %s" % (holeId,
+                                                                     xcKnot[midY], xc[midY], wl[midY]))
+
             dmapIO.setXCenter(holeId, xcKnot, xc)
             dmapIO.setWavelength(holeId, wlKnot, wl)
 
