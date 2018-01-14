@@ -1,4 +1,5 @@
 setupRequired(pfs_tools)
+setupRequired(afw)
 setupOptional(drp_instdata)
 setupOptional(ics_xcu_fpga)
 
