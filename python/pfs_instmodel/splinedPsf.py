@@ -942,23 +942,18 @@ class SplinedPsf(psf.Psf):
         # ### FIXME CPL HACK: the detector ccdSize and ccdCenter are (y,x)!!!!
         ccdCenter = ccdCenter[1], ccdCenter[0]
         ccdSize = ccdSize[1], ccdSize[0]
+        ccdGap = self.detector.config['interCcdGap'] / pixelScale
+        xOffset = self.detector.config['ccdXOffset'] / pixelScale
         def xMmToPixel(xc):
             return xc / pixelScale + ccdCenter[1]
-
-        spots = self.rawSpots
-        
-        minX, maxX = rangeOf(spots['spot_xc']) / pixelScale + ccdCenter[0]
-        minY, maxY = rangeOf(spots['spot_yc']) / pixelScale + ccdCenter[1]
-        bbox = afwGeom.BoxI(afwGeom.PointI(minX, minY), afwGeom.PointI(maxX, maxY))
 
         # Per RHL, we want the detectort geometry here.
         bbox = afwGeom.BoxI(afwGeom.PointI(0,0), afwGeom.PointI(ccdSize[0]-1, ccdSize[1]-1))
 
-        fiberIds = np.unique(spots['fiberIdx'])
-        fiberIds.sort()
+        fiberIds = np.unique(self.fiber)
 
-        fiber0 = np.where(spots['fiberIdx'] == min(spots['fiberIdx']))
-        nKnots = len(fiber0[0])
+        fiber0_w = np.where(self.fiber == min(self.fiber))
+        nKnots = len(fiber0_w[0])
 
         lam0 = self.spotsInfo['LAM0']
         dlam = self.spotsInfo['LAMINC']
@@ -966,11 +961,10 @@ class SplinedPsf(psf.Psf):
 
         dmapIO = drpUtils.detectorMap.DetectorMapIO(bbox, fiberIds.astype('i4'), nKnots) 
 
-        for i in range(len(fiberIds)):
-            holeId = fiberIds[i]
-            fiber_w = np.where(spots['fiberIdx'] == holeId)
-            xcKnot = xMmToPixel(spots[fiber_w]['spot_yc'])
-            xc = xMmToPixel(spots[fiber_w]['spot_xc'])
+        for holeId in fiberIds:
+            coeffs = self.getCoeffs(holeId)
+            xcKnot = xMmToPixel(coeffs.ycCoeffs._data[1])
+            xc = xMmToPixel(coeffs.xcCoeffs._data[1])
 
             wlKnot = xcKnot
             wl = lams
@@ -990,4 +984,8 @@ class SplinedPsf(psf.Psf):
             dmapIO.setXCenter(holeId, xcKnot, xc)
             dmapIO.setWavelength(holeId, wlKnot, wl)
 
-        return dmapIO.getDetectorMap()
+        dmap = dmapIO.getDetectorMap()
+        drpUtils.writeDetectorMap(dmap, fname)
+
+        return dmap
+
