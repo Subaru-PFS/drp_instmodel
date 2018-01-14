@@ -189,7 +189,7 @@ def _readOneSpotHDU(hdu, focus, doSwapAxes=True):
     yc = header['YBAR']
 
     if doSwapAxes:
-        xc, yc = yc, xc
+        xc, yc = -yc, xc
         rawspot = np.rot90(rawspot)  # np.swapaxes(self.spot,0,1)
 
     return (header['FIBER'],header['LAMBDA'],
