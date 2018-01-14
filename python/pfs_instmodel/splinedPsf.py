@@ -230,9 +230,9 @@ class SplinedPsf(psf.Psf):
         if doReorder:
             minY, maxY = maxY, minY
         if minY < 0:
-            print("one of wavelengths %s maps below the detector (%0.5f mm)" % (waveRange, minY))
+            self.logger.info("one of wavelengths %s maps below the detector (%0.5f mm)" % (waveRange, minY))
         if maxY > self.detector.config['ccdSize'][1]:
-            print("one of wavelengths %s maps above the detector (%0.5f mm)" % (waveRange, maxY))
+            self.logger.info("one of wavelengths %s maps above the detector (%0.5f mm)" % (waveRange, maxY))
         
         minRow = int((minY+1)/pixelScale)
         maxRow = int(maxY/pixelScale)
@@ -293,7 +293,7 @@ class SplinedPsf(psf.Psf):
 
         if everyNth is None:
             everyNth = self.everyNth
-        self.logger.info('everyNth: %s', everyNth)
+        self.logger.debug('everyNth: %s', everyNth)
 
         if waves is None:
             waves = np.unique(self.wave)
@@ -926,8 +926,8 @@ class SplinedPsf(psf.Psf):
     def makeDetectorMap(self, fname):
         """ Create a DetectorMap file for DRP. 
 
-        Why here? We know about the millimeters from the optical model and
-        the pixels of the detector. 
+        Why here? We know both about the millimeters from the optical model and
+        about the pixels of the detector. 
 
         """
         import lsst.afw.geom as afwGeom
