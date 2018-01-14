@@ -107,6 +107,8 @@ class SplinedPsf(psf.Psf):
 
         psf.Psf.__init__(self, detector, logger=logger)
 
+        self.logger.setLevel(logLevel)
+        
         # The locations at which we have PSFs
         self.wave = []
         self.fiber = []
