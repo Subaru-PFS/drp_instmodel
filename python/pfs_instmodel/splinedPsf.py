@@ -15,6 +15,9 @@ import logging
 from astropy.io import fits as pyfits
 import numpy as np
 
+import pickle
+import gzip
+
 import scipy.ndimage
 import scipy.signal
 import scipy.interpolate as spInterp
@@ -22,22 +25,67 @@ import scipy.ndimage
 import scipy.ndimage.interpolation
 
 from . import spotgames
-from .spectrum import LineSpectrum
+from .spectrum import LineSpectrum, ArcSpectrum
 
 from . import psf
 reload(psf)
+
 
 class SpotCoeffs(object):
     """ Trivial wrapper around pixel and position spline coefficients, so that we can 
         treat per-fiber (1-d) splines the same as sparse (2-d) splines. 
     """
-    def __init__(self, pixelCoeffs, xcCoeffs, ycCoeffs):
+    def __init__(self, pixelCoeffs, xcCoeffs, ycCoeffs, spots=None):
         self.pixelCoeffs = pixelCoeffs
         self.xcCoeffs = xcCoeffs
         self.ycCoeffs = ycCoeffs
+        self.spots = spots
+
+class SpotCache(object):
+    def __init__(self, dir, logLevel=logging.DEBUG):
+        self.dir = dir
+        self.logger = logging.getLogger('spotCache')
+
+    def getInfoPath(self):
+        return os.path.join(self.dir, 'info.pkl.gz')
+    
+    def getFiberPath(self, fiber):
+        return os.path.join(self.dir, "fiber-%03d.pkl.gz" % (fiber))
+
+    def create(self, info, force=False):
+        if self.exists() and not force:
+            raise RuntimeError("spot cache %s already exists" % (self.dir))
+
+        if not os.path.isdir(self.dir):
+            os.mkdir(self.dir)
+        with gzip.open(self.getInfoPath(), 'wb+') as f:
+            pickle.dump(info, f, -1)
+
+    def getInfo(self):
+        with gzip.open(self.getInfoPath(), 'rb') as f:
+            info = pickle.load(f)
+        return info
+
+    def exists(self):
+        return os.path.isfile(self.getInfoPath()) and os.path.isfile(self.getFiberPath(650))
+
+    def __getitem__(self, fiber):
+        self.logger.debug("fetching %s", self.getFiberPath(fiber))
+        t0 = time.time()
+        with gzip.open(self.getFiberPath(fiber), 'rb') as f:
+            data = pickle.load(f)
+        t1 = time.time()
+        self.logger.debug("fetched in %0.2fs", (t1-t0))
+
+        return data
+
+    def __setitem__(self, fiber, coeffs):
+        with gzip.open(self.getFiberPath(fiber), 'wb+') as f:
+            pickle.dump(coeffs, f, -1)
 
 class SplinedPsf(psf.Psf):
-    def __init__(self, detector, spotType='jeg', spotID=None, logger=None,
+    def __init__(self, detector, spotType='jeg', spotID=None,
+                 logger=None, logLevel=logging.WARN,
                  slitOffset=(0.0, 0.0), everyNth=20,
                  doTrimSpots=True, doRebin=False):
         """ Create or read in our persisted form. By default use JEG's models. 
@@ -72,7 +120,6 @@ class SplinedPsf(psf.Psf):
         if spotType:
             self.loadFromSpots(spotType, spotID, spotArgs=dict(doTrimSpots=doTrimSpots, doRebin=doRebin))
 
-        
     def __str__(self):
         nSpots = len(self.spots)
         if nSpots > 0:
@@ -592,6 +639,76 @@ class SplinedPsf(psf.Psf):
 
         return (slice(parent[0], parent[1]+1),
                 slice(child[0], child[1]+1))
+
+    def _spotCacheDir(self, spotIds=None):
+        from . import jegSpots
+        reload(jegSpots)
+
+        rawSpotPath, _ = jegSpots.resolveSpotPathSpec(spotIds)
+        
+        spotDir = os.path.dirname(rawSpotPath)
+        cacheDir = os.path.join(spotDir, '_cache')
+
+        return cacheDir
+    
+    def primeSpotCache(self, spotIDs, rawSpotPath):
+        cacheDir = self._spotCacheDir(rawSpotPath)
+        cache = SpotCache(cacheDir)
+        if cache.exists():
+            self.perFiberCoeffs = cache
+            spotsInfo = cache.getInfo()
+            self.wave = spotsInfo['wave']
+            self.fiber = spotsInfo['fiber']
+            self.spotScale = spotsInfo['spotScale']
+            self.spotsInfo = spotsInfo['spotsInfo']
+            return True
+        return False
+    
+    def createSpotCache(self, spotIDs, rawSpotPath, doRebin=None, doTrimSpots=False, spotArgs=None):
+        from . import jegSpots
+        reload(jegSpots)
+
+        if spotArgs is None:
+            spotArgs = {}
+        rawSpots, spotsInfo = jegSpots.readSpotFile(rawSpotPath, verbose=True, **spotArgs)
+        assert spotsInfo['XPIX'] == spotsInfo['YPIX']
+        self.logger.info('loaded spot data from %s' % rawSpotPath)
+
+        self.wave = rawSpots['wavelength']
+        self.fiber = rawSpots['fiberIdx']
+        self.spotScale = spotsInfo['PIXSIZE']
+        self.spotsInfo = spotsInfo
+
+        imshape = rawSpots['spot'][0].shape
+        self.perFiberCoeffs = SpotCache(self._spotCacheDir(rawSpotPath))
+        self.perFiberCoeffs.create(dict(wave=self.wave,
+                                        fiber=self.fiber,
+                                        spotScale=self.spotScale,
+                                        spotsInfo=spotsInfo))
+
+        splineType = spInterp.InterpolatedUnivariateSpline
+        spotWaves = np.unique(self.wave)
+        spots = rawSpots['spot']
+        for fid in np.unique(self.fiber):
+            self.logger.info('constructing splines for fiber %d', fid)
+            fib_w = np.where(self.fiber == fid)[0]
+            spotPixelCoeffs = np.zeros(imshape, dtype='O')
+            fiberSpots = spots[fib_w]
+            assert len(spotWaves) == len(fiberSpots)
+
+            for ix in range(imshape[0]):
+                for iy in range(imshape[1]):
+                    spotPixelCoeffs[iy, ix] = self.buildSpline(splineType,
+                                                               None, spotWaves, fiberSpots[:, iy, ix])
+            xcCoeffs = self.buildSpline(splineType,
+                                        None, spotWaves,
+                                        rawSpots['spot_xc'][fib_w])
+            ycCoeffs = self.buildSpline(splineType,
+                                        None, spotWaves,
+                                        rawSpots['spot_yc'][fib_w])
+
+            self.perFiberCoeffs[fid] = SpotCoeffs(spotPixelCoeffs, xcCoeffs, ycCoeffs,
+                                                  spots=fiberSpots)
 
     def loadFromSpots(self, spotType='jeg', spotIDs=None, spotArgs=None):
         """ Generate ourself from a semi-digested pfs_instdata spot file. 
