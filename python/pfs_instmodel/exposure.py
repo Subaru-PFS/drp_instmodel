@@ -132,29 +132,36 @@ class Exposure(object):
     def loadBias(self, biasID):
         """ Load a real detector bias, return its active image. """
 
-        dataRoot = os.environ.get('DRP_INSTDATA_DIR', '.')
-        fileglob = os.path.join(dataRoot, 'data', 'pfs', 'biases', 'PF?A0*%d%d%d.fits' %
-                                (biasID, 1, 2 if self.detector.band == 'Red' else 1))
+        if biasID is None:
+            return None
 
-        print("looking for biases %s" % (fileglob))
-        filepaths = glob.glob(fileglob)
-        filepath = filepaths[0]
+        if isinstance(biasID, str):
+            filepath = biasID
+        else:
+            dataRoot = os.environ.get('DRP_INSTDATA_DIR', '.')
+            fileglob = os.path.join(dataRoot, 'data', 'pfs', 'biases', 'PF?A0*%d%d%d.fits' %
+                                    (biasID, 1, 2 if self.detector.arm == 'r' else 1))
+
+            print("looking for biases %s" % (fileglob))
+            filepaths = glob.glob(fileglob)
+            filepath = filepaths[0]
 
         print("loading bias %s" % (filepath))
         self.biasExp = geom.Exposure(obj=filepath)
         print("  bias geom: %s" % (self.biasExp))
 
+        # Paper over a temporary geometry botch in the DA
         if self._flux.shape[0] == 4174:
             self.biasExp.leadinRows = 50
-        
+
         return self.biasExp.finalImage(leadingRows=False)
-        
+
     def loadFlat(self):
         """ Load a real detector flat, return its active image. """
 
         dataRoot = os.environ.get('DRP_INSTDATA_DIR', '.')
         fileglob = os.path.join(dataRoot, 'data', 'pfs', 'flats', 'pfsFlat-*-%d%s.fits' %
-                                (1, self.detector.band[0].lower()))
+                                (1, self.detector.arm))
 
         print("looking for flats %s" % (fileglob))
         filepaths = glob.glob(fileglob)

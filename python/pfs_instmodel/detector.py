@@ -21,11 +21,16 @@ class Detector(object):
     def __init__(self, detectorName, dtype='u2'):
         """ Need to work out how to specify & pass in our properties. Use a "struct" for now. """
 
+        if (len(detectorName) != 2 or
+            detectorName[0] not in {'b','r','n'} or
+            detectorName[1] not in {'1','2','3','4'}):
+            raise ValueError('detectorName must be in the form "b2" (%s)' % (detectorName))
+
+        self.detectorName = detectorName
+
         # Map self.band to a filename using some mapper. For now, hardcode
         dataRoot = os.environ.get('DRP_INSTDATA_DIR', '.')
-        filepath = os.path.join(dataRoot, 'data', 'detectors', '%s.py' % (detectorName))
-
-        self.band = detectorName
+        filepath = os.path.join(dataRoot, 'data', 'detectors', '%s.py' % (self.armName))
         self.config = pfs_tools.configFile.readfile(filepath)
         self.readThroughputSpline()
         self.dtype = dtype
@@ -57,7 +62,7 @@ class Detector(object):
     def addBias(self, exp, ontoBias=None):
         """ Add our bias to the given exposure. """
 
-        if ontoBias:
+        if ontoBias is not None:
             bias = exp.loadBias(ontoBias)
         else:
             bias = self.getBias(exp)
@@ -105,9 +110,9 @@ class Detector(object):
         We are interested in the instrument throughput, TPinst
         """
 
-        # Map self.band to a filename using some mapper. For now, hardcode
+        # Map self.arm to a filename using some mapper. For now, hardcode
         dataRoot = os.environ.get('DRP_INSTDATA_DIR', '.')
-        filepath = os.path.join(dataRoot, 'data', 'sky', 'sumire%s.dat' % (self.band.upper()))
+        filepath = os.path.join(dataRoot, 'data', 'sky', 'sumire%s.dat' % (self.armName))
 
         a = numpy.genfromtxt(filepath, comments='\\')
         a[:,1] *= 0.1
@@ -125,9 +130,9 @@ class Detector(object):
         We use the first and the last columns.
         """
 
-        # Map self.band to a filename using some mapper. For now, hardcode
+        # Map self.arm to a filename using some mapper. For now, hardcode
         dataRoot = os.environ.get('DRP_INSTDATA_DIR', '.')
-        filepath = os.path.join(dataRoot, 'data', 'sky', 'yabe%s.dat' % (self.band))
+        filepath = os.path.join(dataRoot, 'data', 'sky', 'yabe%s.dat' % (self.armName))
 
         a = numpy.genfromtxt(filepath, comments='\\')
 

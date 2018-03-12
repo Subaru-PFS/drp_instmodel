@@ -38,7 +38,7 @@ OFFSETS :
 
 """
 
-def getDataPath(date=None, band='Red', frd=23, focus=0, slitFocus=0, fieldAngle=0, spotDir=None):
+def getDataPath(date=None, band='Red', frd=23, focus=0, slitFocus=0, fieldAngle=0, detector=None, spotDir=None):
     """ Return complete data path for the specified spots. 
 
     The file format changed on 2017-10-30 from a homebrew binary to FITS.

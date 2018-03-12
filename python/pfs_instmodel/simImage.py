@@ -23,7 +23,7 @@ _______
                                 spectra=[irSky]*len(fibers))
 """
 class SimImage(object):
-    def __init__(self, band, sky=None, psf=None, simID=None,
+    def __init__(self, detector, sky=None, psf=None, simID=None,
                  addNoise=True, dtype='i4',
                  everyNth=20,
                  constantPsf=False, constantX=False,
@@ -34,8 +34,8 @@ class SimImage(object):
             logger = logging.getLogger()
         self.logger = logger
 
-        self.detector = pfsDet.Detector(band)
-        self.sky = sky if sky else pfsSky.StaticSkyModel(band)
+        self.detector = pfsDet.Detector(detector)
+        self.sky = sky if sky else pfsSky.StaticSkyModel(self.detector.armName)
         self.psf = psf if psf else pfsPsf.SplinedPsf(self.detector, spotID=simID,
                                                      everyNth=everyNth,
                                                      slitOffset=slitOffset,
@@ -156,14 +156,11 @@ class SimImage(object):
         if outputFile is None:
             import fpga.SeqPath
 
-            dewarMap = {'Blue':1, 'Red':2, 'NIR': 3}
-            detectorNum = '1%d' % (dewarMap[self.detector.band])
-            
             baseTemplate = '%(filePrefix)s%(seqno)06d'
             self.fileMgr = fpga.SeqPath.NightFilenameGen('/data/pfsSim',
                                                          filePrefix='PFFA',
                                                          filePattern="%s%s.fits" % (baseTemplate,
-                                                                                    detectorNum))
+                                                                                    self.detector.detectorName))
             outputFile = self.fileMgr.getNextFileset()[0]
             if realBias is True:
                 realBias = int(outputFile[-8])
