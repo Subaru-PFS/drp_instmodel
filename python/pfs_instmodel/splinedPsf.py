@@ -6,13 +6,17 @@ from __future__ import absolute_import
 
 from builtins import range
 import os
-try:
-    from importlib import reload
-except:
-    pass
+import time
+
+from past.builtins import reload
+
+import logging
 
 from astropy.io import fits as pyfits
 import numpy as np
+
+import pickle
+import gzip
 
 import scipy.ndimage
 import scipy.signal
@@ -21,22 +25,67 @@ import scipy.ndimage
 import scipy.ndimage.interpolation
 
 from . import spotgames
-from .spectrum import LineSpectrum
+from .spectrum import LineSpectrum, ArcSpectrum
 
 from . import psf
 reload(psf)
+
 
 class SpotCoeffs(object):
     """ Trivial wrapper around pixel and position spline coefficients, so that we can 
         treat per-fiber (1-d) splines the same as sparse (2-d) splines. 
     """
-    def __init__(self, pixelCoeffs, xcCoeffs, ycCoeffs):
+    def __init__(self, pixelCoeffs, xcCoeffs, ycCoeffs, spots=None):
         self.pixelCoeffs = pixelCoeffs
         self.xcCoeffs = xcCoeffs
         self.ycCoeffs = ycCoeffs
+        self.spots = spots
+
+class SpotCache(object):
+    def __init__(self, dir, logLevel=logging.DEBUG):
+        self.dir = dir
+        self.logger = logging.getLogger('spotCache')
+
+    def getInfoPath(self):
+        return os.path.join(self.dir, 'info.pkl.gz')
+    
+    def getFiberPath(self, fiber):
+        return os.path.join(self.dir, "fiber-%03d.pkl.gz" % (fiber))
+
+    def create(self, info, force=False):
+        if self.exists() and not force:
+            raise RuntimeError("spot cache %s already exists" % (self.dir))
+
+        if not os.path.isdir(self.dir):
+            os.mkdir(self.dir)
+        with gzip.open(self.getInfoPath(), 'wb+') as f:
+            pickle.dump(info, f, -1)
+
+    def getInfo(self):
+        with gzip.open(self.getInfoPath(), 'rb') as f:
+            info = pickle.load(f)
+        return info
+
+    def exists(self):
+        return os.path.isfile(self.getInfoPath()) and os.path.isfile(self.getFiberPath(650))
+
+    def __getitem__(self, fiber):
+        self.logger.debug("fetching %s", self.getFiberPath(fiber))
+        t0 = time.time()
+        with gzip.open(self.getFiberPath(fiber), 'rb') as f:
+            data = pickle.load(f)
+        t1 = time.time()
+        self.logger.debug("fetched in %0.2fs", (t1-t0))
+
+        return data
+
+    def __setitem__(self, fiber, coeffs):
+        with gzip.open(self.getFiberPath(fiber), 'wb+') as f:
+            pickle.dump(coeffs, f, -1)
 
 class SplinedPsf(psf.Psf):
-    def __init__(self, detector, spotType='jeg', spotID=None, logger=None,
+    def __init__(self, detector, spotType='jeg', spotID=None,
+                 logger=None, logLevel=logging.WARN,
                  slitOffset=(0.0, 0.0), everyNth=20,
                  doTrimSpots=True, doRebin=False):
         """ Create or read in our persisted form. By default use JEG's models. 
@@ -58,6 +107,8 @@ class SplinedPsf(psf.Psf):
 
         psf.Psf.__init__(self, detector, logger=logger)
 
+        self.logger.setLevel(logLevel)
+        
         # The locations at which we have PSFs
         self.wave = []
         self.fiber = []
@@ -71,7 +122,6 @@ class SplinedPsf(psf.Psf):
         if spotType:
             self.loadFromSpots(spotType, spotID, spotArgs=dict(doTrimSpots=doTrimSpots, doRebin=doRebin))
 
-        
     def __str__(self):
         nSpots = len(self.spots)
         if nSpots > 0:
@@ -180,9 +230,9 @@ class SplinedPsf(psf.Psf):
         if doReorder:
             minY, maxY = maxY, minY
         if minY < 0:
-            print("one of wavelengths %s maps below the detector (%0.5f mm)" % (waveRange, minY))
+            self.logger.info("one of wavelengths %s maps below the detector (%0.5f mm)" % (waveRange, minY))
         if maxY > self.detector.config['ccdSize'][1]:
-            print("one of wavelengths %s maps above the detector (%0.5f mm)" % (waveRange, maxY))
+            self.logger.info("one of wavelengths %s maps above the detector (%0.5f mm)" % (waveRange, maxY))
         
         minRow = int((minY+1)/pixelScale)
         maxRow = int(maxY/pixelScale)
@@ -243,7 +293,7 @@ class SplinedPsf(psf.Psf):
 
         if everyNth is None:
             everyNth = self.everyNth
-        self.logger.info('everyNth: %s', everyNth)
+        self.logger.debug('everyNth: %s', everyNth)
 
         if waves is None:
             waves = np.unique(self.wave)
@@ -592,6 +642,76 @@ class SplinedPsf(psf.Psf):
         return (slice(parent[0], parent[1]+1),
                 slice(child[0], child[1]+1))
 
+    def _spotCacheDir(self, spotIds=None):
+        from . import jegSpots
+        reload(jegSpots)
+
+        rawSpotPath, _ = jegSpots.resolveSpotPathSpec(spotIds)
+        
+        spotDir = os.path.dirname(rawSpotPath)
+        cacheDir = os.path.join(spotDir, '_cache')
+
+        return cacheDir
+    
+    def primeSpotCache(self, spotIDs, rawSpotPath):
+        cacheDir = self._spotCacheDir(rawSpotPath)
+        cache = SpotCache(cacheDir)
+        if cache.exists():
+            self.perFiberCoeffs = cache
+            spotsInfo = cache.getInfo()
+            self.wave = spotsInfo['wave']
+            self.fiber = spotsInfo['fiber']
+            self.spotScale = spotsInfo['spotScale']
+            self.spotsInfo = spotsInfo['spotsInfo']
+            return True
+        return False
+    
+    def createSpotCache(self, spotIDs, rawSpotPath, doRebin=None, doTrimSpots=False, spotArgs=None):
+        from . import jegSpots
+        reload(jegSpots)
+
+        if spotArgs is None:
+            spotArgs = {}
+        rawSpots, spotsInfo = jegSpots.readSpotFile(rawSpotPath, verbose=True, **spotArgs)
+        assert spotsInfo['XPIX'] == spotsInfo['YPIX']
+        self.logger.info('loaded spot data from %s' % rawSpotPath)
+
+        self.wave = rawSpots['wavelength']
+        self.fiber = rawSpots['fiberIdx']
+        self.spotScale = spotsInfo['PIXSIZE']
+        self.spotsInfo = spotsInfo
+
+        imshape = rawSpots['spot'][0].shape
+        self.perFiberCoeffs = SpotCache(self._spotCacheDir(rawSpotPath))
+        self.perFiberCoeffs.create(dict(wave=self.wave,
+                                        fiber=self.fiber,
+                                        spotScale=self.spotScale,
+                                        spotsInfo=spotsInfo))
+
+        splineType = spInterp.InterpolatedUnivariateSpline
+        spotWaves = np.unique(self.wave)
+        spots = rawSpots['spot']
+        for fid in np.unique(self.fiber):
+            self.logger.info('constructing splines for fiber %d', fid)
+            fib_w = np.where(self.fiber == fid)[0]
+            spotPixelCoeffs = np.zeros(imshape, dtype='O')
+            fiberSpots = spots[fib_w]
+            assert len(spotWaves) == len(fiberSpots)
+
+            for ix in range(imshape[0]):
+                for iy in range(imshape[1]):
+                    spotPixelCoeffs[iy, ix] = self.buildSpline(splineType,
+                                                               None, spotWaves, fiberSpots[:, iy, ix])
+            xcCoeffs = self.buildSpline(splineType,
+                                        None, spotWaves,
+                                        rawSpots['spot_xc'][fib_w])
+            ycCoeffs = self.buildSpline(splineType,
+                                        None, spotWaves,
+                                        rawSpots['spot_yc'][fib_w])
+
+            self.perFiberCoeffs[fid] = SpotCoeffs(spotPixelCoeffs, xcCoeffs, ycCoeffs,
+                                                  spots=fiberSpots)
+
     def loadFromSpots(self, spotType='jeg', spotIDs=None, spotArgs=None):
         """ Generate ourself from a semi-digested pfs_instdata spot file. 
 
@@ -806,8 +926,8 @@ class SplinedPsf(psf.Psf):
     def makeDetectorMap(self, fname):
         """ Create a DetectorMap file for DRP. 
 
-        Why here? We know about the millimeters from the optical model and
-        the pixels of the detector. 
+        Why here? We know both about the millimeters from the optical model and
+        about the pixels of the detector. 
 
         """
         import lsst.afw.geom as afwGeom
@@ -822,23 +942,18 @@ class SplinedPsf(psf.Psf):
         # ### FIXME CPL HACK: the detector ccdSize and ccdCenter are (y,x)!!!!
         ccdCenter = ccdCenter[1], ccdCenter[0]
         ccdSize = ccdSize[1], ccdSize[0]
+        ccdGap = self.detector.config['interCcdGap'] / pixelScale
+        xOffset = self.detector.config['ccdXOffset'] / pixelScale
         def xMmToPixel(xc):
             return xc / pixelScale + ccdCenter[1]
-
-        spots = self.rawSpots
-        
-        minX, maxX = rangeOf(spots['spot_xc']) / pixelScale + ccdCenter[0]
-        minY, maxY = rangeOf(spots['spot_yc']) / pixelScale + ccdCenter[1]
-        bbox = afwGeom.BoxI(afwGeom.PointI(minX, minY), afwGeom.PointI(maxX, maxY))
 
         # Per RHL, we want the detectort geometry here.
         bbox = afwGeom.BoxI(afwGeom.PointI(0,0), afwGeom.PointI(ccdSize[0]-1, ccdSize[1]-1))
 
-        fiberIds = np.unique(spots['fiberIdx'])
-        fiberIds.sort()
+        fiberIds = np.unique(self.fiber)
 
-        fiber0 = np.where(spots['fiberIdx'] == min(spots['fiberIdx']))
-        nKnots = len(fiber0[0])
+        fiber0_w = np.where(self.fiber == min(self.fiber))
+        nKnots = len(fiber0_w[0])
 
         lam0 = self.spotsInfo['LAM0']
         dlam = self.spotsInfo['LAMINC']
@@ -846,16 +961,31 @@ class SplinedPsf(psf.Psf):
 
         dmapIO = drpUtils.detectorMap.DetectorMapIO(bbox, fiberIds.astype('i4'), nKnots) 
 
-        for i in range(len(fiberIds)):
-            holeId = fiberIds[i]
-            fiber_w = np.where(spots['fiberIdx'] == holeId)
-            xcKnot = xMmToPixel(spots[fiber_w]['spot_yc'])
-            xc = xMmToPixel(spots[fiber_w]['spot_xc'])
+        for holeId in fiberIds:
+            coeffs = self.getCoeffs(holeId)
+            xcKnot = xMmToPixel(coeffs.ycCoeffs._data[1])
+            xc = xMmToPixel(coeffs.xcCoeffs._data[1])
 
             wlKnot = xcKnot
             wl = lams
 
+            assert len(lams) == len(wlKnot)
+            assert len(lams) == len(xc)
+            assert len(lams) == len(xcKnot)
+
+            if holeId <= 315:
+                xc -= ccdGap
+            xc += xOffset
+
+            midY = len(lams)//2
+            self.logger.debug("hole %d: xcKnot, xc, wl: %s %s %s" % (holeId,
+                                                                     xcKnot[midY], xc[midY], wl[midY]))
+
             dmapIO.setXCenter(holeId, xcKnot, xc)
             dmapIO.setWavelength(holeId, wlKnot, wl)
 
-        return dmapIO.getDetectorMap()
+        dmap = dmapIO.getDetectorMap()
+        drpUtils.writeDetectorMap(dmap, fname)
+
+        return dmap
+

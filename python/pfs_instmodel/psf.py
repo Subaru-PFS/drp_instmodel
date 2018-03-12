@@ -9,7 +9,7 @@ import scipy
 class Psf(object):
     def __init__(self, detector, logger=None):
         if logger is None:
-            logger = logging.getLogger()
+            logger = logging.getLogger('psf')
         self.logger = logger
 
         self.detector = detector

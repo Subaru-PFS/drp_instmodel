@@ -124,7 +124,7 @@ class StaticSkyModel(SkyModel):
         return SkySpectrum(None, self.skySpline)
 
 class SkySpectrum(Spectrum):
-    def __init__(self, detector, skyModel, scale=1.0):
+    def __init__(self, detector, skyModel, scale=0.25):
         self.detector = detector
         self.scale = scale
         self.skyModel = skyModel

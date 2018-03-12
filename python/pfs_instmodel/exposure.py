@@ -72,8 +72,10 @@ class Exposure(object):
                 addCards=(),
                 imagetyp=None, allOutput=False):
 
+        hdulist = pyfits.HDUList()
+
         self.readout(addNoise=addNoise, realBias=realBias, realFlat=realFlat, exptime=exptime)
-        if realBias:
+        if realBias is not None:
             outIm = self.biasExp.replaceActiveFlux(self.pixelImage, leadingRows=True)
             hdr = self.biasExp.header
         else:
@@ -82,21 +84,36 @@ class Exposure(object):
 
         print("writing to %s, addNoise=%s, imagetyp=%s, %s, dtype=%s" % (outputFile, addNoise,
                                                                          imagetyp, type(outIm), outIm.dtype))
-            
-        hdulist = pyfits.HDUList()
+
+        hdr.set('EXPTIME', float(exptime))
+        hdr.set('DATE-OBS', self.ts(), 'Crude sim time')
+        hdr.set('W_SIMBIA', realBias)
+        hdr.set('W_SIMFLA', realFlat)
+        
         if imagetyp is not None:
-            imageTyp, expTime = imagetyp.split(',')
-            
+            parts = imagetyp.split(',')
+            if len(parts) == 1:
+                imageTyp = parts[0]
+                details = None
+            elif len(parts) == 2:
+                imageTyp, details = parts
+            else:
+                self.logger.warn('unknown imagetype: %s', imagetyp)
+
             hdr.set('IMAGETYP', imageTyp)
-            hdr.set('EXPTIME', float(expTime))
-            hdr.set('DATE-OBS', self.ts(), 'Crude time')
+
+            if details is not None:
+                if details in {'Ne', 'Xe', 'HgAr'}:
+                    hdr.set('W_AIT_SRC_%s' % (details), True)
+                else:
+                    self.logger.warn('unknown detail: %s', details)
 
         for c in addCards:
             hdr.set(*c)
-            
+
         hdu0 = pyfits.CompImageHDU(outIm, name='image')
         hdu0.header.extend(hdr)
-        
+
         # hdu0.data = outIm
         hdulist.append(hdu0)
             

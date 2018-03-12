@@ -155,9 +155,8 @@ class ArcSpectrum(LineSpectrum):
 
         self.lines = numpy.genfromtxt(filepath, usecols=list(range(3)),
                                       dtype=[('wave', 'f4'),
-                                             ('name', 'S5',),
+                                             ('name', 'U5',),
                                              ('flux', 'f4')])
-
         if lampset is not None and lampset:
             l_w = self.lines['name'] == lampset
             self.lines = self.lines[l_w]
