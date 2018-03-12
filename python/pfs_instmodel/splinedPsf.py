@@ -119,6 +119,7 @@ class SplinedPsf(psf.Psf):
         self.everyNth = everyNth
         self.perFiberCoeffs = None
 
+        self.spotID['band'] = self.detector.armName
         if spotType:
             self.loadFromSpots(spotType, spotID, spotArgs=dict(doTrimSpots=doTrimSpots, doRebin=doRebin))
 

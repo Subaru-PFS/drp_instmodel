@@ -15,7 +15,7 @@ import pfs_instmodel.sky as pfsSky
 import pfs_instmodel.spectrum as pfsSpectrum
 reload(pfsSpectrum)
 
-def makeSim(band, fieldName, fiberFilter=None,
+def makeSim(detector, fieldName, fiberFilter=None,
             frd=None, focus=0, date=None, psf=None, dtype='u2',
             everyNth=20,
             addNoise=True, combSpacing=50, shiftPsfs=True,
@@ -28,8 +28,8 @@ def makeSim(band, fieldName, fiberFilter=None,
     Parameters
     ----------
 
-    band : str
-       The name of the wavelength band (for PFS: IR, Red, Blue)
+    detector : str
+       The name of the detector ("r1", "n3", "b4", etc)
     fieldName : str
        The name of the field definition with the fiber locations and targeting.
     fiberFilter : list of integers, optional
@@ -54,20 +54,20 @@ def makeSim(band, fieldName, fiberFilter=None,
 
     logger.info("args everyNth: %s", everyNth)
     
-    simID = dict(band=band, frd=frd, focus=focus, date=date)
+    simID = dict(detector=detector, frd=frd, focus=focus, date=date)
 
-    sim = simImage.SimImage(band, simID=simID, psf=psf, dtype=dtype,
+    sim = simImage.SimImage(detector, simID=simID, psf=psf, dtype=dtype,
                             everyNth=everyNth,
                             addNoise=addNoise,
                             constantPsf=constantPsf, constantX=constantX,
                             slitOffset=(xOffset/1000.0, yOffset/1000.0),
                             logger=logger)
-    skyModel = pfsSky.StaticSkyModel(band) # plus field info....
+    skyModel = pfsSky.StaticSkyModel(sim.detector.armName) # plus field info....
     flatSpectrum = pfsSpectrum.FlatSpectrum(sim.detector, gain=20.0)
     slopeSpectrum = pfsSpectrum.SlopeSpectrum(sim.detector, gain=20.0)
     combSpectrum = pfsSpectrum.CombSpectrum(spacing=combSpacing, 
                                             gain=200000.0)
-    
+
     field = loadField(fieldName)
 
     logger.info("addNoise=%s" % (addNoise))
@@ -184,7 +184,7 @@ Examples
 Generate an image file of two 3-fiber groups of sky spectra,
 currently as defined in :download:`examples/sampleField/py <../../examples/sampleField.py>`
     
-   --band=IR --output=irsim.fits --field=field1
+   --detector=r1 --output=sim.fits --field=field1
 """
 
     # Configure the default formatter and logger.
@@ -195,7 +195,7 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
     parser = argparse.ArgumentParser(description="generate a simulated image", 
                                      formatter_class=argparse.RawDescriptionHelpFormatter,
                                      epilog=helpDoc)
-    parser.add_argument('-b', '--band', action='store', required=True)
+    parser.add_argument('-d', '--detector', action='store', required=True)
     parser.add_argument('-F', '--field', action='store', required=True)
     parser.add_argument('-o', '--output', action='store', default=None)
     parser.add_argument('-f', '--fibers', action='store', default=None)
@@ -227,22 +227,18 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
     parser.add_argument('--compress', action='store', default=None,
                         help='fitsio FITS compression type. e.g. RICE')
     
-    parser.add_argument('-d', '--ds9', action='store_true', default=False)
+    parser.add_argument('--ds9', action='store_true', default=False)
 
     args = parser.parse_args(args)
     logger.setLevel(logging.INFO if not args.verbose else logging.DEBUG)
     logger.debug('starting simImage logging')
 
-    if args.realBias is True:
-        pass
-    elif args.realBias in {'False', 'None'}:
+    if args.realBias is False:
         args.realBias = None
-    else:
-        args.realBias = int(args.realBias)
-        
+
     fibers = expandRangeArg(args.fibers)
 
-    sim = makeSim(args.band, fieldName=args.field, 
+    sim = makeSim(args.detector, fieldName=args.field,
                   fiberFilter=fibers,
                   frd=args.frd, focus=args.focus, date=args.date,
                   dtype=args.dtype,
