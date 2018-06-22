@@ -2,7 +2,7 @@ from __future__ import absolute_import
 from builtins import object
 import os
 import numpy
-import scipy
+import scipy.interpolate
 
 import pfs_tools.configFile
 from . import exposure
@@ -36,11 +36,28 @@ class Detector(object):
         self.dtype = dtype
 
     @property
-    def xcOffset(self):
-        return self.config['ccdSize'][1]*self.config['pixelScale']/2
+    def arm(self):
+        return self.detectorName[0]
     @property
-    def ycOffset(self):
-        return self.config['ccdSize'][0]*self.config['pixelScale']/2
+    def armName(self):
+        armNames = dict(b='Blue', r='Red', n='NIR')
+        return armNames[self.arm]
+    @property
+    def spectrograph(self):
+        return int(self.detectorName[1])
+
+    @property
+    def xcPixOffset(self):
+        return self.config['ccdSize'][1]/2
+    @property
+    def ycPixOffset(self):
+        return self.config['ccdSize'][0]/2
+    @property
+    def xcMmOffset(self):
+        return self.xcPixOffset*self.config['pixelScale']
+    @property
+    def ycMmOffset(self):
+        return self.ycPixOffset*self.config['pixelScale']
 
     def makeExposure(self, addBias=True, addNoise=True, dtype=None):
 
