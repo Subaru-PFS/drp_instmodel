@@ -85,7 +85,7 @@ class SpotCache(object):
 
 class SplinedPsf(psf.Psf):
     def __init__(self, detector, spotType='jeg', spotID=None,
-                 logger=None, logLevel=logging.WARN,
+                 logger=None, logLevel=logging.INFO,
                  slitOffset=(0.0, 0.0), everyNth=20,
                  doTrimSpots=True, doRebin=False):
         """ Create or read in our persisted form. By default use JEG's models. 
@@ -135,32 +135,35 @@ class SplinedPsf(psf.Psf):
                     (self.__class__.__name__))
 
     @staticmethod
-    def psfFileDir(band, spotType):
+    def psfFileDir(armName, spotType):
         dataRoot = os.environ.get('DRP_INSTDATA_DIR', '.')
-        return os.path.join(dataRoot, 'data', 'spots', spotType, band)
+        return os.path.join(dataRoot, 'data', 'spots', spotType, armName)
         
     @staticmethod
-    def psfSplinesFile(band, spotType):
-        return os.path.join(SplinedPsf.psfFileDir(band, spotType),
+    def psfSplinesFile(armName, spotType):
+        return os.path.join(SplinedPsf.psfFileDir(armName, spotType),
                             'psfSplines.pck')
 
     @staticmethod
-    def psfSpotsFile(band, spotType):
-        return os.path.join(SplinedPsf.psfFileDir(band, spotType),
+    def psfSpotsFile(armName, spotType):
+        return os.path.join(SplinedPsf.psfFileDir(armName, spotType),
                             'spots.fits')
         
     @property 
     def imshape(self):
-        return self.spots[0].shape
+        return self.spotsInfo['YPIX'], self.spotsInfo['XPIX']
 
     def getCoeffs(self, fibers):
         if self.perFiberCoeffs is None:
             return self.allFiberCoeffs
         else:
-            if len(fibers) != 1:
-                raise ValueError('only one fiber can be requested for per-fiber models')
-            return self.perFiberCoeffs[fibers]
-        
+            try:
+                if len(fibers) != 1:
+                    raise ValueError('only one fiber can be requested for per-fiber models')
+                return self.perFiberCoeffs[fibers[0]]
+            except TypeError:
+                return self.perFiberCoeffs[fibers]
+
     def getCards(self):
         cards = [('HIERARCH sim.slit.xoffset', self.slitOffset[0], 'slit fiber offset, mm'),
                  ('HIERARCH sim.slit.yoffset', self.slitOffset[1], 'slit wavelength offset, mm')]
@@ -348,16 +351,19 @@ class SplinedPsf(psf.Psf):
                     if everyNth > 1:
                         newImages[-1:, iy, ix] = self.evalSpline(coeffs.pixelCoeffs[iy, ix],
                                                                  fibers, allWaves[-1]).flat
-
+            
             if everyNth > 1 and doFill:
                 nSpots = len(newImages)
-                nBlocks = nSpots/everyNth
-                for block_i in range(nBlocks+1):
+                nBlocks = (nSpots + everyNth - 1)//everyNth
+                for block_i in range(nBlocks):
                     i0 = block_i * everyNth
                     i1 = i0 + everyNth
                     if i1 > nSpots-1:
                         i1 = nSpots-1
-                    dimg = (newImages[i1] - newImages[i0]) / (i1-i0)
+                    if i0 == i1:
+                        dimg = 0
+                    else:
+                        dimg = (newImages[i1] - newImages[i0]) / (i1-i0)
                     # print("%d/%d %d: %d %d" % (block_i, nBlocks, nSpots, i0, i1))
                     for i in range(i0+1, i1):
                         newImages[i,:,:] = newImages[i-1,:,:] + dimg
@@ -369,10 +375,10 @@ class SplinedPsf(psf.Psf):
             newImages += minpix
 
         finalImages = newImages
-        self.logger.info("psfsAt: fibers %s, for %d %s waves, returned %d unique psfs" % (fibers,
-                                                                                          len(waves),
-                                                                                          waves[0].dtype,
-                                                                                          len(psfWaves)))
+        self.logger.debug("psfsAt: fibers %s, for %d %s waves, returned %d unique psfs" % (fibers,
+                                                                                           len(waves),
+                                                                                           waves[0].dtype,
+                                                                                           len(psfWaves)))
         return finalImages, centers, self.traceCenters(fibers, waves)
 
 
@@ -387,12 +393,11 @@ class SplinedPsf(psf.Psf):
             waveRange = self.wave.min(), self.wave.max()
 
         # Get the wavelengths for the fiber pixels.
-        allPixelRows, allPixelWaves = self.wavesForRows([fiber], waveRange=waveRange, 
-                                                        pixelScale=pixelScale)
-        pixelWaves = allPixelWaves[0]
+        pixelRows, pixelWaves = self.wavesForRow(fiber, waveRange=waveRange,
+                                                 pixelScale=pixelScale)
 
         centers = self.traceCenters([fiber], pixelWaves)
-        
+
         return pixelWaves, centers
 
     def genFiberImage(self, fiber, spectrum, everyNth=1):
@@ -436,22 +441,35 @@ class SplinedPsf(psf.Psf):
 
         # Get the wavelengths for the fiber pixels.
         self.logger.debug("waves range: %s", waveRange)
-        allPixelRows, allPixelWaves = self.wavesForRows([fiber], waveRange=waveRange, 
-                                                        pixelScale=pixelScale)
-        self.logger.debug("allwaves: %s %d", allPixelWaves[0].dtype, len(allPixelWaves[0]))
 
-        isLinelist = isinstance(spectrum, LineSpectrum)
-        
-        waves, flux = spectrum.flux(allPixelWaves[0])
+        if 'WTF_CPL_XXX':
+            isLinelist = hasattr(spectrum, 'linelist')
+        else:
+            isLinelist = isinstance(spectrum, LineSpectrum)
+
+        if isLinelist:
+            waves, flux = spectrum.linelist(*waveRange)
+        else:
+            pixelRows, pixelWaves = self.wavesForRow(fiber, waveRange=waveRange,
+                                                     pixelScale=pixelScale)
+            self.logger.debug("allwaves: %s %d", pixelWaves.dtype, len(pixelWaves))
+            waves, flux = spectrum.flux(pixelWaves)
+
+        # This is temporary: the NIST line strengths were adjusted to match the observed
+        # intensities. We need to correct the line list instead of doing that here. XXXCPL
+        if not isinstance(spectrum, ArcSpectrum):
+            self.logger.debug('applying throughput')
+            tp = self.detector.throughput(waves)
+            flux *= tp
 
         self.logger.debug("waves: %s %d %d", waves.dtype, len(waves), waves.nbytes)
         self.logger.debug("flux:  %s %d %d", flux.dtype, len(flux), flux.nbytes)
-        
+
         # Get the PSFs and their locations on the oversampled pixels.
         fiberPsfs, psfIds, centers = self.psfsAt([fiber], waves, everyNth=everyNth)
 
-        xCenters, yCenters = [c[0] for c in centers]
-        
+        xCenters, yCenters = centers
+
         psfToSpotRatio = self.detector.config['pixelScale'] / pixelScale
         psfToSpotPixRatio = int(round(psfToSpotRatio))
 
@@ -471,9 +489,9 @@ class SplinedPsf(psf.Psf):
         chunkUp[chunkUp == psfToSpotPixRatio] = 0
         fiHeight += chunkUp[0] + psfToSpotPixRatio
         fiWidth += chunkUp[1] + psfToSpotPixRatio
-        self.logger.debug("trace    : %s(%s) %s %s -> %s %s" % (spectrum, isLinelist,
-                                                                traceHeight, traceWidth,
-                                                                fiHeight, fiWidth))
+        self.logger.info("fiber %-3d   : %s(%s) %s %s -> %s %s" % (fiber, spectrum, isLinelist,
+                                                                   traceHeight, traceWidth,
+                                                                   fiHeight, fiWidth))
 
         # mm
         fiberImageOffset = np.asarray((yCenters.min(), xCenters.min()))
@@ -745,26 +763,22 @@ class SplinedPsf(psf.Psf):
 
         self.logger.info("reading and interpolating %s PSF spots: %s..." % (spotType, spotIDs))
 
-        perFiberCoeffs = False
+        if spotArgs is None:
+            spotArgs = dict()
+
         if spotType == 'jeg':
             from . import jegSpots
             reload(jegSpots)
 
-            if spotArgs is None:
-                spotArgs = dict()
-            rawSpots, spotsInfo = jegSpots.readSpotFile(spotIDs, verbose=True, **spotArgs)
-            assert spotsInfo['XPIX'] == spotsInfo['YPIX']
+            rawSpotPath, _ = jegSpots.resolveSpotPathSpec(spotIDs)
 
-            self.wave = rawSpots['wavelength']
-            self.fiber = rawSpots['fiberIdx']
-            self.spots = rawSpots['spot'].astype('float32')
-            self.spotScale = spotsInfo['XPIX']
-            self.spotsInfo = spotsInfo
-            
-            if len(self.fiber) == 600:
-                perFiberCoeffs = True
+            cached = self.primeSpotCache(spotIDs, rawSpotPath)
+            if not cached:
+                self.logger.warn('creating per-fiber spot cache for %s. This takes several minutes...' %
+                                 rawSpotPath)
+                self.createSpotCache(spotIDs, rawSpotPath, spotArgs)
         else:
-            spotsFilepath = SplinedPsf.psfSpotsFile(self.detector.band, spotType, spotIDs)
+            spotsFilepath = SplinedPsf.psfSpotsFile(self.detector.armName, spotType, spotIDs)
             sf = pyfits.open(spotsFilepath, mode='readonly')
             rawSpots = sf[1].data
 
@@ -773,10 +787,10 @@ class SplinedPsf(psf.Psf):
             self.fiber = rawSpots['fiberIdx']
             self.spots = rawSpots['spot'].astype('float32')
 
-        # Keep the raw info around, at least until production.
-        self.rawSpots = rawSpots
+            self.buildAllSplines(perFiberCoeffs=False)
 
-        self.buildAllSplines(perFiberCoeffs)
+            # Keep the raw info around, at least until production.
+            self.rawSpots = rawSpots
 
     def buildAllSplines(self, perFiberCoeffs):
         """ Build the spot-to-spot and spot center splines. """
@@ -786,50 +800,30 @@ class SplinedPsf(psf.Psf):
         # Make a spline for each pixel. The spots are centered on the output grid,
         # and we track the xc,yc offset separately.
 
-        if perFiberCoeffs:
-            self.perFiberCoeffs = dict()
-            splineType = spInterp.InterpolatedUnivariateSpline
-            spotWaves = np.unique(self.wave)
-            for fid in np.unique(self.fiber):
-                fib_w = np.where(self.fiber) == fid
-                spotPixelCoeffs = np.zeros(imshape, dtype='O')
-                for ix in range(imshape[0]):
-                    for iy in range(imshape[1]):
-                        spotPixelCoeffs[iy, ix] = self.buildSpline(splineType,
-                                                                   None, spotWaves, self.spots[fib_w, iy, ix])
-                xcCoeffs = self.buildSpline(splineType,
-                                            None, spotWaves,
-                                            self.rawSpots['spot_xc'][fib_w])
-                ycCoeffs = self.buildSpline(splineType,
-                                            None, spotWaves,
-                                            self.rawSpots['spot_yc'][fib_w])
+        # XXX - Check that the input is properly sorted.
+        xx = np.unique(self.fiber)
+        yy = np.unique(self.wave)
 
-                self.perFiberCoeffs[fid] = SpotCoeffs(spotPixelCoeffs, xcCoeffs, ycCoeffs)
-        else:
-            # XXX - Check that the input is properly sorted.
-            xx = np.unique(self.fiber)
-            yy = np.unique(self.wave)
+        splineType = spInterp.RectBivariateSpline
+        pixelCoeffs = np.zeros(imshape, dtype='O')
+        for ix in range(imshape[0]):
+            for iy in range(imshape[1]):
+                pixelCoeffs[iy, ix] = self.buildSpline(splineType,
+                                                       xx, yy,
+                                                       self.spots[:, iy, ix].reshape(len(xx), len(yy)))
+        xc = self.rawSpots['spot_xc']
+        yc = self.rawSpots['spot_yc']
 
-            splineType = spInterp.RectBivariateSpline
-            pixelCoeffs = np.zeros(imshape, dtype='O')
-            for ix in range(imshape[0]):
-                for iy in range(imshape[1]):
-                    pixelCoeffs[iy, ix] = self.buildSpline(splineType,
-                                                           xx, yy,
-                                                           self.spots[:, iy, ix].reshape(len(xx), len(yy)))
-            xc = self.rawSpots['spot_xc']
-            yc = self.rawSpots['spot_yc']
+        # Add slit shift offsets.
+        slitOffset = self.calcSlitOffset()
+        xc += slitOffset[0]
+        yc += slitOffset[1]
 
-            # Add slit shift offsets.
-            slitOffset = self.calcSlitOffset()
-            xc += slitOffset[0]
-            yc += slitOffset[1]
-
-            xcCoeffs = self.buildSpline(splineType,
-                                        xx, yy, xc.reshape(len(xx), len(yy)))
-            ycCoeffs = self.buildSpline(splineType,
-                                        xx, yy, yc.reshape(len(xx), len(yy)))
-            self.allFiberCoeffs = SpotCoeffs(pixelCoeffs, xcCoeffs, ycCoeffs)
+        xcCoeffs = self.buildSpline(splineType,
+                                    xx, yy, xc.reshape(len(xx), len(yy)))
+        ycCoeffs = self.buildSpline(splineType,
+                                    xx, yy, yc.reshape(len(xx), len(yy)))
+        self.allFiberCoeffs = SpotCoeffs(pixelCoeffs, xcCoeffs, ycCoeffs)
 
     def calcSlitOffset(self):
         """ Given .slitOffset, calculate spot offsets for .xc. """
