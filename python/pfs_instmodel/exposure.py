@@ -1,6 +1,7 @@
 from __future__ import print_function
 from builtins import object
 import glob
+import logging
 import numpy
 import os
 import time
@@ -19,7 +20,9 @@ class Exposure(object):
         self.detector = detector
         self.addNoise = addNoise
         self.dtype = dtype
-
+        self.logger = logging.getLogger('exposure')
+        self.logger.setLevel(logging.INFO)
+        
         if doNew:
             self._flux = numpy.zeros(self.detector.config['ccdSize'], dtype='f4')
             self._mask = numpy.zeros(self.detector.config['ccdSize'], dtype='u2')

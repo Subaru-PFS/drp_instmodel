@@ -144,11 +144,13 @@ bundledField = Sm1Slit
 
 combFieldEven = [PROBE(i,0.0,1.0,100.0,200.0,'SIMCOMB', ()) for i in keepEven(bundledField)]
 arcFieldEven = [PROBE(i,0.0,1.0,100.0,200.0,'SIMARC', ()) for i in keepEven(bundledField)]
+neArcsEven = [PROBE(i,0.0,1.0,100.0,200.0,'SIMARC', ('NeI',)) for i in keepEven(bundledField)]
 flatFieldEven = [PROBE(i,0.0,1.0,100.0,200.0,'SIMFLAT', ()) for i in keepEven(bundledField)]
 skyFieldEven =  [PROBE(i,0.0,1.0,100.0,200.0,'SKY', ()) for i in keepEven(bundledField)]
 
 combFieldOdd = [PROBE(i,0.0,1.0,100.0,200.0,'SIMCOMB', ()) for i in keepOdd(bundledField)]
 arcFieldOdd = [PROBE(i,0.0,1.0,100.0,200.0,'SIMARC', ()) for i in keepOdd(bundledField)]
+neArcsOdd = [PROBE(i,0.0,1.0,100.0,200.0,'SIMARC', ('NeI',)) for i in keepOdd(bundledField)]
 flatFieldOdd = [PROBE(i,0.0,1.0,100.0,200.0,'SIMFLAT', ()) for i in keepOdd(bundledField)]
 skyFieldOdd =  [PROBE(i,0.0,1.0,100.0,200.0,'SKY', ()) for i in keepOdd(bundledField)]
 

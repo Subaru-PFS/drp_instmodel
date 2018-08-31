@@ -161,6 +161,17 @@ def str2bool(v):
     else:
         raise argparse.ArgumentTypeError('Boolean value expected.')
 
+def str2file(v):
+    if v.lower() in ('yes', 'true', 't'):
+        return True
+    elif v.lower() in ('no', 'false', 'f'):
+        return False
+
+    try:
+        return int(v, base=10)
+    except ValueError:
+        return v
+
 def main(args=None):
     """ called by __main__, or pass in a string as if it were a command line. 
 
@@ -213,7 +224,7 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
     parser.add_argument('--noNoise', action='store_true')
     parser.add_argument('--allOutput', action='store_true',
                         help='whether to add (many) additional HDUs abut the simulation')
-    parser.add_argument('--realBias', action='store', type=str2bool, default=True)
+    parser.add_argument('--realBias', action='store', type=str2file, default='True')
     parser.add_argument('--realFlat', action='store', type=str2bool, default=True,
                         help='Apply an imaging flat. Use False/None to avoid.')
     parser.add_argument('--shiftPsfs', action='store_false')
