@@ -166,102 +166,127 @@ class SplinedPsf(psf.Psf):
                  ('HIERARCH sim.slit.yoffset', self.slitOffset[1], 'slit wavelength offset, mm')]
 
         return cards
-    
+
+    def _focalPlaneXToDetectorX(self, x, correctToLL=False):
+        """ Given focal plane positions, return detector positions.
+
+        Args
+        ----
+        x : ndarray
+            mm from center
+        correctToLL : bool
+            whether to shift to left edge.
+
+        Returns
+        -------
+        x : adjusted coordinates.
+
+        """
+        halfGap = self.detector.config['interCcdGap'] / 2
+        halfPoint = 0.0
+
+        # Chip gap
+        neg_w = x < halfPoint
+        pos_w = x > halfPoint
+        x[neg_w] += halfGap
+        x[pos_w] -= halfGap
+
+        if correctToLL:
+            x += self.detector.xcMmOffset
+
+        return x
+
+    def _focalPlaneYToDetectorY(self, y, correctToLL=False):
+        """ Given focal plane positions, return detector positions.
+
+        Args
+        ----
+        y : ndarray
+            mm from center
+        correctToLL : bool
+            whether to shift to bottom edge.
+
+        Returns
+        -------
+        y : adjusted coordinates.
+
+        """
+
+        if correctToLL:
+            y += self.detector.ycMmOffset
+
+        return y
+
     def traceCenters(self, fibers, waves):
         """ Return the pixel centers in mm for the given fibers and wavelengths """
 
         fibers = np.array(fibers)
         waves = np.array(waves)
-        
+
         fiberIdx = np.argsort(fibers)
         waveIdx = np.argsort(waves)
 
-        self.logger.info("tracing fiber %s", fibers[fiberIdx])
-        
+        self.logger.debug("tracing fiber %s", fibers[fiberIdx])
+
         coeffs = self.getCoeffs(fibers)
         x = self.evalSpline(coeffs.xcCoeffs, fibers[fiberIdx], waves[waveIdx])
         y = self.evalSpline(coeffs.ycCoeffs, fibers[fiberIdx], waves[waveIdx])
 
-        halfGap = self.detector.config['interCcdGap'] / 2
-        halfPoint = 0.0
-        if True or self.perFiberCoeffs is not None:
-            # Chip gap
-            neg_w = x < halfPoint
-            pos_w = x > halfPoint
-            x[neg_w] += halfGap
-            x[pos_w] -= halfGap
-        
-        return (x[fiberIdx][:, waveIdx] + self.detector.xcOffset, 
-                y[fiberIdx][:, waveIdx] + self.detector.ycOffset)
-    
-    def wavesForRows(self, fibers, rows=None, waveRange=None, pixelScale=None):
+        x = self._focalPlaneXToDetectorX(x, correctToLL=True)
+        y = self._focalPlaneYToDetectorY(y, correctToLL=True)
+
+        return (x[waveIdx], y[waveIdx])
+
+    def wavesForRow(self, fiber, waveRange=None, pixelScale=None):
         """ Return our best estimate for the wavelength at the given row centers.
 
         Parameters
         ----------
-        fibers : array_like
-           the fibers we want solutions for.
-        rows : array_like, optional
-           the rows we want solutions for. If not set, all rows.
+        fiber : int
+           the fiber we want a solution for.
         waveRange : (low, high), optional
            limit the rows to those entirely within this range.  
         pixelScale : float, optional
            override our detector's mm/pixel scale
-           
+
         Returns
         -------
         rows : float[NROWS]
             the rows which we evaluated. 
-        waves : float[NFIBERS, NROWS]
-            for each fiber, the wavelengths at rows
-    
+        waves : float[NROWS]
+            the wavelengths at the rows
         """
 
         if pixelScale is None:
-            pixelScale = self.detector.config['pixelScale']            
-        
+            pixelScale = self.detector.config['pixelScale']
+
         if waveRange is None:
             waveRange = self.wave.min(), self.wave.max()
 
-        coeffs = self.getCoeffs(fibers)
-        
+        coeffs = self.getCoeffs(fiber)
+
         # Assume that the full spectrum fits on the detector.
-        minY, maxY = self.evalSpline(coeffs.ycCoeffs, fibers, waveRange)[0] + self.detector.ycOffset
+        minY, maxY = self.evalSpline(coeffs.ycCoeffs, fiber, waveRange)
+
         doReorder = minY > maxY
         if doReorder:
             minY, maxY = maxY, minY
-        if minY < 0:
-            self.logger.info("one of wavelengths %s maps below the detector (%0.5f mm)" % (waveRange, minY))
+        if minY + self.detector.ycMmOffset < 0:
+            self.logger.info("one of wavelengths %s maps below the detector (%0.5f mm)" % (waveRange,
+                                                                                           minY + self.detector.ycMmOffset))
         if maxY > self.detector.config['ccdSize'][1]:
-            self.logger.info("one of wavelengths %s maps above the detector (%0.5f mm)" % (waveRange, maxY))
-        
-        minRow = int((minY+1)/pixelScale)
-        maxRow = int(maxY/pixelScale)
+            self.logger.info("one of wavelengths %s maps above the detector (%0.5f mm)" % (waveRange,
+                                                                                           maxY + self.detector.ycMmOffset))
 
-        if rows is None:
-            rows = np.arange(minRow, maxRow+1, dtype='i4')
+        minRow = int((minY + self.detector.ycMmOffset)/pixelScale)
+        maxRow = int((maxY + self.detector.ycMmOffset)/pixelScale)
+        rows = np.arange(minRow, maxRow+1, dtype='i4')
 
         # Invert the spline into a row->wave map. 
         # Just use a linear interpolation based on the evaluation near the pixels.
-        allWaves = np.linspace(waveRange[0], waveRange[1], maxRow-minRow+1, dtype='f8')
+        rowWaves = np.linspace(waveRange[0], waveRange[1], maxRow-minRow+1, dtype='f8')
 
-        waves = []
-        for f in fibers:
-            allWaveRows = (self.evalSpline(coeffs.ycCoeffs, [f], allWaves)[0] +
-                           self.detector.ycOffset) / pixelScale
-
-            if doReorder:
-                allWaveRows0 = allWaveRows[::-1]
-                allWaves0 = allWaves[::-1]
-            else:
-                allWaveRows0 = allWaveRows
-                allWaves0 = allWaves
-                
-            waveFunc = spInterp.interp1d(allWaveRows0, allWaves0, 'linear', bounds_error=False)
-            fiberWaves = waveFunc(rows)
-            waves.append(fiberWaves.astype('f8'))
-
-        return rows, waves
+        return rows, rowWaves
 
     def psfsAt(self, fibers, waves=None, usePsfs=None, everyNth=None, doFill=True):
         """ Return a stack of PSFs, instantiated on a rectangular grid.
@@ -914,7 +939,7 @@ class SplinedPsf(psf.Psf):
 
     def setConstantX(self):
         """ Force spot x positions to be for the center spot on their trace. """
-        
+
         xx = np.unique(self.fiber)
         yy = np.unique(self.wave)
 
@@ -924,7 +949,7 @@ class SplinedPsf(psf.Psf):
                                          xx, yy, xc)
         self.logger.warn("set constant X")
 
-    def makeDetectorMap(self, fname):
+    def makeDetectorMap(self, fname, obsdate=None):
         """ Create a DetectorMap file for DRP. 
 
         Why here? We know both about the millimeters from the optical model and
@@ -932,27 +957,16 @@ class SplinedPsf(psf.Psf):
 
         """
         import lsst.afw.geom as afwGeom
+        import lsst.daf.base as dafBase
         import pfs.drp.stella.utils as drpUtils
 
-        def rangeOf(arr):
-            return np.array((np.min(arr), np.max(arr)),)
-
         pixelScale = self.detector.config['pixelScale']
-        ccdCenter = self.detector.config['ccdCenter']
         ccdSize = self.detector.config['ccdSize']
-        # ### FIXME CPL HACK: the detector ccdSize and ccdCenter are (y,x)!!!!
-        ccdCenter = ccdCenter[1], ccdCenter[0]
-        ccdSize = ccdSize[1], ccdSize[0]
-        ccdGap = self.detector.config['interCcdGap'] / pixelScale
-        xOffset = self.detector.config['ccdXOffset'] / pixelScale
-        def xMmToPixel(xc):
-            return xc / pixelScale + ccdCenter[1]
 
-        # Per RHL, we want the detectort geometry here.
-        bbox = afwGeom.BoxI(afwGeom.PointI(0,0), afwGeom.PointI(ccdSize[0]-1, ccdSize[1]-1))
+        # Per RHL, we want the _detector_ geometry here.
+        bbox = afwGeom.BoxI(afwGeom.PointI(0,0), afwGeom.PointI(ccdSize[1]-1, ccdSize[0]-1))
 
         fiberIds = np.unique(self.fiber)
-
         fiber0_w = np.where(self.fiber == min(self.fiber))
         nKnots = len(fiber0_w[0])
 
@@ -960,33 +974,45 @@ class SplinedPsf(psf.Psf):
         dlam = self.spotsInfo['LAMINC']
         lams = np.linspace(lam0, lam0+(nKnots-1)*dlam, nKnots)
 
-        dmapIO = drpUtils.detectorMap.DetectorMapIO(bbox, fiberIds.astype('i4'), nKnots) 
+        dmapIO = drpUtils.detectorMap.DetectorMapIO(bbox, fiberIds.astype('i4'), nKnots)
 
+        allCoeffs = []
+        allYKnots = []
+        allXKnots = []
         for holeId in fiberIds:
             coeffs = self.getCoeffs(holeId)
-            xcKnot = xMmToPixel(coeffs.ycCoeffs._data[1])
-            xc = xMmToPixel(coeffs.xcCoeffs._data[1])
 
-            wlKnot = xcKnot
-            wl = lams
+            yKnot = self._focalPlaneYToDetectorY(coeffs.ycCoeffs.get_coeffs(), correctToLL=True) / pixelScale
+            xc = self._focalPlaneXToDetectorX(coeffs.xcCoeffs.get_coeffs(), correctToLL=True) / pixelScale
+            allCoeffs.append(coeffs)
+            allYKnots.append(yKnot)
+            allXKnots.append(xc)
 
-            assert len(lams) == len(wlKnot)
+            assert len(lams) == len(yKnot)
             assert len(lams) == len(xc)
-            assert len(lams) == len(xcKnot)
-
-            if holeId <= 315:
-                xc -= ccdGap
-            xc += xOffset
 
             midY = len(lams)//2
-            self.logger.debug("hole %d: xcKnot, xc, wl: %s %s %s" % (holeId,
-                                                                     xcKnot[midY], xc[midY], wl[midY]))
+            self.logger.info("hole %d: xcKnot, xc, wl: %s %s %s" % (holeId,
+                                                                    yKnot[midY], xc[midY], lams[midY]))
+            dmapIO.setXCenter(holeId, yKnot, xc)
+            dmapIO.setWavelength(holeId, yKnot, lams)
 
-            dmapIO.setXCenter(holeId, xcKnot, xc)
-            dmapIO.setWavelength(holeId, wlKnot, wl)
+        if obsdate is None:
+            now = time.gmtime()
+        else:
+            try:
+                now = time.strptime(obsdate, '%Y-%m-%dT%H:%M:%S')
+            except:
+                now = time.strptime(obsdate, '%Y-%m-%d')
+
+        obsdate = time.strftime('%Y-%m-%dT%H:%M:%S', now)
+        calibDate = time.strftime('%Y-%m-%d', now)
+        metadata = dafBase.PropertyList()
+        metadata.addString('DATE-OBS', obsdate)
+        metadata.addString('CALIB_ID', 'arm="%s" spectrograph=%d filter=NONE calibDate=%s' %
+                           (self.detector.arm, self.detector.spectrograph, calibDate))
 
         dmap = dmapIO.getDetectorMap()
-        drpUtils.writeDetectorMap(dmap, fname)
+        drpUtils.writeDetectorMap(dmap, fname, metadata=metadata)
 
-        return dmap
-
+        return dmap, fiberIds, allCoeffs, allYKnots, allXKnots
