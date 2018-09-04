@@ -25,7 +25,7 @@ from . import spotgames
 
 jegLogger = logging.getLogger('jegSpots')
 
-from pfs_tools import pydebug
+from .utils import pydebug
 """
 Read the raw PSF spot images from JEG's optical design. 
 
