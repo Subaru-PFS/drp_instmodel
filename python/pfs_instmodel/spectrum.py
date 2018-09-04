@@ -6,8 +6,7 @@ import numpy
 import os
 import scipy
 
-import pfs_tools
-from pfs_tools import pydebug
+from .utils import pydebug, blackbody
 
 class Spectrum(object):
     """ Track the best information about a spectrum and provide sampling. 
@@ -106,7 +105,7 @@ class FlatSpectrum(Spectrum):
         """ return a quartz lamp spectrum, as seen by our detector. """
 
         # Work out the fing scaling, CPL
-        return wave, pfs_tools.blackbody(wave*10.0, 3800.0) * self.scale
+        return wave, blackbody(wave*10.0, 3800.0) * self.scale
 
 class LineSpectrum(Spectrum):
     """ """

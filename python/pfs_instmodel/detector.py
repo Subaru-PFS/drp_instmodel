@@ -4,7 +4,7 @@ import os
 import numpy
 import scipy.interpolate
 
-import pfs_tools.configFile
+from .utils import configFile
 from . import exposure
 
 class Detector(object):
@@ -31,7 +31,7 @@ class Detector(object):
         # Map self.band to a filename using some mapper. For now, hardcode
         dataRoot = os.environ.get('DRP_INSTDATA_DIR', '.')
         filepath = os.path.join(dataRoot, 'data', 'detectors', '%s.py' % (self.armName))
-        self.config = pfs_tools.configFile.readfile(filepath)
+        self.config = configFile.readfile(filepath)
         self.readThroughputSpline()
         self.dtype = dtype
 
