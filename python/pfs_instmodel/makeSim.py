@@ -1,11 +1,13 @@
 #!/usr/bin/env python
 
+from importlib import reload
+
 import argparse
 import logging
 import os
 import re
 
-from ..utils import schema
+from .utils import schema
 import pfs_instmodel.simImage as simImage
 import pfs_instmodel.sky as pfsSky
 import pfs_instmodel.spectrum as pfsSpectrum
