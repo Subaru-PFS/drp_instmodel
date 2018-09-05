@@ -1,1 +1,1 @@
-../python/pfs_instmodel/examples/simImage.py
+python3 -m pfs_instmodel.makeSimImage "$@"

@@ -1,7 +1,5 @@
 #!/usr/bin/env python
 
-from past.builtins import basestring, reload
-
 import argparse
 import logging
 import os
@@ -178,12 +176,15 @@ def main(args=None):
     Returns
     -------
 
-    sim : the SimInage object
+    sim : the SimImage object
     
     """
-    if isinstance(args, basestring):
+    if isinstance(args, str):
         import shlex
         args = shlex.split(args)
+    elif args is None:
+        import sys
+        args = sys.argv[1:]
 
     helpDoc = \
 """ 
@@ -195,6 +196,7 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
     
    --detector=r1 --output=sim.fits --field=field1
 """
+
 
     # Configure the default formatter and logger.
     logging.basicConfig(datefmt = "%Y-%m-%d %H:%M:%S",
