@@ -1,15 +1,5 @@
 import numpy as np
 from pfs_instmodel.schema.probes import PROBE
-    
-fiberLim = 313
-
-def fullField():
-    global fiberLim
-    return range(-fiberLim, fiberLim+1)
-
-def halfField():
-    global fiberLim
-    return range(-fiberLim, 1)
 
 def keepNth(input, N):
     for i in input:
@@ -32,6 +22,11 @@ class Fiber(object):
     BLANK = 3
 
 class Slit(object):
+    """  A temporary definition of a slit. To be replaced by a method in pfs_utils/fiberIds.
+
+    That said, this structure clarifies some of logic of the slit layout.
+    """
+
     block1 = ([Fiber.ENGINEERING] +
               42 * [Fiber.SCIENCE] +
               [Fiber.BLANK])
@@ -108,8 +103,6 @@ class Slit(object):
 
 Sm1Slit = Slit(1).scienceFibers
 
-# Science fiber numbers, -300 to +300:
-
 # The illuminated fibers on LAM slit #1
 LamSlit1 = [2, 65, 191, 254, 315, 337, 400, 463, 589, 650]
 
@@ -158,9 +151,6 @@ combFieldx40 = [PROBE(i,0.0,1.0,100.0,200.0,'SIMCOMB', ()) for i in keepNth(bund
 arcFieldx40 = [PROBE(i,0.0,1.0,100.0,200.0,'SIMARC', ()) for i in keepNth(bundledField, 40)]
 flatFieldx40 = [PROBE(i,0.0,1.0,100.0,200.0,'SIMFLAT', ()) for i in keepNth(bundledField, 40)]
 skyFieldx40 =  [PROBE(i,0.0,1.0,100.0,200.0,'SKY', ()) for i in keepNth(bundledField, 40)]
-
-# quickComb = [PROBE(i,0.0,1.0,100.0,200.0,'SIMCOMB', ()) for i in (-fiberLim, -fiberLim//2, 0, 1, fiberLim+1)]
-# quickFlat = [PROBE(i,0.0,1.0,100.0,200.0,'SIMFLAT', ()) for i in (-fiberLim, -fiberLim//2, 0, 1, fiberLim+1)]
 
 oneArc = (PROBE(315,0.0,1.0,100.0,200.0,'SIMARC', ()),)
 oneNe = (PROBE(315,0.0,1.0,100.0,200.0,'SIMARC', ('NeI',)),)
