@@ -16,6 +16,7 @@ reload(pfsSpectrum)
 def makeSim(detector, fieldName, fiberFilter=None,
             frd=None, focus=0, date=None, psf=None, dtype='u2',
             everyNth=20,
+            skyVariance=False,
             addNoise=True, combSpacing=50, shiftPsfs=True,
             constantPsf=False, constantX=False,
             xOffset=0.0, yOffset=0.0,
@@ -79,7 +80,7 @@ def makeSim(detector, fieldName, fiberFilter=None,
             continue
         if f.type == 'SKY':
             fibers.append(f.fiberId)
-            spectra.append(skyModel.getSkyAt(ra=f.ra, dec=f.dec))
+            spectra.append(skyModel.getSkyAt(ra=f.ra, dec=f.dec, varianceOnly=skyVariance))
         elif f.type == 'SIMFLAT':
             fibers.append(f.fiberId)
             spectra.append(flatSpectrum)
@@ -239,7 +240,9 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
                         help='Use the middle X-coordinate for all of each fiber.')
     parser.add_argument('--compress', action='store', default=None,
                         help='fitsio FITS compression type. e.g. RICE')
-    
+    parser.add_argument('--skyVariance', action='store_true',
+                        help='whether to add sky variance instead of sky.')
+
     parser.add_argument('--ds9', action='store_true', default=False)
 
     args = parser.parse_args(args)
@@ -255,6 +258,7 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
                   fiberFilter=fibers,
                   frd=args.frd, focus=args.focus, date=args.date,
                   dtype=args.dtype,
+                  skyVariance=args.skyVariance,
                   everyNth=args.everyNth,
                   addNoise=not args.noNoise,
                   combSpacing=args.combSpacing,
