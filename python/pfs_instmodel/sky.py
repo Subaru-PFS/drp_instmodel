@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-from builtins import object
 __all__ = ["SkyModel", "StaticSkyModel"]
 
 import os
@@ -117,24 +115,25 @@ class StaticSkyModel(SkyModel):
     def getNativeValues(self, waveRange=None):
         return self.native[self._getWaveSlice(waveRange)][:,[0,2]]
     
-    def getSkyAt(self, **argv):
+    def getSkyAt(self, varianceOnly=False, **argv):
         """ Return a spline for the sky at the given conditions.
         """
 
-        return SkySpectrum(None, self.skySpline)
+        return SkySpectrum(None, self.skySpline, varianceOnly=varianceOnly)
 
 class SkySpectrum(Spectrum):
-    def __init__(self, detector, skyModel, scale=0.25):
+    def __init__(self, detector, skyModel, varianceOnly=False, scale=0.25):
         self.detector = detector
         self.scale = scale
         self.skyModel = skyModel
+        self.varianceOnly = varianceOnly
 
     def flux(self, wave):
         """ return a sky spectrum, as seen by our detector. """
 
         # Work out the fing scaling, CPL
-        return wave, self.skyModel(wave) * self.scale
-    
-
-
-    
+        flux = self.skyModel(wave) * self.scale
+        if self.varianceOnly:
+            noisyFlux = numpy.random.poisson(flux)
+            flux = noisyFlux - flux
+        return wave, flux

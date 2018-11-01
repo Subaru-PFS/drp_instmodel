@@ -1,11 +1,10 @@
-from __future__ import print_function
-from __future__ import division
-from builtins import range
-from builtins import object
-from past.builtins import reload
+from importlib import reload
 
 import logging
 import numpy
+
+from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures import as_completed
 
 import pfs_instmodel.detector as pfsDet
 import pfs_instmodel.sky as pfsSky
@@ -80,12 +79,20 @@ class SimImage(object):
         the following 
           * 
         """
+
         for i, fiber in enumerate(fibers):
-            parts = self.psf.fiberImage(fiber, spectra[i], outExp=self.exposure,
+            parts = self.psf.fiberImage(fiber, spectra[i],
                                         waveRange=waveRange,
                                         shiftPsfs=shiftPsfs)
+
+            fiberImage, outImgOffset, psfToSpotPixRatio, geometry = parts
+
+            # transfer flux from oversampled fiber image to final resolution output image
+            resampledFiber = self.psf.addOversampledImage(fiberImage, self.exposure,
+                                                          outImgOffset, psfToSpotPixRatio)
+
             self.fibers[fiber] = dict(spectrum=spectra[i],
-                                      geometry=parts[3])
+                                      geometry=geometry)
 
         return self.exposure
 

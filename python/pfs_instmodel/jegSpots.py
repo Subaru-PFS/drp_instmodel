@@ -1,10 +1,3 @@
-from __future__ import division
-from __future__ import print_function
-from __future__ import absolute_import
-
-from builtins import str
-from builtins import range
-from past.builtins import basestring
 import glob
 import gzip
 import logging
@@ -69,7 +62,7 @@ def getDataPath(date=None, band='Red', frd=23, focus=0, slitFocus=0, fieldAngle=
     return files[0], filetype
 
 def resolveSpotPathSpec(pathSpec):
-    if isinstance(pathSpec, basestring):
+    if isinstance(pathSpec, str):
         if 'fits' in pathSpec:
             filetype = 'FITS'
         elif 'imgstk' in pathSpec:

@@ -1,16 +1,9 @@
 #!/usr/bin/env python
 
-from __future__ import division
-from __future__ import print_function
-from __future__ import absolute_import
-
-from builtins import range
+from importlib import reload
+import logging
 import os
 import time
-
-from past.builtins import reload
-
-import logging
 
 from astropy.io import fits as pyfits
 import numpy as np
@@ -45,6 +38,7 @@ class SpotCache(object):
     def __init__(self, dir, logLevel=logging.DEBUG):
         self.dir = dir
         self.logger = logging.getLogger('spotCache')
+        self.lastFiber = None, None
 
     def getInfoPath(self):
         return os.path.join(self.dir, 'info.pkl.gz')
@@ -72,10 +66,14 @@ class SpotCache(object):
     def __getitem__(self, fiber):
         self.logger.debug("fetching %s", self.getFiberPath(fiber))
         t0 = time.time()
-        with gzip.open(self.getFiberPath(fiber), 'rb') as f:
-            data = pickle.load(f)
+        if self.lastFiber[0] == fiber:
+            data = self.lastFiber[1]
+        else:
+            with gzip.open(self.getFiberPath(fiber), 'rb') as f:
+                data = pickle.load(f)
         t1 = time.time()
         self.logger.debug("fetched in %0.2fs", (t1-t0))
+        self.lastFiber = (fiber, data)
 
         return data
 
@@ -336,7 +334,9 @@ class SplinedPsf(psf.Psf):
         centers = [(x,y) for x in fibers for y in waves]
         if usePsfs is not None:
             newImages = usePsfs
+            t0 = t1 = t2 = 0.0
         else:
+            t0 = time.time()
             newImages = np.zeros(shape=(len(fibers)*len(allWaves),
                                         self.imshape[0],
                                         self.imshape[1]), dtype='f8')
@@ -351,7 +351,7 @@ class SplinedPsf(psf.Psf):
                     if everyNth > 1:
                         newImages[-1:, iy, ix] = self.evalSpline(coeffs.pixelCoeffs[iy, ix],
                                                                  fibers, allWaves[-1]).flat
-            
+            t1 = time.time()
             if everyNth > 1 and doFill:
                 nSpots = len(newImages)
                 nBlocks = (nSpots + everyNth - 1)//everyNth
@@ -367,6 +367,7 @@ class SplinedPsf(psf.Psf):
                     # print("%d/%d %d: %d %d" % (block_i, nBlocks, nSpots, i0, i1))
                     for i in range(i0+1, i1):
                         newImages[i,:,:] = newImages[i-1,:,:] + dimg
+            t2 = time.time()
 
         lo_w = newImages < -0.01
         if np.any(lo_w):
@@ -375,10 +376,11 @@ class SplinedPsf(psf.Psf):
             newImages += minpix
 
         finalImages = newImages
-        self.logger.debug("psfsAt: fibers %s, for %d %s waves, returned %d unique psfs" % (fibers,
-                                                                                           len(waves),
-                                                                                           waves[0].dtype,
-                                                                                           len(psfWaves)))
+        self.logger.debug("psfsAt: fibers %s, for %d %s waves, returned %d unique psfs. r=%g,%g" % (fibers,
+                                                                                                    len(waves),
+                                                                                                    waves[0].dtype,
+                                                                                                    len(psfWaves),
+                                                                                                    t1-t0, t2-t1))
         return finalImages, centers, self.traceCenters(fibers, waves)
 
 
@@ -429,7 +431,7 @@ class SplinedPsf(psf.Psf):
     def addFibers(self, fibers, spectra, everyNth=1):
         pass
     
-    def fiberImage(self, fiber, spectrum, outExp=None, waveRange=None, 
+    def fiberImage(self, fiber, spectrum, waveRange=None,
                    shiftPsfs=True, everyNth=None):
         """ Return an interpolated image of a fiber """
 
@@ -509,9 +511,6 @@ class SplinedPsf(psf.Psf):
                                                                           outImgOffset))
         fiberImage = np.zeros((fiHeight, fiWidth), dtype='f4')
 
-        if outExp is None:
-            outExp = self.detector.makeExposure()
-
         # construct the oversampled fiber image
         geometry = np.zeros(len(waves), dtype=[('xc','f8'),('yc','f8'),
                                                ('dxc','f8'),('dyc','f8'),
@@ -556,7 +555,7 @@ class SplinedPsf(psf.Psf):
                     self.logger.warn('%d: yc=%g yPixOffset=%g fracy=%g', i, yc, yPixOffset, fracy)
                 else:
                     fracy = 0
-                
+
             if shiftPsfs:
                 if True:
                     shiftedPsf, kernels = spotgames.shiftSpot(rawPsf, fracx, fracy)
@@ -587,7 +586,7 @@ class SplinedPsf(psf.Psf):
                 spot = specFlux * shiftedPsf
             else:
                 spot = specFlux * rawPsf
-                
+
             if (isLinelist or i % 1000 == 0 or i > len(waves)-2):
                 self.logger.debug("%5d %6.1f (%3.3f, %3.3f) (%0.2f %0.2f) %0.2f %0.2f %0.2f",
                                   i, specWave,
@@ -595,14 +594,11 @@ class SplinedPsf(psf.Psf):
                                   xPixOffset, yPixOffset,
                                   rawPsf.sum(), spot.sum(),
                                   specFlux)
-                
+
             self.placeSubimage(fiberImage, spot, (inty, intx))
             geometry[i] = (xc,yc,dxc,dyc,intx,inty,specWave,specFlux)
 
-        # transfer flux from oversampled fiber image to final resolution output image
-        resampledFiber = self.addOversampledImage(fiberImage, outExp, outImgOffset, psfToSpotPixRatio)
-
-        return outExp, fiberImagePixelOffset[0], fiberImagePixelOffset[1], geometry
+        return fiberImage, outImgOffset, psfToSpotPixRatio, geometry
 
     def addOversampledImage(self, inImg, outExp, outOffset, outScale):
         """ Add the outScale-oversampled inImg to outImg at the given offset. 
