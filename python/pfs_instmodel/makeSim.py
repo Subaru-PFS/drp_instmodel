@@ -62,7 +62,7 @@ def makeSim(detector, fieldName, fiberFilter=None,
                             slitOffset=(xOffset/1000.0, yOffset/1000.0),
                             logger=logger)
     skyModel = pfsSky.StaticSkyModel(sim.detector.armName) # plus field info....
-    flatSpectrum = pfsSpectrum.FlatSpectrum(sim.detector, gain=20.0)
+    flatSpectrum = pfsSpectrum.FlatSpectrum(sim.detector, gain=100.0)
     slopeSpectrum = pfsSpectrum.SlopeSpectrum(sim.detector, gain=20.0)
     combSpectrum = pfsSpectrum.CombSpectrum(spacing=combSpacing, 
                                             gain=200000.0)
@@ -219,7 +219,8 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
     parser.add_argument('--frd', action='store', default=23, type=int)
     parser.add_argument('--date', action='store')
     parser.add_argument('--dtype', action='store', default='u2')
-    parser.add_argument('--everyNth', action='store', default=20, type=int)
+    parser.add_argument('--everyNth', action='store', default=20, type=int,
+                        help='how many (oversampled) pixels to linearly interpolate over.')
     parser.add_argument('--xoffset', action='store', type=float, default=0.0,
                         help='shift in slit position along slit, in microns')
     parser.add_argument('--yoffset', action='store', type=float, default=0.0,
@@ -228,7 +229,7 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
     parser.add_argument('--allOutput', action='store_true',
                         help='whether to add (many) additional HDUs abut the simulation')
     parser.add_argument('--realBias', action='store', type=str2file, default='True')
-    parser.add_argument('--realFlat', action='store', type=str2bool, default=True,
+    parser.add_argument('--realFlat', action='store', type=str2bool, default='False',
                         help='Apply an imaging flat. Use False/None to avoid.')
     parser.add_argument('--shiftPsfs', action='store_false')
     parser.add_argument('--imagetyp', action='store', default=None,
