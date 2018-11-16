@@ -5,7 +5,7 @@ import os
 import time
 
 import astropy.io.fits as pyfits
-from fpga import geom
+from .utils import geom
 
 class Exposure(object):
     def __init__(self, detector, 
