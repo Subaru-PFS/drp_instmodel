@@ -161,13 +161,13 @@ class SimImage(object):
         # import pyfits
         
         if outputFile is None:
-            import fpga.SeqPath
+            from .utils import SeqPath
 
             baseTemplate = '%(filePrefix)s%(seqno)06d'
-            self.fileMgr = fpga.SeqPath.NightFilenameGen('/data/pfsSim',
-                                                         filePrefix='PFFA',
-                                                         filePattern="%s%s.fits" % (baseTemplate,
-                                                                                    self.detector.detectorName))
+            self.fileMgr = SeqPath.NightFilenameGen('/data/pfsSim',
+                                                    filePrefix='PFFA',
+                                                    filePattern="%s%s.fits" % (baseTemplate,
+                                                                               self.detector.detectorName))
             outputFile = self.fileMgr.getNextFileset()[0]
             if realBias is True:
                 realBias = int(outputFile[-8])

@@ -1,6 +1,5 @@
 setupRequired(afw)
 setupOptional(drp_instdata)
-setupOptional(ics_xcu_fpga)
 
 pathPrepend(PYTHONPATH, ${PRODUCT_DIR}/python)
 pathPrepend(PATH, ${PRODUCT_DIR}/bin)
