@@ -2,8 +2,13 @@ doc/build
 *.fits
 *.gz
 *.fz
+*.png
+
 .ipynb_checkpoints/
 .DS_Store/
+.idea/
+
+notebooks/*.pdf
 
 callgrind*
 valgrind*
