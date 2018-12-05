@@ -153,7 +153,7 @@ class SimImage(object):
         return geomArr
         
     def writeTo(self, outputFile=None, addNoise=True,
-                exptime=1.0,
+                exptime=1.0, pfiDesignId=0x0,
                 compress='RICE', allOutput=False,
                 imagetyp=None, realBias=None, realFlat=None):
         import fitsio
@@ -178,7 +178,7 @@ class SimImage(object):
         addCards = self.psf.getCards()
         
         self.exposure.writeto(outputFile, addNoise=addNoise,
-                              exptime=exptime,
+                              exptime=exptime, pfiDesignId=pfiDesignId,
                               realBias=realBias, realFlat=realFlat,
                               imagetyp=imagetyp,
                               addCards=addCards,

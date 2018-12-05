@@ -6,14 +6,17 @@ import argparse
 import logging
 import os
 import re
+from types import SimpleNamespace
 
 from .utils import schema
 import pfs_instmodel.simImage as simImage
 import pfs_instmodel.sky as pfsSky
+from .spectrumLibrary import SpectrumLibrary
 import pfs_instmodel.spectrum as pfsSpectrum
 reload(pfsSpectrum)
 
-def makeSim(detector, fieldName, fiberFilter=None,
+
+def makeSim(detector, fieldName, pfiDesignId=0, expId=0, fiberFilter=None,
             frd=None, focus=0, date=None, psf=None, dtype='u2',
             everyNth=20,
             skyVariance=False,
@@ -22,7 +25,7 @@ def makeSim(detector, fieldName, fiberFilter=None,
             xOffset=0.0, yOffset=0.0,
             realBias=None,
             logger=None):
-    """ Construct a simulated image. 
+    """ Construct a simulated image.
 
     Parameters
     ----------
@@ -44,7 +47,7 @@ def makeSim(detector, fieldName, fiberFilter=None,
 
     We don't know how to generate anything other than sky spectra yet.
 
-    The fieldName is currently just an entry in the fixed file 
+    The fieldName is currently just an entry in the fixed file
     :download:`examples/sampleField.py <../../examples/sampleField.py>`
     """
 
@@ -52,7 +55,7 @@ def makeSim(detector, fieldName, fiberFilter=None,
         logger = logging.getLogger()
 
     logger.info("args everyNth: %s", everyNth)
-    
+
     simID = dict(detector=detector, frd=frd, focus=focus, date=date)
 
     sim = simImage.SimImage(detector, simID=simID, psf=psf, dtype=dtype,
@@ -62,75 +65,40 @@ def makeSim(detector, fieldName, fiberFilter=None,
                             slitOffset=(xOffset/1000.0, yOffset/1000.0),
                             logger=logger)
     skyModel = pfsSky.StaticSkyModel(sim.detector.armName, skyVarianceOnly=skyVariance)  # plus field info....
-    flatSpectrum = pfsSpectrum.FlatSpectrum(sim.detector, gain=100.0)
-    slopeSpectrum = pfsSpectrum.SlopeSpectrum(sim.detector, gain=20.0)
-    combSpectrum = pfsSpectrum.CombSpectrum(spacing=combSpacing, 
-                                            gain=200000.0)
-
-    field = loadField(fieldName)
+    config = loadConfig(fieldName)
+    config.pfiDesignId = pfiDesignId
+    config.expId = expId
 
     logger.info("addNoise=%s" % (addNoise))
 
-    fibers = []
-    spectra = []
-    for f in field:
-        if fiberFilter and f.fiberId not in fiberFilter:
-            continue
-        if f.type == 'UNPLUGGED':
-            continue
-        if f.type == 'SKY':
-            fibers.append(f.fiberId)
-            spectra.append(skyModel.getSkyAt(ra=f.ra, dec=f.dec, varianceOnly=skyVariance))
-        elif f.type == 'SIMFLAT':
-            fibers.append(f.fiberId)
-            spectra.append(flatSpectrum)
-        elif f.type == 'SIMCOMB':
-            fibers.append(f.fiberId)
-            spectra.append(combSpectrum)
-        elif f.type == 'SIMSLOPE':
-            fibers.append(f.fiberId)
-            spectra.append(slopeSpectrum)
-        elif f.type == 'SIMARC':
-            fibers.append(f.fiberId)
-            arcSpectrum = pfsSpectrum.ArcSpectrum(*f.args)
-            spectra.append(arcSpectrum)
-        elif f.type == 'OBJECT':
-            raise RuntimeError("sorry, we don't do %s spectra yet" % f.type)
-
-            # Per JEG, we expect to insert object spectra differently
-            # from object spectra, so add them in one at a time.
-            fibers.append(f.fiberId)
-            spectra.append(skyModel.getSkyAt(ra=f.ra, dec=f.dec))
-            
-            fibers.append(f.fiberId)
-            spectra.append(fetchSpectrumSomehow(f.object))   # Boom for now.
-        else:
-            raise RuntimeError("sorry, we don't do %s spectra yet" % f.type)
-
+    fibers = config.fiberId
+    library = SpectrumLibrary(detector, skyModel, skyVariance)
+    spectra = [library.getSpectrum(catId, objId) for catId, objId in zip(config.catId, config.objId)]
     sim.addFibers(fibers,
                   spectra=spectra,
                   shiftPsfs=shiftPsfs)
-    return sim
+    return SimpleNamespace(image=sim, config=config)
+
 
 def displayImage(img):
     import ds9
     disp = ds9.ds9()
     disp.set_np2arr(img)
-    
-def loadField(fieldName):
-    """ Load the given field definition. 
 
-    Currently just looks in a static file (examples/sampleField.py).  
 
+def loadConfig(fieldName):
+    """ Load the given field definition.
+
+    Currently just looks in a static file (examples/sampleField.py).
     """
-    
     # Decide on where to save field definitions, and add the usual path crap
-    fields = schema.loadParFile(os.path.join(os.environ["DRP_INSTMODEL_DIR"],
-                                             "examples", "sampleField.py"))
-    return fields[fieldName]
-    
+    configs = schema.loadParFile(os.path.join(os.environ["DRP_INSTMODEL_DIR"],
+                                              "examples", "sampleField.py"))
+    return configs[fieldName]
+
+
 def expandRangeArg(arg):
-    """ Generate an array from a range expression. No error checking. 
+    """ Generate an array from a range expression. No error checking.
 
     Expression: R,R,R
     R: INT or INT-INT
@@ -141,16 +109,17 @@ def expandRangeArg(arg):
     fullRange = []
     if not arg:
         return fullRange
-    
+
     rangeList = re.split('[, ]', arg)
     for r in rangeList:
         parts = r.split('-')
         if len(parts) == 1:
             fullRange.append(int(parts[0]))
         else:
-            fullRange.extend(range(int(parts[0]),int(parts[1])+1))
+            fullRange.extend(range(int(parts[0]), int(parts[1])+1))
         # print "after %s, r=%s" % (r, fullRange)
     return fullRange
+
 
 def str2bool(v):
     if v.lower() in ('yes', 'true', 't', 'y', '1'):
@@ -159,6 +128,7 @@ def str2bool(v):
         return False
     else:
         raise argparse.ArgumentTypeError('Boolean value expected.')
+
 
 def str2file(v):
     if v.lower() in ('yes', 'true', 't'):
@@ -171,16 +141,15 @@ def str2file(v):
     except ValueError:
         return v
 
+
 def main(args=None):
-    """ called by __main__, or pass in a string as if it were a command line. 
+    """ called by __main__, or pass in a string as if it were a command line.
 
     Get arg help from the command line.
-    
+
     Returns
     -------
-
     sim : the SimImage object
-    
     """
     if isinstance(args, str):
         import shlex
@@ -189,29 +158,29 @@ def main(args=None):
         import sys
         args = sys.argv[1:]
 
-    helpDoc = \
-""" 
+    helpDoc = """
 Examples
 --------
 
 Generate an image file of two 3-fiber groups of sky spectra,
 currently as defined in :download:`examples/sampleField/py <../../examples/sampleField.py>`
-    
+
    --detector=r1 --output=sim.fits --field=field1
 """
-
-
     # Configure the default formatter and logger.
-    logging.basicConfig(datefmt = "%Y-%m-%d %H:%M:%S",
-                        format = "%(asctime)s.%(msecs)03dZ %(name)-12s %(levelno)s %(filename)s:%(lineno)d %(message)s")
+    logging.basicConfig(
+        datefmt="%Y-%m-%d %H:%M:%S",
+        format="%(asctime)s.%(msecs)03dZ %(name)-12s %(levelno)s %(filename)s:%(lineno)d %(message)s"
+    )
     logger = logging.getLogger()
-    
+
     parser = argparse.ArgumentParser(description="generate a simulated image", 
                                      formatter_class=argparse.RawDescriptionHelpFormatter,
                                      epilog=helpDoc)
     parser.add_argument('-d', '--detector', action='store', required=True)
     parser.add_argument('-F', '--field', action='store', required=True)
-    parser.add_argument('-o', '--output', action='store', default=None)
+    parser.add_argument('-e', '--expId', type=int, required=True, help="Exposure identifier")
+    parser.add_argument('-p', '--pfiDesignId', type=int, default=0, help="pfiDesignId")
     parser.add_argument('-f', '--fibers', action='store', default=None)
     parser.add_argument('-v', '--verbose', action='store_true')
     parser.add_argument('--exptime', action='store', default=1, type=float)
@@ -243,6 +212,7 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
                         help='fitsio FITS compression type. e.g. RICE')
     parser.add_argument('--skyVariance', action='store_true',
                         help='whether to add sky variance instead of sky.')
+    parser.add_argument('--pdb', default=False, action='store_true', help="Launch pdb on exception?")
 
     parser.add_argument('--ds9', action='store_true', default=False)
 
@@ -255,30 +225,49 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
 
     fibers = expandRangeArg(args.fibers)
 
-    sim = makeSim(args.detector, fieldName=args.field,
-                  fiberFilter=fibers,
-                  frd=args.frd, focus=args.focus, date=args.date,
-                  dtype=args.dtype,
-                  skyVariance=args.skyVariance,
-                  everyNth=args.everyNth,
-                  addNoise=not args.noNoise,
-                  combSpacing=args.combSpacing,
-                  shiftPsfs=args.shiftPsfs,
-                  constantPsf=args.constantPsf,
-                  constantX=args.constantX,
-                  xOffset=args.xoffset,
-                  yOffset=args.yoffset,
-                  realBias=args.realBias,
-                  logger=logger)
-    if args.output != 'no':
-        sim.writeTo(args.output, addNoise=not args.noNoise,
-                    exptime=args.exptime,
-                    compress=args.compress, allOutput=args.allOutput,
-                    realBias=args.realBias, realFlat=args.realFlat,
-                    imagetyp=args.imagetyp)
+    try:
+        sim = makeSim(args.detector, fieldName=args.field,
+                      pfiDesignId=args.pfiDesignId,
+                      expId=args.expId,
+                      fiberFilter=fibers,
+                      frd=args.frd, focus=args.focus, date=args.date,
+                      dtype=args.dtype,
+                      skyVariance=args.skyVariance,
+                      everyNth=args.everyNth,
+                      addNoise=not args.noNoise,
+                      combSpacing=args.combSpacing,
+                      shiftPsfs=args.shiftPsfs,
+                      constantPsf=args.constantPsf,
+                      constantX=args.constantX,
+                      xOffset=args.xoffset,
+                      yOffset=args.yoffset,
+                      realBias=args.realBias,
+                      logger=logger)
+    except Exception:
+        if args.pdb:
+            import traceback
+            traceback.print_exc()
+            import pdb
+            pdb.post_mortem()
+        raise
+
+    site = 'F'  # Fake
+    category = 'A'  # Science (as opposed to metrology camera, etc.)
+    visit = args.expId
+    spectrograph = int(args.detector[1])
+    armNum = {'b': 1, 'r': 2, 'n': 3, 'm': 4}[args.detector[0]]
+    imageName = "PF%1s%1s%06d%1d%1d.fits" % (site, category, visit, spectrograph, armNum)
+    sim.image.writeTo(imageName, addNoise=not args.noNoise,
+                      exptime=args.exptime, pfiDesignId=args.pfiDesignId,
+                      compress=args.compress, allOutput=args.allOutput,
+                      realBias=args.realBias, realFlat=args.realFlat,
+                      imagetyp=args.imagetyp)
+    sim.config.write()
+
     if args.ds9:
         displayImage(sim.image)
     return sim
+
 
 if __name__ == "__main__":
     main()
