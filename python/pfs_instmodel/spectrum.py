@@ -57,7 +57,7 @@ class Spectrum(object):
 
         assert waveRange is None or waveRange[0] <= waveRange[1]
         
-        if wave == None:
+        if wave is None:
             # No need to interpolate
             if waveRange:
                 w = numpy.where((self._wave >= waveRange[0]) & (self._wave <= waveRange[1]))
@@ -152,15 +152,17 @@ class ArcSpectrum(LineSpectrum):
                                       dtype=[('wave', 'f4'),
                                              ('name', 'U5',),
                                              ('flux', 'f4')])
-        if lampset is not None and lampset:
-            l_w = self.lines['name'] == lampset
-            self.lines = self.lines[l_w]
-            
+        if lampset is not None:
+            select = numpy.zeros(len(self.lines), dtype=bool)
+            for lamp in lampset:
+                select |= self.lines['name'] == lamp
+            self.lines = self.lines[select]
+
         return self.lines
         
 
 class CombSpectrum(LineSpectrum):
-    def __init__(self, spacing=50, gain=10000.0, inset=100):
+    def __init__(self, spacing=50, gain=10000.0, inset=10):
         """ Create a spectrum which will return a flux of gain at every ~spacing AA, 0 elsewhere. 
 
         Actually, return a comb spectrum with non-zero values at the full range endpoints and at as
@@ -173,23 +175,14 @@ class CombSpectrum(LineSpectrum):
     def linelist(self, minWave, maxWave):
         """ Return all the lines in the given wave range. """
         
-        dw = maxWave-minWave - 2*self.inset
+        dw = maxWave - minWave - 2*self.inset
 
-        wave = numpy.linspace(minWave+self.inset, minWave+dw, dw/self.spacing + 1)
-        flux = wave*0 * self.gain
-
-        return wave, flux
-
-    def flux0(self, wave):
-        minWave = wave.min()
-        maxWave = wave.max()
-        nWaves = len(wave)
-
-        dw = maxWave-minWave
-
-        idx = numpy.linspace(0, nWaves-1, dw/self.spacing + 1).astype('i4')
-        flux = wave*0
-        flux[idx] = self.gain
+        wave = numpy.linspace(minWave + self.inset, minWave + dw, dw/self.spacing + 1)
+        flux = wave * self.gain
 
         return wave, flux
+
+
+
+
 
