@@ -183,6 +183,37 @@ class CombSpectrum(LineSpectrum):
         return wave, flux
 
 
+class TextSpectrum(Spectrum):
+    """A spectrum read from a text file via ``numpy.genfromtxt``
+
+    If no additional parameters are supplied, we'll guess that the file is
+    comprised of wavelength and flux columns, in that order.
+
+    Parameters
+    ----------
+    filename : `str`
+        Path to file to read.
+    wavelengthScale : `float`, optional
+        Scale by which to multiply wavelengths.
+    fluxScale : `float`, optional
+        Scale by which to multiply fluxes.
+    **kwargs : `dict`, optional
+        Keyword arguments for ``numpy.genfromtxt``.
+    """
+    def __init__(self, filename, wavelengthScale=1.0, fluxScale=1.0, **kwargs):
+        if not kwargs:
+            kwargs["dtype"] = [('wavelength', 'f4'), ('flux', 'f4')]
+        data = numpy.genfromtxt(filename, **kwargs)
+        super().__init__(data['wavelength']*wavelengthScale, data['flux']*fluxScale)
 
 
+class NullSpectrum(Spectrum):
+    """A spectrum that is zero everywhere"""
+    def __init__(self):
+        pass
 
+    @property
+    def interp(self):
+        def dummyInterpolator(*args, **kwargs):
+            return 0.0
+        return dummyInterpolator
