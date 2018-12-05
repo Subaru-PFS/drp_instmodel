@@ -61,7 +61,7 @@ def makeSim(detector, fieldName, fiberFilter=None,
                             constantPsf=constantPsf, constantX=constantX,
                             slitOffset=(xOffset/1000.0, yOffset/1000.0),
                             logger=logger)
-    skyModel = pfsSky.StaticSkyModel(sim.detector.armName) # plus field info....
+    skyModel = pfsSky.StaticSkyModel(sim.detector.armName, skyVarianceOnly=skyVariance)  # plus field info....
     flatSpectrum = pfsSpectrum.FlatSpectrum(sim.detector, gain=100.0)
     slopeSpectrum = pfsSpectrum.SlopeSpectrum(sim.detector, gain=20.0)
     combSpectrum = pfsSpectrum.CombSpectrum(spacing=combSpacing, 

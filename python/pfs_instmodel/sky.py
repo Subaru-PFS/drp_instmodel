@@ -14,13 +14,14 @@ class SkyModel(object):
     model = SkyModel('IR')
     """
 
-    def __init__(self, band, centerAlt=None, centerAz=None, t0=None):
+    def __init__(self, band, centerAlt=None, centerAz=None, t0=None, skyVarianceOnly=False):
         """ Create a generative model of the sky.
         """
         self.band = band
         self.centerAlt = centerAlt
         self.centerAz = centerAz
         self.t0 = t0
+        self.skyVarianceOnly = skyVarianceOnly
 
         self._makeSkySpline()
         self._makeExtinctionSpline()
@@ -115,11 +116,10 @@ class StaticSkyModel(SkyModel):
     def getNativeValues(self, waveRange=None):
         return self.native[self._getWaveSlice(waveRange)][:,[0,2]]
     
-    def getSkyAt(self, varianceOnly=False, **argv):
+    def getSkyAt(self, **argv):
         """ Return a spline for the sky at the given conditions.
         """
-
-        return SkySpectrum(None, self.skySpline, varianceOnly=varianceOnly)
+        return SkySpectrum(None, self.skySpline, varianceOnly=self.skyVarianceOnly)
 
 class SkySpectrum(Spectrum):
     def __init__(self, detector, skyModel, varianceOnly=False, scale=0.25):
