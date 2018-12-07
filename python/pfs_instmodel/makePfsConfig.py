@@ -190,6 +190,38 @@ def makeCombConfig(pfiDesignId, expId, fiberIds, spacing=50, rng=None):
     return config
 
 
+def makeConstantConfig(pfiDesignId, expId, fiberIds, value=1, rng=None):
+    """Build a ``PfsConfig`` with constant spectra
+
+    Parameters
+    ----------
+    pfiDesignId : `int`
+        Identifier for the top-end design. For our purposes, this is just a
+        unique integer.
+    expId : `int`
+        Identifier for the exposure. For our purposes, this is just a unique
+        integer.
+    fiberIds : `numpy.ndarray` of `int`
+        Array of identifiers for fibers that will be lit.
+    value : `int`
+        Value of spectrum. (An integer so it can be stored in
+        the ``objId``.)
+    rng : `numpy.random.RandomState`, optional
+        Random number generator. If not specified, we use the default from
+        ``numpy``, which has a non-deterministic seed.
+
+    Returns
+    -------
+    config : `pfs.datamodel.PfsConfig`
+        Configuration of the top-end.
+    """
+    catIds = int(CatalogId.NULL)*np.ones_like(fiberIds, dtype=int)
+    objIds = int(value)*np.ones_like(fiberIds, dtype=int)
+    targetTypes = int(TargetType.SCIENCE)*np.ones_like(fiberIds, dtype=int)
+    config = makePfsConfig(pfiDesignId, expId, fiberIds, catIds, objIds, targetTypes)
+    return config
+
+
 def makeScienceConfig(pfiDesignId, expId, fiberIds,
                       fracSky=0.2, fracFluxStd=0.1,
                       minScienceMag=18.0, maxScienceMag=24.0, fluxStdMag=18.0,

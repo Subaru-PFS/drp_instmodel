@@ -1,7 +1,7 @@
 from pfs_instmodel.slit import Slit
 from pfs_instmodel.utils.generators import keepOdd, keepEven
 from pfs_instmodel.makePfsConfig import (makeArcConfig, makeFlatConfig, makeCombConfig, makeScienceConfig,
-                                         Lamps)
+                                         makeConstantConfig, Lamps)
 
 # Fiber identifiers for different slit configurations
 singleFiber = [315]
@@ -16,6 +16,7 @@ oneNe = makeArcConfig(0, 0, Lamps.NE, singleFiber)
 oneHg = makeArcConfig(0, 0, Lamps.HG, singleFiber)
 oneFlat = makeFlatConfig(0, 0, singleFiber)
 oneComb = makeCombConfig(0, 0, singleFiber, 5)
+oneConst = makeConstantConfig(0, 0, singleFiber, 1000)
 oneSky = makeScienceConfig(0, 0, singleFiber, fracSky=1.0, fracFluxStd=0)
 oneObj = makeScienceConfig(0, 0, singleFiber, fracSky=0.0, fracFluxStd=0.0,
                            minScienceMag=18.0, maxScienceMag=18.0)
@@ -26,6 +27,7 @@ lamNe = makeArcConfig(0, 0, Lamps.NE, lamFibers)
 lamHg = makeArcConfig(0, 0, Lamps.HG, lamFibers)
 lamFlat = makeFlatConfig(0, 0, lamFibers)
 lamComb = makeCombConfig(0, 0, lamFibers, 5)
+lamConst = makeConstantConfig(0, 0, lamFibers, 1000)
 lamSky = makeScienceConfig(0, 0, lamFibers, fracSky=1.0, fracFluxStd=0)
 lamObj = makeScienceConfig(0, 0, lamFibers, fracSky=0.1, fracFluxStd=0.1,
                            minScienceMag=18.0, maxScienceMag=22.0)
@@ -36,6 +38,7 @@ allNe = makeArcConfig(0, 0, Lamps.NE, allFibers)
 allHg = makeArcConfig(0, 0, Lamps.HG, allFibers)
 allFlat = makeFlatConfig(0, 0, allFibers)
 allComb = makeCombConfig(0, 0, allFibers, 5)
+allConst = makeConstantConfig(0, 0, allFibers, 1000)
 allSky = makeScienceConfig(0, 0, allFibers, fracSky=1.0, fracFluxStd=0)
 allObj = makeScienceConfig(0, 0, allFibers)
 
@@ -45,6 +48,7 @@ oddNe = makeArcConfig(0, 0, Lamps.NE, oddFibers)
 oddHg = makeArcConfig(0, 0, Lamps.HG, oddFibers)
 oddFlat = makeFlatConfig(0, 0, oddFibers)
 oddComb = makeCombConfig(0, 0, oddFibers, 5)
+oddConst = makeConstantConfig(0, 0, oddFibers, 1000)
 oddSky = makeScienceConfig(0, 0, oddFibers, fracSky=1.0, fracFluxStd=0)
 oddObj = makeScienceConfig(0, 0, oddFibers)
 
@@ -54,5 +58,6 @@ evenNe = makeArcConfig(0, 0, Lamps.NE, evenFibers)
 evenHg = makeArcConfig(0, 0, Lamps.HG, evenFibers)
 evenFlat = makeFlatConfig(0, 0, evenFibers)
 evenComb = makeCombConfig(0, 0, evenFibers, 5)
+evenConst = makeConstantConfig(0, 0, evenFibers, 1000)
 evenSky = makeScienceConfig(0, 0, evenFibers, fracSky=1.0, fracFluxStd=0)
 evenObj = makeScienceConfig(0, 0, evenFibers)

@@ -207,13 +207,13 @@ class TextSpectrum(Spectrum):
         super().__init__(data['wavelength']*wavelengthScale, data['flux']*fluxScale)
 
 
-class NullSpectrum(Spectrum):
-    """A spectrum that is zero everywhere"""
-    def __init__(self):
-        pass
+class ConstantSpectrum(Spectrum):
+    """A spectrum that is constant everywhere"""
+    def __init__(self, value=1.0):
+        self.value = value
 
     @property
     def interp(self):
-        def dummyInterpolator(*args, **kwargs):
-            return 0.0
+        def dummyInterpolator(wavelengths):
+            return self.value*numpy.ones_like(wavelengths)
         return dummyInterpolator

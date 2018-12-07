@@ -1,7 +1,7 @@
 import os
 
 from .makePfsConfig import CatalogId, Lamps
-from .spectrum import ArcSpectrum, FlatSpectrum, SlopeSpectrum, CombSpectrum, TextSpectrum, NullSpectrum
+from .spectrum import ArcSpectrum, FlatSpectrum, SlopeSpectrum, CombSpectrum, TextSpectrum, ConstantSpectrum
 
 
 class SpectrumLibrary:
@@ -40,8 +40,7 @@ class SpectrumLibrary:
         return FlatSpectrum(self.detector, gain=100.0)
 
     def getNullSpectrum(self, objId):
-        assert objId == 0, "Only one type of null spectrum"
-        return NullSpectrum()
+        return ConstantSpectrum(float(objId))
 
     def getFluxStdSpectrum(self, objId):
         assert objId == 0, "Currently only one type of fluxStd spectrum"
