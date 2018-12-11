@@ -19,7 +19,6 @@ reload(pfsSpectrum)
 def makeSim(detector, fieldName, pfiDesignId=0, expId=0, fiberFilter=None,
             frd=None, focus=0, date=None, psf=None, dtype='u2',
             everyNth=20,
-            skyVariance=False,
             addNoise=True, combSpacing=50, shiftPsfs=True,
             constantPsf=False, constantX=False,
             xOffset=0.0, yOffset=0.0,
@@ -64,7 +63,7 @@ def makeSim(detector, fieldName, pfiDesignId=0, expId=0, fiberFilter=None,
                             constantPsf=constantPsf, constantX=constantX,
                             slitOffset=(xOffset/1000.0, yOffset/1000.0),
                             logger=logger)
-    skyModel = pfsSky.StaticSkyModel(sim.detector.armName, skyVarianceOnly=skyVariance)  # plus field info....
+    skyModel = pfsSky.StaticSkyModel(sim.detector.armName)  # plus field info....
     config = loadConfig(fieldName)
     config.pfiDesignId = pfiDesignId
     config.expId = expId
@@ -72,7 +71,7 @@ def makeSim(detector, fieldName, pfiDesignId=0, expId=0, fiberFilter=None,
     logger.info("addNoise=%s" % (addNoise))
 
     fibers = config.fiberId
-    library = SpectrumLibrary(detector, skyModel, skyVariance)
+    library = SpectrumLibrary(skyModel)
     spectra = [library.getSpectrum(catId, objId) for catId, objId in zip(config.catId, config.objId)]
     sim.addFibers(fibers,
                   spectra=spectra,
@@ -210,8 +209,6 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
                         help='Use the middle X-coordinate for all of each fiber.')
     parser.add_argument('--compress', action='store', default=None,
                         help='fitsio FITS compression type. e.g. RICE')
-    parser.add_argument('--skyVariance', action='store_true',
-                        help='whether to add sky variance instead of sky.')
     parser.add_argument('--pdb', default=False, action='store_true', help="Launch pdb on exception?")
 
     parser.add_argument('--ds9', action='store_true', default=False)
@@ -232,7 +229,6 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
                       fiberFilter=fibers,
                       frd=args.frd, focus=args.focus, date=args.date,
                       dtype=args.dtype,
-                      skyVariance=args.skyVariance,
                       everyNth=args.everyNth,
                       addNoise=not args.noNoise,
                       combSpacing=args.combSpacing,
