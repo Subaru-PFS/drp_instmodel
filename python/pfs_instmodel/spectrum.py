@@ -308,3 +308,22 @@ class ConstantSpectrum(Spectrum):
 
     def _integrateImpl(self, lower, upper):
         return self.value*(upper - lower)
+
+
+class PfsSimSpectrum(TableSpectrum):
+    """A spectrum read from a pfsSim file
+
+    Parameters
+    ----------
+    filename : `str`
+        Path to file to read.
+    wavelengthScale : `float`, optional
+        Scale by which to multiply wavelengths to yield nm.
+    fluxScale : `float`, optional
+        Scale by which to multiply fluxes to yield nJy.
+    """
+    def __init__(self, filename, wavelengthScale=1.0, fluxScale=1.0):
+        with astropy.io.fits.open(filename) as ff:
+            flux = ff[1].data
+            wavelength = ff[2].data
+        super().__init__(wavelength*wavelengthScale, flux*fluxScale)

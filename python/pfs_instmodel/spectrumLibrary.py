@@ -113,5 +113,5 @@ class SpectrumLibrary:
     def getScienceSpectrum(self, objId):
         # XXX ignoring objId for now
         filename = os.path.join(os.environ.get("DRP_INSTDATA_DIR", "."),
-                                "data", "objects", "ex_gal_sb.dat")
-        return TextSpectrum(filename)
+                                "data", "objects", "pfsSimObject-00000-0,0-0-00001496.fits")
+        return PfsSimSpectrum(filename)
