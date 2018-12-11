@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 from importlib import reload
+from contextlib import contextmanager
 
 import argparse
 import logging
@@ -14,6 +15,20 @@ import pfs_instmodel.sky as pfsSky
 from .spectrumLibrary import SpectrumLibrary
 import pfs_instmodel.spectrum as pfsSpectrum
 reload(pfsSpectrum)
+
+
+@contextmanager
+def pdbOnException(enable=True):
+    """Context manager to drop into pdb if there's an exception"""
+    try:
+        yield
+    except Exception:
+        if enable:
+            import traceback
+            traceback.print_exc()
+            import pdb
+            pdb.post_mortem()
+        raise
 
 
 def makeSim(detector, fieldName, pfiDesignId=0, expId=0, fiberFilter=None,
@@ -222,7 +237,7 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
 
     fibers = expandRangeArg(args.fibers)
 
-    try:
+    with pdbOnException(args.pdb):
         sim = makeSim(args.detector, fieldName=args.field,
                       pfiDesignId=args.pfiDesignId,
                       expId=args.expId,
@@ -239,13 +254,6 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
                       yOffset=args.yoffset,
                       realBias=args.realBias,
                       logger=logger)
-    except Exception:
-        if args.pdb:
-            import traceback
-            traceback.print_exc()
-            import pdb
-            pdb.post_mortem()
-        raise
 
     site = 'F'  # Fake
     category = 'A'  # Science (as opposed to metrology camera, etc.)
