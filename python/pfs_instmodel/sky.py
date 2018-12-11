@@ -122,18 +122,9 @@ class StaticSkyModel(SkyModel):
 
 
 class SkySpectrum(Spectrum):
-    def __init__(self, detector, skyModel, varianceOnly=False, scale=0.25):
-        self.detector = detector
+    def __init__(self, skyModel, scale=0.25):
         self.scale = scale
         self.skyModel = skyModel
-        self.varianceOnly = varianceOnly
 
-    def flux(self, wave):
-        """ return a sky spectrum, as seen by our detector. """
-
-        # Work out the fing scaling, CPL
-        flux = self.skyModel(wave) * self.scale
-        if self.varianceOnly:
-            noisyFlux = numpy.random.poisson(flux)
-            flux = noisyFlux - flux
-        return wave, flux
+    def interpolate(self, wavelength):
+        return self.skyModel(wavelength)*self.scale

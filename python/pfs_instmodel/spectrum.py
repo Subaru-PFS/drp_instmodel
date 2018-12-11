@@ -1,189 +1,274 @@
 import numpy
 import os
 import scipy
+import astropy.io.fits
 
-from .utils import pydebug, blackbody
+from .utils import blackbody
+
+SPEED_OF_LIGHT = 3.0e8*1.0e9  # nm/s
+
 
 class Spectrum(object):
-    """ Track the best information about a spectrum and provide sampling. 
+    """Base class for flux density as a function of wavelength
 
-    Note the following use cases:
+    All wavelengths are in nanometres (nm).
 
-     * Model spectra
-     * Line lists
-     * Sampled spectra
+    All flux densities are F_nu in nanoJanskys (nJy).
 
-    For the sampled spectra (
+    All (integrated) fluxes are in W/m^2.
     """
-    
-    def __init__(self, wave, flux):
-        
-        # Force a copy of the raw data
-        self._wave = wave.astype('f4')
-        self._flux = flux.astype('f4')
-
-        self._interp = None
-
-    @property
-    def interp(self):
-        """ Return (after possibly constructing) a flux = interp(wave) interpolator. 
-
-            We will probably want other interpolators. For now, just spline.
-        """
-        
-        if not self._interp:
-            # We have to make sure that the spline is constructed with increasing wavelengths 
-            w_i = numpy.argsort(self._wave)
-            self._interp = scipy.interpolate.InterpolatedUnivariateSpline(self._wave[w_i], 
-                                                                          self._flux[w_i], k=3)
-        return self._interp
-
-    def flux(self, wave=None, waveRange=None):
-        """ Return the flux at the given wavelengths, or all the raw values. 
+    def interpolate(self, wavelength):
+        """Interpolate the spectrum at the nominated wavelength
 
         Parameters
         ----------
-        wave : array_like, optional
-           The wavelengths to evaluate the flux at. If not passed in, use all the native 
-           or sampled wavelengths.
-        waveRange : (low, high), optional
-           Clip the above wavelength vector to the samples between or including low & high.
-           
+        wavelength : array_like
+            Vector of wavelengths at which to interpolate, nm.
+
         Returns
         -------
-        wave :  the raw wavelengths if the wave argument was None, else the wave argument
-        flux :  the corresponding flux 
+        flux : array_like
+            Vector of flux densities at the provided ``wavelength``s.
         """
+        raise NotImplementedError("Method must be defined by subclass")
 
-        assert waveRange is None or waveRange[0] <= waveRange[1]
-        
-        if wave is None:
-            # No need to interpolate
-            if waveRange:
-                w = numpy.where((self._wave >= waveRange[0]) & (self._wave <= waveRange[1]))
-                return self._wave[w], self._flux[w]
-            else:
-                return self._wave, self._flux
+    def interpolateFrequency(self, frequency):
+        """Interpolate the spectrum at the nominated freqency
 
-        if waveRange:
-            w = numpy.where((wave >= waveRange[0]) & (wave <= waveRange[1]))
-            wwave = wave[w]
-            return wwave, self.interp(wwave)
+        Parameters
+        ----------
+        frequency : array_like
+            Vector of frequencies at which to interpolate, Hz.
+
+        Returns
+        -------
+        flux : array_like
+            Vector of flux densities at the provided ``frequency``s.
+        """
+        return self.interpolate(SPEED_OF_LIGHT/frequency)
+
+    def _integrateImpl(self, lower, upper):
+        """Integrate the spectrum between a single set of frequency bounds
+
+        Note that this works with frequency rather than wavelength.
+        It just does the integration, and doesn't worry about scaling the
+        result to the correct units for external users. The spectrum is in nJy,
+        and the integration is in frequency, so the output units should be
+        nJy.Hz.
+
+        Parameters
+        ----------
+        lower : `float`
+            Lower frequency bound for the integration, Hz.
+        upper : `float`
+            Upper frequency bound for the integration, Hz.
+
+        Returns
+        -------
+        flux : `float`
+            Integrated flux between the frequency bounds, nJy.Hz.s
+        """
+        return scipy.integrate.quad(self.interpolateFrequency, lower, upper)[0]
+
+    def integrate(self, lower, upper):
+        """Integrate the spectrum between multiple wavelength bounds
+
+        Parameters
+        ----------
+        lower : array_like
+            Lower wavelength bounds for the integration, nm.
+        upper : array_like
+            Upper wavelength bounds for the integration, nm.
+
+        Returns
+        -------
+        flux : array_like
+            Integrated fluxes between the wavelength bounds, W/m^2.
+        """
+        lowerFreq = SPEED_OF_LIGHT/upper
+        upperFreq = SPEED_OF_LIGHT/lower
+        scale = 1.0e-9*1.0e-26  # nJy.Hz --> W/m^2
+        return scale*numpy.vectorize(self._integrateImpl)(lowerFreq, upperFreq)
+
+    def bounds(self):
+        """Return the wavelength bounds of the spectrum.
+
+        The bounds are defined such that outside them, the flux density is zero.
+
+        Returns
+        -------
+        lower : `float`
+            Lower bound of the spectrum, nm.
+        upper : `float`
+            Upper bound of the spectrum, nm.
+        """
+        return -numpy.inf, numpy.inf
+
+
+class TableSpectrum(Spectrum):
+    """A Spectrum defined by a lookup table
+
+    Parameters
+    ----------
+    wavelength : array_like
+        Array of wavelengths, nm.
+    flux : array_like
+        Array of flux density (F_nu) at the corresponding wavelengths, nJy.
+    """
+    def __init__(self, wavelength, flux):
+        # Force a copy of the raw data, and ensure it's sorted
+        indices = numpy.argsort(wavelength)
+        self.wavelength = wavelength[indices]
+        self.flux = flux[indices]
+        self.frequency = SPEED_OF_LIGHT/self.wavelength
+        self._interp = scipy.interpolate.InterpolatedUnivariateSpline(self.wavelength, self.flux, k=3)
+
+    def interpolate(self, wavelength):
+        return self._interp(wavelength)
+
+    def _integrateImpl(self, lower, upper):
+        select = numpy.logical_and(self.frequency > lower, self.frequency < upper)
+        num = select.sum()
+        if num == 0:
+            return 0.5*(upper - lower)*(self.interpolateFrequency(lower) + self.interpolateFrequency(upper))
+        frequency = self.frequency[select]
+        flux = self.flux[select]
+        if num > 1:
+            result = -1*numpy.trapz(flux, frequency)  # -1 because frequency is monotonic decreasing
         else:
-            return wave, self.interp(wave)
+            result = 0
+        # Add in the bit off the ends we haven't integrated
+        lowFreq, highFreq = frequency[-1], frequency[0]
+        lowFlux, highFlux = flux[-1], flux[0]
+        result += 0.5*(lowFreq - lower)*(lowFlux + self.interpolateFrequency(lower))
+        result += 0.5*(upper - highFreq)*(highFlux + self.interpolateFrequency(upper))
+        return result
 
-    def __call__(self, wave):
-        """ Shorthand to fetch the fluxes corresponding to one or more wavelengths. This is the 
-        primary method to get fluxes. Subclasses only need to implement .flux(wave) """
-        
-        return self.flux(wave)[1]
-    
+    def bounds(self):
+        return self.wavelength[0], self.wavelength[-1]
+
+
 class SlopeSpectrum(Spectrum):
-    def __init__(self, detector, gain=1.0):
-        self.detector = detector
-        self.scale = 1e2 * gain
+    """A spectrum consisting of a slope in F_nu
 
-    def flux(self, wave):
-        """ Return a flat spectrum, with a slight blue-up-to-red tilt. """
+    Parameters
+    ----------
+    scale : `float`
+        Scale to apply to spectrum.
+    """
+    def __init__(self, scale=1.0):
+        self.scale = scale
 
+    def interpolate(self, wavelength):
         # Make 3800..12700 go to 1-(0.062) to 1+(0.27)
-        flux = wave/10000.0 - 1
-        flux = flux/10 + 1
+        return ((wavelength/10000.0 - 1)/10 + 1)*self.scale
 
-        return wave, flux * self.scale
 
 class FlatSpectrum(Spectrum):
-    def __init__(self, detector, gain=1.0):
-        self.detector = detector
-        self.scale = 1e11 * gain
+    """A spectrum simulating a flat-field lamp: a black body
 
-    def flux(self, wave):
-        """ return a quartz lamp spectrum, as seen by our detector. """
+    Parameters
+    ----------
+    scale : `float`
+        Scale to apply to spectrum.
+    """
+    def __init__(self, scale=1.0):
+        self.scale = scale
 
-        # Work out the fing scaling, CPL
-        return wave, blackbody(wave*10.0, 3800.0) * self.scale
+    def interpolate(self, wavelength):
+        """return a quartz lamp spectrum, as seen by our detector."""
+        return self.scale*blackbody(wavelength*10.0, 3800.0)
+
 
 class LineSpectrum(Spectrum):
-    """ """
+    """Base class for spectra consisting solely of emission lines
 
-    def linelist(self, minWave, maxWave):
-        """ Return all the lines in the given wave range. """
+    Parameters
+    ----------
+    wavelength : array_like
+        Array of wavelengths of the emission lines
+    flux : array_like
+        Array of flux of the corresponding lines.
+    """
+    def __init__(self, wavelength, flux):
+        indices = numpy.argsort(wavelength)
+        self.wavelength = wavelength[indices]
+        self.frequency = SPEED_OF_LIGHT/self.wavelength
+        self.flux = flux[indices]
 
-        raise NotImplementedError()
-    
-    def flux(self, wave):
-        return self.linelist(wave.min(), wave.max())            
+    def _integrateImpl(self, lower, upper):
+        select = numpy.logical_and(self.frequency > lower, self.frequency < upper)
+        return self.flux[select].sum()
+
+    def bounds(self):
+        return self.wavelength[0], self.wavelength[-1]
+
 
 class ArcSpectrum(LineSpectrum):
-    def __init__(self, lampset=None, gain=2.0):
-        """ Create a spectrum which will return a flux of gain at every ~spacing AA, 0 elsewhere. 
+    """An arc spectrum
 
-        Actually, return a comb spectrum with non-zero values at the full range endpoints and at as
-        many points as can be placed between them no closer than the given spacing.
-        """
+    The arc spectrum consists of emission lines from potentially multiple
+    ionic species, which are read from a file.
 
-        self.lampset = lampset
-        self.loadLines(lampset)
-        self.gain = gain
+    Parameters
+    ----------
+    species : `list` of `str`, or `None`
+        Ionic species to select from the line list, or `None` for all.
+    scale : `float`
+        Scaling to provide to the fluxes in the line list.
+    """
+    def __init__(self, species=None, scale=1.0):
+        self.species = species
+        self.scale = scale
 
-    def __str__(self):
-        return("ArcSpectrum(lampset=%s, gain=%s, nlines=%d, waverange=(%g,%g))" %
-               (self.lampset, self.gain, len(self.lines),
-                self.lines['wave'].min(), self.lines['wave'].max()))
-                                                                
-    def linelist(self, minWave=0, maxWave=1e6):
-        """ Return all the lines in the given wave range. """
-
-        w_w = (self.lines['wave'] >= minWave) & (self.lines['wave'] <= maxWave)
-        
-        wave = self.lines['wave'][w_w]
-        flux = self.lines['flux'][w_w] * self.gain
-
-        return wave, flux
-
-    def loadLines(self, lampset=None):
-        """ Hackety hack hack hack. """
-    
-        # Map self.band to a filename using some config file. For now, hardcode
         dataRoot = os.environ.get('DRP_INSTDATA_DIR', '.')
         filepath = os.path.join(dataRoot, 'data', 'lines', 'nist_all.txt')
 
         self.lines = numpy.genfromtxt(filepath, usecols=list(range(3)),
-                                      dtype=[('wave', 'f4'),
+                                      dtype=[('wavelength', 'f4'),
                                              ('name', 'U5',),
                                              ('flux', 'f4')])
-        if lampset is not None:
-            select = numpy.zeros(len(self.lines), dtype=bool)
-            for lamp in lampset:
-                select |= self.lines['name'] == lamp
+        if species is not None:
+            select = numpy.zeros(len(self._lines), dtype=bool)
+            for ss in species:
+                select |= self.lines['name'] == ss
             self.lines = self.lines[select]
 
-        return self.lines
-        
+        super().__init__(self.lines["wavelength"], scale*self.lines["flux"])
+
+    def __str__(self):
+        return("ArcSpectrum(lampset=%s, scale=%s, nlines=%d, waverange=(%g,%g))" %
+               (self.species, self.scale, len(self.lines),
+                self.wavelength.min(), self.wavelength.max()))
+
 
 class CombSpectrum(LineSpectrum):
-    def __init__(self, spacing=50, gain=10000.0, inset=10):
-        """ Create a spectrum which will return a flux of gain at every ~spacing AA, 0 elsewhere. 
+    """Emission line spectrum with a regular spacing in wavelength
 
-        Actually, return a comb spectrum with non-zero values at the full range endpoints and at as
-        many points as can be placed between them no closer than the given spacing.
-        """
+    Parameters
+    ----------
+    spacing : `float`
+        Spacing in wavelength between lines.
+    scale : `float`
+        Scale of the emission lines.
+    lower : `float`
+        Lower wavelength bound of the emission lines.
+    upper : `float`
+        Upper wavelength bound of the emission lines.
+    offset : `float`
+        Offset from the lower bound for the first line.
+    """
+    def __init__(self, spacing=50, scale=1.0, lower=300.0, upper=1300.0, offset=0.0):
         self.spacing = spacing
-        self.gain = gain
-        self.inset = inset
-        
-    def linelist(self, minWave, maxWave):
-        """ Return all the lines in the given wave range. """
-        
-        dw = maxWave - minWave - 2*self.inset
+        self.scale = scale
 
-        wave = numpy.linspace(minWave + self.inset, minWave + dw, dw/self.spacing + 1)
-        flux = wave * self.gain
-
-        return wave, flux
+        dw = upper - lower
+        wavelength = numpy.linspace(lower + offset, lower + dw, dw/self.spacing + 1)
+        flux = scale*numpy.ones_like(wavelength)
+        super().__init__(wavelength, flux)
 
 
-class TextSpectrum(Spectrum):
+class TextSpectrum(TableSpectrum):
     """A spectrum read from a text file via ``numpy.genfromtxt``
 
     If no additional parameters are supplied, we'll guess that the file is
@@ -194,9 +279,9 @@ class TextSpectrum(Spectrum):
     filename : `str`
         Path to file to read.
     wavelengthScale : `float`, optional
-        Scale by which to multiply wavelengths.
+        Scale by which to multiply wavelengths to yield nm.
     fluxScale : `float`, optional
-        Scale by which to multiply fluxes.
+        Scale by which to multiply fluxes to yield nJy.
     **kwargs : `dict`, optional
         Keyword arguments for ``numpy.genfromtxt``.
     """
@@ -208,12 +293,18 @@ class TextSpectrum(Spectrum):
 
 
 class ConstantSpectrum(Spectrum):
-    """A spectrum that is constant everywhere"""
+    """A spectrum that is constant everywhere
+
+    Parameters
+    ----------
+    value : `float`
+        Constant value of spectrum.
+    """
     def __init__(self, value=1.0):
         self.value = value
 
-    @property
-    def interp(self):
-        def dummyInterpolator(wavelengths):
-            return self.value*numpy.ones_like(wavelengths)
-        return dummyInterpolator
+    def interpolate(self, wavelength):
+        return self.value*numpy.ones_like(wavelength)
+
+    def _integrateImpl(self, lower, upper):
+        return self.value*(upper - lower)

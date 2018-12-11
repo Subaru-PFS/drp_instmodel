@@ -1,14 +1,71 @@
 import os
+import math
 
 from .makePfsConfig import CatalogId, Lamps
-from .spectrum import ArcSpectrum, FlatSpectrum, SlopeSpectrum, CombSpectrum, TextSpectrum, ConstantSpectrum
+from .spectrum import ArcSpectrum
+from .spectrum import FlatSpectrum
+from .spectrum import SlopeSpectrum
+from .spectrum import CombSpectrum
+from .spectrum import TextSpectrum
+from .spectrum import ConstantSpectrum
+from .spectrum import PfsSimSpectrum
+
+PLANCK = 6.63e-34  # J.s
+SPEED_OF_LIGHT = 3.0e8*1.0e9  # nm/s
+
+
+def fluxForPhotons(photons=1.0, aperture=8.2, wavelength=600):
+    """Return the flux in W/m^2 that produces the desired photon flux
+
+    Neglecting the issue of throughput.
+
+    Parameters
+    ----------
+    photons : `float`
+        Photon flux (photons/sec).
+    aperture : `float`
+        Effective aperture (m).
+    wavelength : `float`
+        Wavelength (nm).
+
+    Returns
+    -------
+    flux : `float`
+        Flux (W/m^2).
+    """
+    area = math.pi*(0.5*aperture)**2  # m^2
+    return photons/area/wavelength*PLANCK*SPEED_OF_LIGHT
+
+
+def fluxDensityForPhotons(photons=1.0, aperture=8.2, resolution=8000):
+    """Return the flux density in nJy that produces the desired photon flux
+
+    Neglecting the issue of throughput.
+
+    Parameters
+    ----------
+    photons : `float`
+        Photon flux (photons/sec).
+    aperture : `float`
+        Effective aperture (m).
+    resolution : `float`
+        Resolving power (lambda/deltaLambda). Needn't be the instrument's
+        resolving power; just the resolving power of the element that will
+        contain the photon flux (which might be a pixel).
+
+    Returns
+    -------
+    flux : `float`
+        Flux (nJy).
+    """
+    area = math.pi*(0.5*aperture)**2  # m^2
+    scale = 0.015  # photons/s/m^2 per resolution for 1 nJy
+    return photons/scale/area*resolution
 
 
 class SpectrumLibrary:
-    def __init__(self, detector, skyModel, skyVarianceOnly=False):
-        self.detector = detector
+    def __init__(self, skyModel):
         self.skyModel = skyModel
-        self.skyVarianceOnly = skyVarianceOnly
 
     def getSpectrum(self, catId, objId):
         return {
@@ -33,25 +90,25 @@ class SpectrumLibrary:
             lamps.append("CdI")
         if objId & Lamps.KR:
             lamps.append("KrI")
-        return ArcSpectrum(lamps)
+        return ArcSpectrum(lamps, scale=fluxForPhotons(10000.0))
 
     def getQuartzSpectrum(self, objId):
         assert objId == 0, "Only one type of quartz spectrum"
-        return FlatSpectrum(self.detector, gain=100.0)
+        return FlatSpectrum(scale=fluxDensityForPhotons(10000.0))
 
     def getNullSpectrum(self, objId):
-        return ConstantSpectrum(float(objId))
+        return ConstantSpectrum(float(objId)*fluxDensityForPhotons(1.0))
 
     def getFluxStdSpectrum(self, objId):
         assert objId == 0, "Currently only one type of fluxStd spectrum"
-        return SlopeSpectrum(self.detector, gain=20.0)
+        return SlopeSpectrum(scale=fluxDensityForPhotons(1.0))
 
     def getSkySpectrum(self, objId):
         assert objId == 0, "Currently only one type of sky spectrum"
         return self.skyModel.getSkyAt(varianceOnly=self.skyVarianceOnly)
 
     def getCombSpectrum(self, objId):
-        return CombSpectrum(spacing=float(objId), gain=200000.0)
+        return CombSpectrum(spacing=float(objId), scale=fluxForPhotons(10000.0))
 
     def getScienceSpectrum(self, objId):
         # XXX ignoring objId for now
