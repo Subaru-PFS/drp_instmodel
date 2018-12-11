@@ -261,12 +261,13 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
     spectrograph = int(args.detector[1])
     armNum = {'b': 1, 'r': 2, 'n': 3, 'm': 4}[args.detector[0]]
     imageName = "PF%1s%1s%06d%1d%1d.fits" % (site, category, visit, spectrograph, armNum)
-    sim.image.writeTo(imageName, addNoise=not args.noNoise,
-                      exptime=args.exptime, pfiDesignId=args.pfiDesignId,
-                      compress=args.compress, allOutput=args.allOutput,
-                      realBias=args.realBias, realFlat=args.realFlat,
-                      imagetyp=args.imagetyp)
-    sim.config.write()
+    with pdbOnException(args.pdb):
+        sim.image.writeTo(imageName, addNoise=not args.noNoise,
+                          exptime=args.exptime, pfiDesignId=args.pfiDesignId,
+                          compress=args.compress, allOutput=args.allOutput,
+                          realBias=args.realBias, realFlat=args.realFlat,
+                          imagetyp=args.imagetyp)
+        sim.config.write()
 
     if args.ds9:
         displayImage(sim.image)
