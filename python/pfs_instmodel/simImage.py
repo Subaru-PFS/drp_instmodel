@@ -51,7 +51,7 @@ class SimImage(object):
     def image(self):
         return self.exposure.image
 
-    def addFibers(self, fibers, spectra, waveRange=None,
+    def addFibers(self, fibers, spectra, doSkyForFiber, skySpectrum, waveRange=None,
                   shiftPsfs=True):
         """ Add images of the given fibers. 
 
@@ -80,16 +80,24 @@ class SimImage(object):
           * 
         """
 
-        for i, fiber in enumerate(fibers):
+        for i, (fiber, doSky) in enumerate(zip(fibers, doSkyForFiber)):
             parts = self.psf.fiberImage(fiber, spectra[i],
                                         waveRange=waveRange,
                                         shiftPsfs=shiftPsfs)
 
             fiberImage, outImgOffset, psfToSpotPixRatio, geometry = parts
 
+            skyImage = None
+            skyOffset = None
+            if doSky:
+                skyParts = self.psf.fiberImage(fiber, skySpectrum, waveRange=waveRange, shiftPsfs=shiftPsfs)
+                skyImage = skyParts[0]
+                skyOffset = skyParts[1]
+
             # transfer flux from oversampled fiber image to final resolution output image
-            resampledFiber = self.psf.addOversampledImage(fiberImage, self.exposure,
-                                                          outImgOffset, psfToSpotPixRatio)
+            self.psf.addOversampledImage(fiberImage, self.exposure,
+                                         outImgOffset, psfToSpotPixRatio,
+                                         skyImage, skyOffset)
 
             self.fibers[fiber] = dict(spectrum=spectra[i],
                                       geometry=geometry)
@@ -152,7 +160,7 @@ class SimImage(object):
                 
         return geomArr
         
-    def writeTo(self, outputFile=None, addNoise=True,
+    def writeTo(self, outputFile=None, addNoise=True, skySwindle=True,
                 exptime=1.0, pfiDesignId=0x0,
                 compress='RICE', allOutput=False,
                 imagetyp=None, realBias=None, realFlat=None):
@@ -177,7 +185,7 @@ class SimImage(object):
 
         addCards = self.psf.getCards()
         
-        self.exposure.writeto(outputFile, addNoise=addNoise,
+        self.exposure.writeto(outputFile, addNoise=addNoise, skySwindle=skySwindle,
                               exptime=exptime, pfiDesignId=pfiDesignId,
                               realBias=realBias, realFlat=realFlat,
                               imagetyp=imagetyp,

@@ -24,9 +24,11 @@ class Exposure(object):
         if doNew:
             self._flux = numpy.zeros(self.detector.config['ccdSize'], dtype='f4')
             self._mask = numpy.zeros(self.detector.config['ccdSize'], dtype='u2')
+            self._sky = numpy.zeros(self.detector.config['ccdSize'], dtype='f4')
             self.planes = dict()
             self.addPlane('flux', self._flux)
             self.addPlane('mask', self._mask)
+            self.addPlane('sky', self._sky)
             self.pixelImage = None
 
         if addBias:
@@ -46,7 +48,7 @@ class Exposure(object):
     def shape(self):
         return self._flux.shape
     
-    def addFlux(self, addIm, outSlice=None, addNoise=False, addPlane=None):
+    def addFlux(self, addIm, outSlice=None, addPlane=None):
         """ Add some flux to ourselves. 
 
         """
@@ -61,6 +63,10 @@ class Exposure(object):
         if addPlane is not None:
             self.addPlane(addPlane, addIm)
 
+    def addSky(self, skyImage, outSlice=None):
+        outSky = self._sky[outSlice] if outSlice is not None else self._sky
+        outSky += skyImage
+
     def ts(self, t=None):
         if t is None:
             t = time.time()
@@ -68,14 +74,15 @@ class Exposure(object):
                                     
     def writeto(self, outputFile, doCombine=True, doWriteAll=True,
                 exptime=1.0, pfiDesignId=0x0,
-                addNoise=True, compress='RICE',
+                addNoise=True, skySwindle=True, compress='RICE',
                 realBias=None, realFlat=None,
                 addCards=(),
                 imagetyp=None, allOutput=False):
 
         hdulist = pyfits.HDUList()
 
-        self.readout(addNoise=addNoise, realBias=realBias, realFlat=realFlat, exptime=exptime)
+        self.readout(addNoise=addNoise, skySwindle=skySwindle,
+                     realBias=realBias, realFlat=realFlat, exptime=exptime)
         if realBias is not None:
             outIm = self.biasExp.replaceActiveFlux(self.pixelImage, leadingRows=True)
             hdr = self.biasExp.header
@@ -173,22 +180,30 @@ class Exposure(object):
 
         return flat
     
-    def readout(self, exptime=1.0, addNoise=True,
+    def readout(self, exptime=1.0, addNoise=True, skySwindle=True,
                 realBias=None, realFlat=None):
         
         if self.pixelImage is not None:
             return
 
         self._flux *= exptime
+        self._sky *= exptime
         if addNoise:
             print("adding noise=%s" % (addNoise))
             lo_w = numpy.where(self._flux < 0)
             if len(lo_w[0]) > 0:
-                print("%d low pixels, min=%f" % (len(lo_w[0]), 
+                print("%d low image pixels, min=%f" % (len(lo_w[0]), 
                                                  self._flux.min()))
                 self._flux += -self._flux.min()
-                
-            noisyFlux = numpy.random.poisson(self._flux)
+            numLowSky = (self._sky < 0).sum()
+            if numLowSky > 0:
+                print("%d low sky pixels, min=%f" % (numLowSky, self._sky.min()))
+                self._sky += -self._sky.min()
+
+            noisyFlux = numpy.random.poisson(self._flux + self._sky)
+            if skySwindle:
+                # Sky swindle: only add the noise from the sky, not the sky itself
+                noisyFlux -= self._sky.astype(noisyFlux.dtype)
             noise = noisyFlux - self._flux
             self.addPlane('shotnoise', noise)
         else:

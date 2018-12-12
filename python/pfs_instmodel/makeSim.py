@@ -9,6 +9,7 @@ import os
 import re
 from types import SimpleNamespace
 
+from pfs.datamodel.pfsConfig import TargetType
 from .utils import schema
 import pfs_instmodel.simImage as simImage
 import pfs_instmodel.sky as pfsSky
@@ -86,10 +87,13 @@ def makeSim(detector, fieldName, pfiDesignId=0, expId=0, fiberFilter=None,
     logger.info("addNoise=%s" % (addNoise))
 
     fibers = config.fiberId
+    doSkyForFiber = [tt in set([TargetType.SCIENCE, TargetType.FLUXSTD]) for tt in config.targetType]
     library = SpectrumLibrary(skyModel)
     spectra = [library.getSpectrum(catId, objId) for catId, objId in zip(config.catId, config.objId)]
     sim.addFibers(fibers,
                   spectra=spectra,
+                  doSkyForFiber=doSkyForFiber,
+                  skySpectrum=skyModel.getSkyAt(),
                   shiftPsfs=shiftPsfs)
     return SimpleNamespace(image=sim, config=config)
 
@@ -209,6 +213,7 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
     parser.add_argument('--yoffset', action='store', type=float, default=0.0,
                         help='shift in slit position along dispersion, in microns')
     parser.add_argument('--noNoise', action='store_true')
+    parser.add_argument('--noSkySwindle', action='store_true', default=False, help="Disable the sky swindle")
     parser.add_argument('--allOutput', action='store_true',
                         help='whether to add (many) additional HDUs abut the simulation')
     parser.add_argument('--realBias', action='store', type=str2file, default='True')
@@ -262,7 +267,7 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
     armNum = {'b': 1, 'r': 2, 'n': 3, 'm': 4}[args.detector[0]]
     imageName = "PF%1s%1s%06d%1d%1d.fits" % (site, category, visit, spectrograph, armNum)
     with pdbOnException(args.pdb):
-        sim.image.writeTo(imageName, addNoise=not args.noNoise,
+        sim.image.writeTo(imageName, addNoise=not args.noNoise, skySwindle=not args.noSkySwindle,
                           exptime=args.exptime, pfiDesignId=args.pfiDesignId,
                           compress=args.compress, allOutput=args.allOutput,
                           realBias=args.realBias, realFlat=args.realFlat,

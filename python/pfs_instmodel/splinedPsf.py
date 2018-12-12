@@ -593,17 +593,27 @@ class SplinedPsf(psf.Psf):
 
         return fiberImage, outImgOffset, psfToSpotPixRatio, geometry
 
-    def addOversampledImage(self, inImg, outExp, outOffset, outScale):
+    def addOversampledImage(self, inImg, outExp, outOffset, outScale, skyImage, skyOffset):
         """ Add the outScale-oversampled inImg to outImg at the given offset. 
         """
 
         resampled = spotgames.rebinBy(inImg, outScale)
         parentIdx, childIdx = self.trimRect(outExp, resampled, outOffset)
+
         try:
-            outExp.addFlux(resampled[childIdx], outSlice=parentIdx, addNoise=True)
+            outExp.addFlux(resampled[childIdx], outSlice=parentIdx)
         except Exception as e:
             self.logger.warn("failed to place child at %s, slices=%s,%s): %s" %
                              (outOffset, childIdx, parentIdx, e))
+
+        if skyImage is not None and skyOffset is not None:
+            skyResampled = spotgames.rebinBy(skyImage, outScale)
+            skyParent, skyChild = self.trimRect(outExp, skyResampled, skyOffset)
+            try:
+                outExp.addSky(skyResampled[skyChild], outSlice=skyParent)
+            except Exception as e:
+                self.logger.warn("failed to place sky child at %s, slices=%s,%s): %s" %
+                                 (skyOffset, skyChild, skyParent, e))
 
         return resampled
     
