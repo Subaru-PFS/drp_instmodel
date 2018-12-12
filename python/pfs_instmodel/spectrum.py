@@ -129,8 +129,9 @@ class TableSpectrum(Spectrum):
     def _integrateImpl(self, lower, upper):
         select = numpy.where(numpy.logical_and(self.frequency > lower, self.frequency < upper))[0]
         num = len(select)
+        lowValue, highValue = self.interpolateFrequency(numpy.array([lower, upper]))
         if num == 0:
-            return 0.5*(upper - lower)*(self.interpolateFrequency(lower) + self.interpolateFrequency(upper))
+            return 0.5*(upper - lower)*(lowValue + highValue)
         frequency = self.frequency[select]
         flux = self.flux[select]
         if num > 1:
@@ -140,8 +141,8 @@ class TableSpectrum(Spectrum):
         # Add in the bit off the ends we haven't integrated
         lowFreq, highFreq = frequency[-1], frequency[0]
         lowFlux, highFlux = flux[-1], flux[0]
-        result += 0.5*(lowFreq - lower)*(lowFlux + self.interpolateFrequency(lower))
-        result += 0.5*(upper - highFreq)*(highFlux + self.interpolateFrequency(upper))
+        result += 0.5*(lowFreq - lower)*(lowFlux + lowValue)
+        result += 0.5*(upper - highFreq)*(highFlux + highValue)
         return result
 
     def bounds(self):
