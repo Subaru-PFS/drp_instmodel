@@ -121,7 +121,7 @@ class TableSpectrum(Spectrum):
         self.wavelength = wavelength[indices]
         self.flux = flux[indices]
         self.frequency = SPEED_OF_LIGHT/self.wavelength
-        self._interp = scipy.interpolate.InterpolatedUnivariateSpline(self.wavelength, self.flux, k=3)
+        self._interp = lambda x: numpy.interp(x, self.wavelength, self.flux, 0.0, 0.0)
 
     def interpolate(self, wavelength):
         return self._interp(wavelength)
