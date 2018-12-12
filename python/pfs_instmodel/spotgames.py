@@ -302,13 +302,8 @@ def shiftSpotLagrange(img, dx, dy, order=4, kargs=None, precision=100):
         outSlice, xSlices, coeffs = genLagrangeCoeffs(dx)
 
         outImg1 = np.zeros(shape=img.shape, dtype=img.dtype)
-
-        evalList = ['(']
-        for o in range(order):
-            evalList.append("coeffs[%d]*img[:,xSlices[%d]]%s" %
-                            (o, o, ")" if o == order-1 else " + "))
-        evalStr = ''.join(evalList)
-        outImg1[:,outSlice] = eval(evalStr)
+        for ii in range(order):
+            outImg1[:, outSlice] += coeffs[ii]*img[:, xSlices[ii]]
 
     if abs(dy) < 1e-6:
         outImg = outImg1
@@ -316,13 +311,8 @@ def shiftSpotLagrange(img, dx, dy, order=4, kargs=None, precision=100):
         outSlice, ySlices, coeffs = genLagrangeCoeffs(dy)
 
         outImg = np.zeros(shape=img.shape, dtype=img.dtype)
-
-        evalList = ["("]
-        for o in range(order):
-            evalList.append("coeffs[%d]*outImg1[ySlices[%d],:]%s" %
-                            (o, o, ")" if o == order-1 else " + "))
-        evalStr = ''.join(evalList)
-        outImg[outSlice,:] = eval(evalStr)
+        for ii in range(order):
+            outImg[outSlice, :] += coeffs[ii]*outImg1[ySlices[ii], :]
 
     return outImg, None
 
