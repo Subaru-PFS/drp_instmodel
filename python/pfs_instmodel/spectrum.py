@@ -127,8 +127,8 @@ class TableSpectrum(Spectrum):
         return self._interp(wavelength)
 
     def _integrateImpl(self, lower, upper):
-        select = numpy.logical_and(self.frequency > lower, self.frequency < upper)
-        num = select.sum()
+        select = numpy.where(numpy.logical_and(self.frequency > lower, self.frequency < upper))[0]
+        num = len(select)
         if num == 0:
             return 0.5*(upper - lower)*(self.interpolateFrequency(lower) + self.interpolateFrequency(upper))
         frequency = self.frequency[select]
