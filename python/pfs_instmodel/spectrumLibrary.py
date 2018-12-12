@@ -105,7 +105,7 @@ class SpectrumLibrary:
 
     def getSkySpectrum(self, objId):
         assert objId == 0, "Currently only one type of sky spectrum"
-        return self.skyModel.getSkyAt(varianceOnly=self.skyVarianceOnly)
+        return self.skyModel.getSkyAt()
 
     def getCombSpectrum(self, objId):
         return CombSpectrum(spacing=float(objId), scale=fluxForPhotons(10000.0))

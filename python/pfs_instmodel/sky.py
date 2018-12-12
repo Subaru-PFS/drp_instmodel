@@ -4,7 +4,7 @@ import os
 import numpy
 import scipy.interpolate
 
-from .spectrum import Spectrum
+from .spectrum import TableSpectrum
 
 class SkyModel(object):
     """ Encapsulate a generator for sky spectra. We specify the model and the individual multiplicative and additive terms.
@@ -78,8 +78,11 @@ class StaticSkyModel(SkyModel):
 
         self.native = numpy.genfromtxt(filepath, skip_footer=20, comments='\\')
 
-        # We now use angstroms
-        self.native[:,0] /= 10.0
+        self.native[:, 0] /= 10.0  # Convert Angstroms --> nm
+        fiberDiameter = 1.1  # arcsec
+        fiberArea = numpy.pi*(0.5*fiberDiameter)**2  # arcsec^2
+        self.native[:, 2] *= 3.631e3*fiberArea  # Convert nanoMaggie/arcsec^2 --> nJy
+
         self.skySpline = scipy.interpolate.InterpolatedUnivariateSpline(self.getNativeWavelengths(),
                                                                         self.getNativeFlux(),
                                                                         k=2)
@@ -118,13 +121,9 @@ class StaticSkyModel(SkyModel):
     def getSkyAt(self, **argv):
         """ Return a spline for the sky at the given conditions.
         """
-        return SkySpectrum(None, self.skySpline)
+        return SkySpectrum(self.getNativeWavelengths(), self.getNativeFlux())
 
 
-class SkySpectrum(Spectrum):
-    def __init__(self, skyModel, scale=0.25):
-        self.scale = scale
-        self.skyModel = skyModel
-
-    def interpolate(self, wavelength):
-        return self.skyModel(wavelength)*self.scale
+class SkySpectrum(TableSpectrum):
+    def __init__(self, wavelength, flux, scale=1.0):
+        super().__init__(wavelength, flux*scale)
