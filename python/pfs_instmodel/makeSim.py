@@ -8,6 +8,7 @@ import logging
 import os
 import re
 from types import SimpleNamespace
+import numpy as np
 
 from pfs.datamodel.pfsConfig import TargetType
 from .utils import schema
@@ -35,7 +36,7 @@ def pdbOnException(enable=True):
 def makeSim(detector, fieldName, pfiDesignId=0, expId=0, fiberFilter=None,
             frd=None, focus=0, date=None, psf=None, dtype='u2',
             everyNth=20,
-            addNoise=True, combSpacing=50, shiftPsfs=True,
+            addNoise=True, addSky=True, skySwindle=True, combSpacing=50, shiftPsfs=True,
             constantPsf=False, constantX=False,
             xOffset=0.0, yOffset=0.0,
             realBias=None,
@@ -87,8 +88,13 @@ def makeSim(detector, fieldName, pfiDesignId=0, expId=0, fiberFilter=None,
     logger.info("addNoise=%s" % (addNoise))
 
     fibers = config.fiberId
-    doSkyForFiber = [tt in set([TargetType.SCIENCE, TargetType.FLUXSTD]) for tt in config.targetType]
-    library = SpectrumLibrary(skyModel)
+    if addSky:
+        doSkyForFiber = [tt in set([TargetType.SCIENCE, TargetType.FLUXSTD]) or
+                         (tt == TargetType.SKY and skySwindle) for
+                         tt in config.targetType]
+    else:
+        doSkyForFiber = np.zeros_like(fibers, dtype=bool)
+    library = SpectrumLibrary(skyModel, skySwindle)
     spectra = [library.getSpectrum(catId, objId) for catId, objId in zip(config.catId, config.objId)]
     sim.addFibers(fibers,
                   spectra=spectra,
@@ -213,6 +219,7 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
     parser.add_argument('--yoffset', action='store', type=float, default=0.0,
                         help='shift in slit position along dispersion, in microns')
     parser.add_argument('--noNoise', action='store_true')
+    parser.add_argument('--noSky', action='store_true', default=False, help="Disable adding sky (for calibs)")
     parser.add_argument('--noSkySwindle', action='store_true', default=False, help="Disable the sky swindle")
     parser.add_argument('--allOutput', action='store_true',
                         help='whether to add (many) additional HDUs abut the simulation')
@@ -251,6 +258,8 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
                       dtype=args.dtype,
                       everyNth=args.everyNth,
                       addNoise=not args.noNoise,
+                      skySwindle=not args.noSkySwindle,
+                      addSky=not args.noSky,
                       combSpacing=args.combSpacing,
                       shiftPsfs=args.shiftPsfs,
                       constantPsf=args.constantPsf,

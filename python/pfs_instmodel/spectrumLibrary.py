@@ -64,10 +64,14 @@ def fluxDensityForPhotons(photons=1.0, aperture=8.2, resolution=8000):
 
 
 class SpectrumLibrary:
-    def __init__(self, skyModel):
+    def __init__(self, skyModel, skySwindle):
         self.skyModel = skyModel
+        self.skySwindle = skySwindle
 
     def getSpectrum(self, catId, objId):
+        if self.skySwindle and catId == CatalogId.SKY:
+            # No sky spectrum, just noise
+            return self.getNullSpectrum(0)
         return {
             CatalogId.ARC: self.getArcSpectrum,
             CatalogId.QUARTZ: self.getQuartzSpectrum,
