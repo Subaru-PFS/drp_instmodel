@@ -468,9 +468,9 @@ class SplinedPsf(psf.Psf):
         speedOfLight = 3.0e8*1.0e9  # nm/s
         flux *= area*pixelWaves/planck/speedOfLight
 
-        nonZero = flux > 0
-        waves = pixelWaves[nonZero]
-        flux = flux[nonZero]
+        self.logger.info("Spectral min/max: %f %f", flux.min(), flux.max())
+
+        waves = pixelWaves  # Change name for historical reasons
 
         # This is temporary: the NIST line strengths were adjusted to match the observed
         # intensities. We need to correct the line list instead of doing that here. XXXCPL
