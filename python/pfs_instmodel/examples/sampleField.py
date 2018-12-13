@@ -11,6 +11,8 @@ allFibers = Slit(1).scienceFibers
 oddFibers = [ii for ii in keepOdd(allFibers)]
 evenFibers = [ii for ii in keepEven(allFibers)]
 
+dark = makeConstantConfig(0, 0, singleFiber, 0.0)
+
 # Configurations with a single fiber
 oneArc = makeArcConfig(0, 0, Lamps.NE | Lamps.HG | Lamps.XE, singleFiber)
 oneNe = makeArcConfig(0, 0, Lamps.NE, singleFiber)
@@ -22,6 +24,7 @@ oneSky = makeScienceConfig(0, 0, singleFiber, fracSky=1.0, fracFluxStd=0)
 oneObj = makeScienceConfig(0, 0, singleFiber, fracSky=0.0, fracFluxStd=0.0,
                            minScienceMag=18.0, maxScienceMag=18.0)
 
+# Configurations with two fibers
 twoArc = makeArcConfig(0, 0, Lamps.NE | Lamps.HG | Lamps.XE, doubleFiber)
 twoNe = makeArcConfig(0, 0, Lamps.NE, doubleFiber)
 twoHg = makeArcConfig(0, 0, Lamps.HG, doubleFiber)
