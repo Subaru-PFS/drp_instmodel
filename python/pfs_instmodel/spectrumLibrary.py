@@ -98,7 +98,7 @@ class SpectrumLibrary:
 
     def getQuartzSpectrum(self, objId):
         assert objId == 0, "Only one type of quartz spectrum"
-        return FlatSpectrum(scale=fluxDensityForPhotons(10000.0))
+        return FlatSpectrum()
 
     def getNullSpectrum(self, objId):
         return ConstantSpectrum(float(objId)*fluxDensityForPhotons(1.0))

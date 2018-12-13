@@ -1,14 +1,12 @@
 import numpy as np
 
 def blackbody(lam, temp):
-    """ Crude blackbody(Angstroms, Kelvin) -> ergs/(s cm**2 nm) """
+    """Blackbody(Angstroms, Kelvin) -> nJy/sr"""
 
-    c_nm = 2.99792458e17                 # nm/s
-    hc = 1.988e-6
-
-    fnu = hc/lam**3 * 1/(np.exp(1.43868e8/(lam*temp)) - 1.0)
-
-    flam = fnu*c_nm/lam**2
-
-    return flam.astype('f4')
-
+    speedOfLight = 3.0e8  # m/s
+    planck = 6.63e-34  # J.s
+    boltzman = 1.38e-23  # J/K
+    wavelength = lam*1.0e-9  # m
+    scale = 1.0e26*1.0e9   # W/m^2/Hz/sr --> nJy/sr
+    flux = 2*planck*speedOfLight/wavelength**3/(np.exp(planck*speedOfLight/wavelength/boltzman/temp) - 1)
+    return scale*flux
