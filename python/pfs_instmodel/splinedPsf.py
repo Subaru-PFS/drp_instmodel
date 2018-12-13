@@ -552,6 +552,12 @@ class SplinedPsf(psf.Psf):
             xPixOffset = xc/pixelScale - fiberImagePixelOffset[1] - spotRad + psfToSpotPixRatio/2
             yPixOffset = yc/pixelScale - fiberImagePixelOffset[0] - spotRad + psfToSpotPixRatio/2
 
+            # XXX Shift the slit
+            # This assumes everything moves linearly, which isn't right, but we don't currently
+            # have an alternative.
+            xPixOffset += self.slitOffset[0]*psfToSpotPixRatio
+            yPixOffset += self.slitOffset[1]*psfToSpotPixRatio
+
             # Keep the shift to the smallest fraction possible, or rather keep the integer steps 
             # exact.
             inty = int(np.rint(yPixOffset))
