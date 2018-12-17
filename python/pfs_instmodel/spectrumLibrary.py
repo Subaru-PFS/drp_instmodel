@@ -115,7 +115,8 @@ class SpectrumLibrary:
         return CombSpectrum(spacing=float(objId), scale=fluxForPhotons(10000.0))
 
     def getScienceSpectrum(self, objId):
-        # XXX ignoring objId for now
+        if objId == 0:
+            return ConstantSpectrum(3631e9*10**(-0.4*22.0))  # A flat spectrum, for comparing to the 1D sims
         filename = os.path.join(os.environ.get("DRP_INSTDATA_DIR", "."),
                                 "data", "objects", "pfsSimObject-00000-0,0-0-00001496.fits")
         return PfsSimSpectrum(filename)
