@@ -74,14 +74,14 @@ class Exposure(object):
                                     
     def writeto(self, outputFile, doCombine=True, doWriteAll=True,
                 exptime=1.0, pfiDesignId=0x0,
-                addNoise=True, skySwindle=True, compress='RICE',
+                addNoise=True, compress='RICE',
                 realBias=None, realFlat=None,
                 addCards=(),
                 imagetyp=None, allOutput=False):
 
         hdulist = pyfits.HDUList()
 
-        self.readout(addNoise=addNoise, skySwindle=skySwindle,
+        self.readout(addNoise=addNoise,
                      realBias=realBias, realFlat=realFlat, exptime=exptime)
         if realBias is not None:
             outIm = self.biasExp.replaceActiveFlux(self.pixelImage, leadingRows=True)
@@ -181,7 +181,7 @@ class Exposure(object):
 
         return flat
     
-    def readout(self, exptime=1.0, addNoise=True, skySwindle=True,
+    def readout(self, exptime=1.0, addNoise=True,
                 realBias=None, realFlat=None):
         
         if self.pixelImage is not None:
@@ -202,9 +202,6 @@ class Exposure(object):
                 self._sky += -self._sky.min()
 
             noisyFlux = numpy.random.poisson(self._flux + self._sky)
-            if skySwindle:
-                # Sky swindle: only add the noise from the sky, not the sky itself
-                noisyFlux -= self._sky.astype(noisyFlux.dtype)
             noise = noisyFlux - self._flux
             self.addPlane('shotnoise', noise)
         else:

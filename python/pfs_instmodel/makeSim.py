@@ -36,7 +36,7 @@ def pdbOnException(enable=True):
 def makeSim(detector, fieldName, pfiDesignId=0, expId=0, fiberFilter=None,
             frd=None, focus=0, date=None, psf=None, dtype='u2',
             everyNth=20,
-            addNoise=True, addSky=True, skySwindle=True, combSpacing=50, shiftPsfs=True,
+            addNoise=True, addSky=True, combSpacing=50, shiftPsfs=True,
             constantPsf=False, constantX=False,
             xOffset=0.0, yOffset=0.0,
             realBias=None,
@@ -55,7 +55,7 @@ def makeSim(detector, fieldName, pfiDesignId=0, expId=0, fiberFilter=None,
 
     Returns
     -------
-
+s
     sim : a SimImage object. Notable member is .image
 
     Notes
@@ -89,12 +89,11 @@ def makeSim(detector, fieldName, pfiDesignId=0, expId=0, fiberFilter=None,
 
     fibers = config.fiberId
     if addSky:
-        doSkyForFiber = [tt in set([TargetType.SCIENCE, TargetType.FLUXSTD]) or
-                         (tt == TargetType.SKY and skySwindle) for
+        doSkyForFiber = [tt in set([TargetType.SCIENCE, TargetType.SKY, TargetType.FLUXSTD]) for
                          tt in config.targetType]
     else:
         doSkyForFiber = np.zeros_like(fibers, dtype=bool)
-    library = SpectrumLibrary(skyModel, skySwindle)
+    library = SpectrumLibrary(skyModel)
     spectra = [library.getSpectrum(catId, objId) for catId, objId in zip(config.catId, config.objId)]
     sim.addFibers(fibers,
                   spectra=spectra,
@@ -220,7 +219,6 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
                         help='shift in slit position along dispersion, in microns')
     parser.add_argument('--noNoise', action='store_true')
     parser.add_argument('--noSky', action='store_true', default=False, help="Disable adding sky (for calibs)")
-    parser.add_argument('--noSkySwindle', action='store_true', default=False, help="Disable the sky swindle")
     parser.add_argument('--allOutput', action='store_true',
                         help='whether to add (many) additional HDUs abut the simulation')
     parser.add_argument('--realBias', action='store', type=str2file, default='True')
@@ -258,7 +256,6 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
                       dtype=args.dtype,
                       everyNth=args.everyNth,
                       addNoise=not args.noNoise,
-                      skySwindle=not args.noSkySwindle,
                       addSky=not args.noSky,
                       combSpacing=args.combSpacing,
                       shiftPsfs=args.shiftPsfs,
@@ -276,7 +273,7 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
     armNum = {'b': 1, 'r': 2, 'n': 3, 'm': 4}[args.detector[0]]
     imageName = "PF%1s%1s%06d%1d%1d.fits" % (site, category, visit, spectrograph, armNum)
     with pdbOnException(args.pdb):
-        sim.image.writeTo(imageName, addNoise=not args.noNoise, skySwindle=not args.noSkySwindle,
+        sim.image.writeTo(imageName, addNoise=not args.noNoise,
                           exptime=args.exptime, pfiDesignId=args.pfiDesignId,
                           compress=args.compress, allOutput=args.allOutput,
                           realBias=args.realBias, realFlat=args.realFlat,
@@ -289,4 +286,8 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
 
 
 if __name__ == "__main__":
-    main()
+    if True:
+        main()
+    else:
+        import cProfile
+        cProfile.run("main()", "profile.pstats")
