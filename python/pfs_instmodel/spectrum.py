@@ -187,9 +187,9 @@ class LineSpectrum(Spectrum):
     Parameters
     ----------
     wavelength : array_like
-        Array of wavelengths of the emission lines
+        Array of wavelengths of the emission lines, nm.
     flux : array_like
-        Array of flux of the corresponding lines.
+        Array of flux of the corresponding lines, W/m^2.
     """
     def __init__(self, wavelength, flux):
         indices = numpy.argsort(wavelength)
@@ -198,8 +198,30 @@ class LineSpectrum(Spectrum):
         self.flux = flux[indices]
 
     def _integrateImpl(self, lower, upper):
-        select = numpy.logical_and(self.frequency > lower, self.frequency < upper)
+        """Integrate the spectrum between a single set of frequency bounds
+
+        Note that, in contrast to `Spectrum`, this works with wavelength
+        instead of frequency, because our fluxes are already integrated and
+        there's no need to convert to frequency.
+
+        Parameters
+        ----------
+        lower : `float`
+            Lower wavelength bound for the integration, nm.
+        upper : `float`
+            Upper wavelength bound for the integration, nm.
+
+        Returns
+        -------
+        flux : `float`
+            Integrated flux between the wavelength bounds, W/m^2.
+        """
+        select = numpy.logical_and(self.wavelength > lower, self.wavelength < upper)
         return self.flux[select].sum()
+
+    def integrate(self, lower, upper):
+        return numpy.vectorize(self._integrateImpl)(lower, upper)
+
 
     def bounds(self):
         return self.wavelength[0], self.wavelength[-1]
