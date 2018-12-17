@@ -252,12 +252,13 @@ class ArcSpectrum(LineSpectrum):
                                              ('name', 'U5',),
                                              ('flux', 'f4')])
         if species is not None:
-            select = numpy.zeros(len(self._lines), dtype=bool)
+            select = numpy.zeros(len(self.lines), dtype=bool)
             for ss in species:
                 select |= self.lines['name'] == ss
             self.lines = self.lines[select]
 
-        super().__init__(self.lines["wavelength"], scale*self.lines["flux"])
+        # Flux scale in the file is somewhat arbitrary; convert it to something of order 1.
+        super().__init__(self.lines["wavelength"], scale*self.lines["flux"]*1.0e-2)
 
     def __str__(self):
         return("ArcSpectrum(lampset=%s, scale=%s, nlines=%d, waverange=(%g,%g))" %
