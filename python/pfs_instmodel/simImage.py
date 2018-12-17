@@ -113,7 +113,7 @@ class SimImage(object):
         waveArr = numpy.zeros((nFibers, self.detector.config['ccdSize'][0]), dtype='f4')
         waveArr[:] = numpy.nan
         for i in range(nFibers):
-            rows, waves = self.psf.wavesForRows([f_i[i]])
+            rows, waves = self.psf.wavesForRow([f_i[i]])
             waveArr[i][rows] = waves[0]
 
         return waveArr
