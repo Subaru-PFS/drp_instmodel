@@ -130,6 +130,7 @@ class Exposure(object):
             hdulist.append(pyfits.CompImageHDU(self.planes['mask'], name='mask'))
             hdulist.append(pyfits.CompImageHDU(self.planes['bias'], name='bias'))
             hdulist.append(pyfits.CompImageHDU(self.planes['shotnoise'], name='shotnoise'))
+            hdulist.append(pyfits.CompImageHDU(self.planes['sky'], name='sky'))
             if realBias:
                 hdulist.append(pyfits.CompImageHDU(self.pixelImage, name='active'))
 
