@@ -1,5 +1,13 @@
 #!/bin/sh
 
+fibers=$1
+if [ -z "$fibers" ]; then
+    echo "Missing fiber specification: one, two, lam, odd, even, all"
+    exit 1
+fi
+
+set -e
+
 for detector in r1; do
     makeSim --detector $detector --field dark --exptime 0 --noSky --expId 0 --imagetyp BIAS
     makeSim --detector $detector --field dark --exptime 0 --noSky --expId 1 --imagetyp BIAS
@@ -21,17 +29,17 @@ for detector in r1; do
     makeSim --detector $detector --field dark --exptime 900 --noSky --expId 17 --imagetyp DARK
     makeSim --detector $detector --field dark --exptime 900 --noSky --expId 18 --imagetyp DARK
     makeSim --detector $detector --field dark --exptime 900 --noSky --expId 19 --imagetyp DARK
-    makeSim --detector $detector --field oneFlat --exptime 30 --noSky --expId 20 --imagetyp FLAT --xoffset 0
-    makeSim --detector $detector --field oneFlat --exptime 30 --noSky --expId 21 --imagetyp FLAT --xoffset 1000
-    makeSim --detector $detector --field oneFlat --exptime 30 --noSky --expId 22 --imagetyp FLAT --xoffset 2000
-    makeSim --detector $detector --field oneFlat --exptime 30 --noSky --expId 23 --imagetyp FLAT --xoffset 3000
-    makeSim --detector $detector --field oneFlat --exptime 30 --noSky --expId 24 --imagetyp FLAT --xoffset 4000
-    makeSim --detector $detector --field oneFlat --exptime 30 --noSky --expId 25 --imagetyp FLAT --xoffset 5000
-    makeSim --detector $detector --field oneFlat --exptime 30 --noSky --expId 26 --imagetyp FLAT --xoffset -1000
-    makeSim --detector $detector --field oneFlat --exptime 30 --noSky --expId 27 --imagetyp FLAT --xoffset -2000
-    makeSim --detector $detector --field oneFlat --exptime 30 --noSky --expId 28 --imagetyp FLAT --xoffset -3000
-    makeSim --detector $detector --field oneFlat --exptime 30 --noSky --expId 29 --imagetyp FLAT --xoffset -4000
-    makeSim --detector $detector --field oneFlat --exptime 30 --noSky --expId 30 --imagetyp FLAT --xoffset -5000
-    makeSim --detector $detector --field oneNe --exptime 1 --noSky --expId 31 --imagetyp ARC
-    makeSim --detector $detector --field oneObj --exptime 900 --expId 32 --imagetyp OBJECT --allOutputs
+    makeSim --detector $detector --field ${fibers}Flat --exptime 30 --noSky --expId 20 --imagetyp FLAT --xoffset 0
+    makeSim --detector $detector --field ${fibers}Flat --exptime 30 --noSky --expId 21 --imagetyp FLAT --xoffset 1000
+    makeSim --detector $detector --field ${fibers}Flat --exptime 30 --noSky --expId 22 --imagetyp FLAT --xoffset 2000
+    makeSim --detector $detector --field ${fibers}Flat --exptime 30 --noSky --expId 23 --imagetyp FLAT --xoffset 3000
+    makeSim --detector $detector --field ${fibers}Flat --exptime 30 --noSky --expId 24 --imagetyp FLAT --xoffset 4000
+    makeSim --detector $detector --field ${fibers}Flat --exptime 30 --noSky --expId 25 --imagetyp FLAT --xoffset 5000
+    makeSim --detector $detector --field ${fibers}Flat --exptime 30 --noSky --expId 26 --imagetyp FLAT --xoffset -1000
+    makeSim --detector $detector --field ${fibers}Flat --exptime 30 --noSky --expId 27 --imagetyp FLAT --xoffset -2000
+    makeSim --detector $detector --field ${fibers}Flat --exptime 30 --noSky --expId 28 --imagetyp FLAT --xoffset -3000
+    makeSim --detector $detector --field ${fibers}Flat --exptime 30 --noSky --expId 29 --imagetyp FLAT --xoffset -4000
+    makeSim --detector $detector --field ${fibers}Flat --exptime 30 --noSky --expId 30 --imagetyp FLAT --xoffset -5000
+    makeSim --detector $detector --field ${fibers}Ne --exptime 1 --noSky --expId 31 --imagetyp ARC
+    makeSim --detector $detector --field ${fibers}Obj --exptime 900 --expId 32 --imagetyp OBJECT --allOutputs
 done
