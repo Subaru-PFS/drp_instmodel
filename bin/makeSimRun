@@ -41,5 +41,6 @@ for detector in r1; do
     makeSim --detector $detector --field ${fibers}Flat --exptime 30 --noSky --expId 29 --imagetyp FLAT --xoffset -4000
     makeSim --detector $detector --field ${fibers}Flat --exptime 30 --noSky --expId 30 --imagetyp FLAT --xoffset -5000
     makeSim --detector $detector --field ${fibers}Ne --exptime 1 --noSky --expId 31 --imagetyp ARC
-    makeSim --detector $detector --field ${fibers}Obj --exptime 900 --expId 32 --imagetyp OBJECT --allOutputs
+    makeSim --detector $detector --field ${fibers}Obj --exptime 900 --expId 32 --imagetyp OBJECT
+    makeSim --detector $detector --field ${fibers}Obj --exptime 900 --expId 33 --imagetyp OBJECT
 done
