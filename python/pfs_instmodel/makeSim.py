@@ -89,7 +89,7 @@ s
 
     fibers = config.fiberId
     if addSky:
-        doSkyForFiber = [tt in set([TargetType.SCIENCE, TargetType.SKY, TargetType.FLUXSTD]) for
+        doSkyForFiber = [tt in set([TargetType.SCIENCE, TargetType.FLUXSTD]) for
                          tt in config.targetType]
     else:
         doSkyForFiber = np.zeros_like(fibers, dtype=bool)
