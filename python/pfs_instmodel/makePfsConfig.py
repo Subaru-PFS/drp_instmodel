@@ -286,6 +286,10 @@ def makeScienceConfig(pfiDesignId, expId, fiberIds,
 
     # Currently only have one type of spectrum (objId=0) for each kind of target, so makes this easy
     objIds = np.zeros_like(fiberIds, dtype=int)
+    if numScience > 0:
+        scienceIds = np.arange(numScience, dtype=int)
+        rng.shuffle(scienceIds)
+        objIds[targetTypes == TargetType.SCIENCE] = scienceIds
     catTranslation = {TargetType.SKY: CatalogId.SKY,
                       TargetType.FLUXSTD: CatalogId.FLUXSTD,
                       TargetType.BROKEN: CatalogId.NULL,
@@ -295,8 +299,7 @@ def makeScienceConfig(pfiDesignId, expId, fiberIds,
 
     noMagTypes = (TargetType.SKY, TargetType.BROKEN, TargetType.BLOCKED)
     filterNames = [["i"] if tt not in noMagTypes else [] for tt in targetTypes]
-    scienceMags = np.linspace(minScienceMag, maxScienceMag, numScience)
-    rng.shuffle(scienceMags)
+    scienceMags = 22.0*np.ones(numScience, dtype=float)
     mags = np.zeros_like(fiberIds, dtype=float)
     mags[targetTypes == TargetType.SCIENCE] = scienceMags
     mags[targetTypes == TargetType.FLUXSTD] = fluxStdMag
