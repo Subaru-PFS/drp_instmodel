@@ -432,7 +432,7 @@ class SplinedPsf(psf.Psf):
         pass
     
     def fiberImage(self, fiber, spectrum, waveRange=None,
-                   shiftPsfs=True, everyNth=None):
+                   shiftPsfs=True, everyNth=None, applyThroughput=True):
         """ Return an interpolated image of a fiber """
 
         # Evaluate at highest resolution
@@ -444,22 +444,37 @@ class SplinedPsf(psf.Psf):
         # Get the wavelengths for the fiber pixels.
         self.logger.debug("waves range: %s", waveRange)
 
-        if 'WTF_CPL_XXX':
-            isLinelist = hasattr(spectrum, 'linelist')
-        else:
-            isLinelist = isinstance(spectrum, LineSpectrum)
+        pixelRows, pixelWaves = self.wavesForRow(fiber, waveRange=waveRange,
+                                                 pixelScale=pixelScale)
+        lower = np.empty_like(pixelWaves)
+        upper = np.empty_like(pixelWaves)
+        middle = 0.5*(pixelWaves[:-1] + pixelWaves[1:])
+        # The bounds for most are easy
+        lower[1:] = middle
+        upper[:-1] = middle
+        # The ends have to be handled with a bit more care
+        lower[0] = pixelWaves[0] - 0.5*(pixelWaves[1] - pixelWaves[0])
+        upper[-1] = pixelWaves[-1] + 0.5*(pixelWaves[-1] - pixelWaves[-2])
 
-        if isLinelist:
-            waves, flux = spectrum.linelist(*waveRange)
-        else:
-            pixelRows, pixelWaves = self.wavesForRow(fiber, waveRange=waveRange,
-                                                     pixelScale=pixelScale)
-            self.logger.debug("allwaves: %s %d", pixelWaves.dtype, len(pixelWaves))
-            waves, flux = spectrum.flux(pixelWaves)
+        flux = spectrum.integrate(lower, upper)  # W/m^2
+        # Convert flux to photons
+        # E = n.h.nu = F.T.A
+        # n = F.T.A.lambda/h/c
+        #   = (F / W/m^2) . (T / sec) . (A / m^2) . 10^-9 . (lambda/nm) / 6.63e-34 J.s / 3e8 m/s
+        # aperture is 8.2m (effective; https://subarutelescope.org/Introduction/telescope.html)
+        # Integration time gets factored in elsewhere.
+        area = np.pi*(0.5*8.2)**2
+        planck = 6.63e-34  # J.s
+        speedOfLight = 3.0e8*1.0e9  # nm/s
+        flux *= area*pixelWaves/planck/speedOfLight
+
+        self.logger.info("Spectral min/max: %f %f", flux.min(), flux.max())
+
+        waves = pixelWaves  # Change name for historical reasons
 
         # This is temporary: the NIST line strengths were adjusted to match the observed
         # intensities. We need to correct the line list instead of doing that here. XXXCPL
-        if not isinstance(spectrum, ArcSpectrum):
+        if applyThroughput:
             self.logger.debug('applying throughput')
             tp = self.detector.throughput(waves)
             flux *= tp
@@ -491,9 +506,9 @@ class SplinedPsf(psf.Psf):
         chunkUp[chunkUp == psfToSpotPixRatio] = 0
         fiHeight += chunkUp[0] + psfToSpotPixRatio
         fiWidth += chunkUp[1] + psfToSpotPixRatio
-        self.logger.info("fiber %-3d   : %s(%s) %s %s -> %s %s" % (fiber, spectrum, isLinelist,
-                                                                   traceHeight, traceWidth,
-                                                                   fiHeight, fiWidth))
+        self.logger.info("fiber %-3d   : %s %s %s -> %s %s" % (fiber, spectrum,
+                                                               traceHeight, traceWidth,
+                                                               fiHeight, fiWidth))
 
         # mm
         fiberImageOffset = np.asarray((yCenters.min(), xCenters.min()))
@@ -537,6 +552,12 @@ class SplinedPsf(psf.Psf):
             xPixOffset = xc/pixelScale - fiberImagePixelOffset[1] - spotRad + psfToSpotPixRatio/2
             yPixOffset = yc/pixelScale - fiberImagePixelOffset[0] - spotRad + psfToSpotPixRatio/2
 
+            # XXX Shift the slit
+            # This assumes everything moves linearly, which isn't right, but we don't currently
+            # have an alternative.
+            xPixOffset += self.slitOffset[0]*psfToSpotPixRatio
+            yPixOffset += self.slitOffset[1]*psfToSpotPixRatio
+
             # Keep the shift to the smallest fraction possible, or rather keep the integer steps 
             # exact.
             inty = int(np.rint(yPixOffset))
@@ -548,13 +569,6 @@ class SplinedPsf(psf.Psf):
                 ymin = fracy
             elif fracy > ymax:
                 ymax = fracy
-
-            # Trouble if we shift continuum significantly in y.
-            if False and not isLinelist:
-                if abs(fracy) > 1e-5:
-                    self.logger.warn('%d: yc=%g yPixOffset=%g fracy=%g', i, yc, yPixOffset, fracy)
-                else:
-                    fracy = 0
 
             if shiftPsfs:
                 if True:
@@ -568,26 +582,11 @@ class SplinedPsf(psf.Psf):
                 _c0x, _c0y = spotgames.centroid(rawPsf)
                 dxc = _c0x - spotRad
                 dyc = _c0y - spotRad
-                if isLinelist:
-                    _c1x, _c1y = spotgames.centroid(shiftedPsf)
-                    self.logger.debug("%5d %6.1f   c0: %0.5f,%0.5f  cdiff: %0.5f,%0.5f"
-                                      "    diff: %0.5f,%0.5f   pix: %0.5f,%0.5f cnts: %0.4f,%0.4f,%d",
-                                      i, specWave,
-                                      _c0x-spotRad, _c0y-spotRad,
-                                      _c1x-spotRad+intx-xPixOffset, _c1y-spotRad+inty-yPixOffset,
-                                      _c1x-_c0x-fracx, _c1y-_c0y-fracy,
-                                      xc/pixelScale, yc/pixelScale,
-                                      rawPsf.sum(), shiftedPsf.sum(), np.sum(shiftedPsf<0))
-                    if np.sum(shiftedPsf < 0) > 0:
-                        self.logger.debug('%d low pixels, min=%g',
-                                          np.sum(shiftedPsf < 0),
-                                          np.min(shiftedPsf))
-
                 spot = specFlux * shiftedPsf
             else:
                 spot = specFlux * rawPsf
 
-            if (isLinelist or i % 1000 == 0 or i > len(waves)-2):
+            if (i % 1000 == 0 or i > len(waves)-2):
                 self.logger.debug("%5d %6.1f (%3.3f, %3.3f) (%0.2f %0.2f) %0.2f %0.2f %0.2f",
                                   i, specWave,
                                   xc/pixelScale, yc/pixelScale, 
@@ -600,17 +599,27 @@ class SplinedPsf(psf.Psf):
 
         return fiberImage, outImgOffset, psfToSpotPixRatio, geometry
 
-    def addOversampledImage(self, inImg, outExp, outOffset, outScale):
+    def addOversampledImage(self, inImg, outExp, outOffset, outScale, skyImage, skyOffset):
         """ Add the outScale-oversampled inImg to outImg at the given offset. 
         """
 
         resampled = spotgames.rebinBy(inImg, outScale)
         parentIdx, childIdx = self.trimRect(outExp, resampled, outOffset)
+
         try:
-            outExp.addFlux(resampled[childIdx], outSlice=parentIdx, addNoise=True)
+            outExp.addFlux(resampled[childIdx], outSlice=parentIdx)
         except Exception as e:
             self.logger.warn("failed to place child at %s, slices=%s,%s): %s" %
                              (outOffset, childIdx, parentIdx, e))
+
+        if skyImage is not None and skyOffset is not None:
+            skyResampled = spotgames.rebinBy(skyImage, outScale)
+            skyParent, skyChild = self.trimRect(outExp, skyResampled, skyOffset)
+            try:
+                outExp.addSky(skyResampled[skyChild], outSlice=skyParent)
+            except Exception as e:
+                self.logger.warn("failed to place sky child at %s, slices=%s,%s): %s" %
+                                 (skyOffset, skyChild, skyParent, e))
 
         return resampled
     

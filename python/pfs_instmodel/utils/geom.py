@@ -31,8 +31,8 @@ class Exposure(object):
                 self.header = self.header.copy()
         elif isinstance(obj, basestring):
             ffile = pyfits.open(obj)
-            self.image = ffile[0].data
-            self.header = ffile[0].header
+            self.image = ffile[1].data
+            self.header = ffile[1].header
             self.deduceGeometry(simpleGeometry)
             self.image = self.fixEdgeColsBug(self.image)
 
@@ -92,14 +92,14 @@ class Exposure(object):
 
     def parseHeader(self):
         try:
-            self.namps = self.header['geom.namps']
+            self.namps = self.header['geom.namps'.upper()]
             self.nccds = self.namps//2
             
-            self.leadinRows = self.header['geom.rows.leadin']
-            self.overRows = self.header['geom.rows.overscan']
-            self.leadinCols = self.header['geom.cols.leadin'] 
-            self.overCols = self.header['geom.cols.overscan']
-            self.readDirection = self.header['geom.readDirection']
+            self.leadinRows = self.header['geom.rows.leadin'.upper()]
+            self.overRows = self.header['geom.rows.overscan'.upper()]
+            self.leadinCols = self.header['geom.cols.leadin'.upper()]
+            self.overCols = self.header['geom.cols.overscan'.upper()]
+            self.readDirection = self.header['geom.readDirection'.upper()]
 
             self.ccdRows = self.image.shape[0] - self.overRows
             self.ampCols = self.image.shape[1]//self.namps - self.overCols

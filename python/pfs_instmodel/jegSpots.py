@@ -175,8 +175,8 @@ def _readSpotHDUs(hdus):
     pass
 
 def _readOneSpotHDU(hdu, focus, doSwapAxes=True):
-    rawspot = hdu.read()
-    header = hdu.read_header()
+    rawspot = hdu.data
+    header = hdu.header
 
     xc = header['XBAR']
     yc = header['YBAR']
@@ -190,10 +190,8 @@ def _readOneSpotHDU(hdu, focus, doSwapAxes=True):
             rawspot, rawspot, (0.0,0.0), header['RPFI']), header
 
 def _readFitsFile(pathSpec, doNorm=True):
-    import fitsio
-
-    spotFile = fitsio.FITS(pathSpec, mode='r')
-    hdu0 = spotFile[0].read_header()
+    spotFile = fits.open(pathSpec)
+    hdu0 = spotFile[0].header
 
     """
     HEADVERS=                    1
@@ -222,17 +220,9 @@ def _readFitsFile(pathSpec, doNorm=True):
     HEXPTS  =                  469
     """
 
-    if "needVignettingHACK": # CPLXXX
-        dataRoot = os.environ.get('DRP_INSTDATA_DIR', '.')
-        vigFile = os.path.join(dataRoot, 'data', 'sky', 'vignetting.dat')
-
-        a = np.genfromtxt(vigFile, comments='\\')
-        vignettingSpline = scipy.interpolate.PchipInterpolator(a[:,0], a[:,1])
-
-
     headerDict = OrderedDict()
-    for card in hdu0.records():
-        headerDict[card['name']] = card['value']
+    for name in hdu0:
+        headerDict[name] = hdu0[name]
 
     headerDict['DATA_VERSION'] = 100 + headerDict['HEADVERS']
     headerDict['FILENAME'] = pathSpec
@@ -247,19 +237,6 @@ def _readFitsFile(pathSpec, doNorm=True):
     vigLambda = None
     for i in range(1, nspots+1):
         spotParts, header = _readOneSpotHDU(spotFile[i], headerDict['FOCUS'])
-        if "needVignettingHACK": # CPLXXX
-            vignettingFactor = vignettingSpline(header['SUBYIN'])
-            spotParts = list(spotParts)
-            spotParts[7] *= vignettingFactor
-            spotParts = tuple(spotParts)
-            if vigLambda is None:
-                vigLambda = header['LAMBDA']
-            if vigLambda == header['LAMBDA']:
-                jegLogger.debug('spot %d/%f @ %g: vignetting %g' % (header['FIBER'],
-                                                                    header['LAMBDA'],
-                                                                    header['SUBYIN'],
-                                                                    vignettingFactor))
-
         allSpots.append(spotParts)
         allHeaders.append(header)
         jegLogger.debug("HDU %-3d: %d %f", i, header['FIBER'], header['LAMBDA'])

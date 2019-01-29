@@ -51,7 +51,7 @@ class SimImage(object):
     def image(self):
         return self.exposure.image
 
-    def addFibers(self, fibers, spectra, waveRange=None,
+    def addFibers(self, fibers, spectra, doSkyForFiber, skySpectrum, waveRange=None,
                   shiftPsfs=True):
         """ Add images of the given fibers. 
 
@@ -80,16 +80,24 @@ class SimImage(object):
           * 
         """
 
-        for i, fiber in enumerate(fibers):
+        for i, (fiber, doSky) in enumerate(zip(fibers, doSkyForFiber)):
             parts = self.psf.fiberImage(fiber, spectra[i],
                                         waveRange=waveRange,
                                         shiftPsfs=shiftPsfs)
 
             fiberImage, outImgOffset, psfToSpotPixRatio, geometry = parts
 
+            skyImage = None
+            skyOffset = None
+            if doSky:
+                skyParts = self.psf.fiberImage(fiber, skySpectrum, waveRange=waveRange, shiftPsfs=shiftPsfs)
+                skyImage = skyParts[0]
+                skyOffset = skyParts[1]
+
             # transfer flux from oversampled fiber image to final resolution output image
-            resampledFiber = self.psf.addOversampledImage(fiberImage, self.exposure,
-                                                          outImgOffset, psfToSpotPixRatio)
+            self.psf.addOversampledImage(fiberImage, self.exposure,
+                                         outImgOffset, psfToSpotPixRatio,
+                                         skyImage, skyOffset)
 
             self.fibers[fiber] = dict(spectrum=spectra[i],
                                       geometry=geometry)
@@ -105,60 +113,16 @@ class SimImage(object):
         waveArr = numpy.zeros((nFibers, self.detector.config['ccdSize'][0]), dtype='f4')
         waveArr[:] = numpy.nan
         for i in range(nFibers):
-            rows, waves = self.psf.wavesForRows([f_i[i]])
-            waveArr[i][rows] = waves[0]
+            rows, waves = self.psf.wavesForRow([f_i[i]])
+            select = (rows >= 0) & (rows < self.detector.config['ccdSize'][0])
+            waveArr[i] = waves[select]
 
         return waveArr
-
-    def lineGeometry(self):
-        """ Return a recarray describing all the lines in the spectra with line lists. """
-        
-        combFibers = set()
-        for f in self.fibers:
-            if self.fibers[f]['spectrum'].__class__.__name__ == 'CombSpectrum':
-                combFibers.add(f)
-
-        nFibers = len(combFibers)
-        fiberIds = sorted(combFibers)
-
-        geomType = numpy.dtype([('fiberId','i2'),
-                                ('xc','f8'), ('yc','f8'),
-                                ('dxc','f4'), ('dyc','f4'),
-                                ('wavelength', 'f8'),
-                                ('flux', 'f4')])
-        npoints = 0
-        for f in fiberIds:
-            g = self.fibers[f]['geometry']
-            f_npoints = numpy.sum(g['flux'] > 0)
-            npoints += f_npoints
-
-        geomArr = numpy.zeros(npoints, dtype=geomType)
-        geomDone = 0
-        for i, f_i in enumerate(fiberIds):
-            fiberGeom = self.fibers[f_i]['geometry']
-            hasFlux = fiberGeom['flux'] > 0
-            geomLen = numpy.sum(hasFlux)
-
-            g_i = slice(geomDone, geomDone+geomLen)
-            geomArr[g_i]['fiberId'] = f_i
-            geomArr[g_i]['xc'] = fiberGeom['xc'][hasFlux] / self.detector.config['pixelScale']
-            geomArr[g_i]['yc'] = fiberGeom['yc'][hasFlux] / self.detector.config['pixelScale']
-            geomArr[g_i]['dxc'] = fiberGeom['dxc'][hasFlux]
-            geomArr[g_i]['dyc'] = fiberGeom['dyc'][hasFlux]
-            geomArr[g_i]['wavelength'] = fiberGeom['wavelength'][hasFlux]
-            geomArr[g_i]['flux'] = fiberGeom['flux'][hasFlux]
-
-            geomDone += geomLen
-                
-        return geomArr
         
     def writeTo(self, outputFile=None, addNoise=True,
-                exptime=1.0,
+                exptime=1.0, pfiDesignId=0x0,
                 compress='RICE', allOutput=False,
                 imagetyp=None, realBias=None, realFlat=None):
-        import fitsio
-
-        # import pyfits
         
         if outputFile is None:
             from .utils import SeqPath
@@ -178,15 +142,8 @@ class SimImage(object):
         addCards = self.psf.getCards()
         
         self.exposure.writeto(outputFile, addNoise=addNoise,
-                              exptime=exptime,
+                              exptime=exptime, pfiDesignId=pfiDesignId,
                               realBias=realBias, realFlat=realFlat,
                               imagetyp=imagetyp,
                               addCards=addCards,
                               compress=compress, allOutput=allOutput)
-
-        if allOutput:
-            waveImage = self.waveImage()
-            fitsio.write(outputFile, waveImage, extname='wavelengths', compress='RICE')
-
-            lineGeometry = self.lineGeometry()
-            fitsio.write(outputFile, lineGeometry, extname='lines')

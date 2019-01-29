@@ -5,6 +5,7 @@ import scipy.ndimage
 import scipy.signal
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
+import functools
 
 import astropy.io.fits as pyfits
 
@@ -198,6 +199,7 @@ def distmap(arr, x0=None, y0=None):
 
     return dmap
     
+@functools.lru_cache(20000)
 def genLagrangeCoeffs(xshift, order=4):
     """ Return Lagrange coefficients for the #order points centered on the requested shift. 
 
@@ -255,7 +257,7 @@ def genLagrangeCoeffs(xshift, order=4):
 
     return outSlice, xSlices, coeffs
 
-def shiftSpotLagrange(img, dx, dy, order=4, kargs=None):
+def shiftSpotLagrange(img, dx, dy, order=4, kargs=None, precision=100):
     """ Shift a spot using order=4 Lagrange interpolation.
 
     Args
@@ -268,6 +270,9 @@ def shiftSpotLagrange(img, dx, dy, order=4, kargs=None):
       The Lagrange polynomial order. 4 gives two input points on each side.
     kargs : dict
       Unused, declared to be compatible with other shift functions.
+    precision : int
+      Inverse precision to allow for dx,dy; lower values provide more
+      cache hits.
 
     Returns
     -------
@@ -288,19 +293,17 @@ def shiftSpotLagrange(img, dx, dy, order=4, kargs=None):
     Hence the eval string.
     """
 
+    dx = int(dx*precision + 0.5)/precision
+    dy = int(dy*precision + 0.5)/precision
+
     if abs(dx) < 1e-6:
         outImg1 = img
     else:
         outSlice, xSlices, coeffs = genLagrangeCoeffs(dx)
 
         outImg1 = np.zeros(shape=img.shape, dtype=img.dtype)
-
-        evalList = ['(']
-        for o in range(order):
-            evalList.append("coeffs[%d]*img[:,xSlices[%d]]%s" %
-                            (o, o, ")" if o == order-1 else " + "))
-        evalStr = ''.join(evalList)
-        outImg1[:,outSlice] = eval(evalStr)
+        for ii in range(order):
+            outImg1[:, outSlice] += coeffs[ii]*img[:, xSlices[ii]]
 
     if abs(dy) < 1e-6:
         outImg = outImg1
@@ -308,13 +311,8 @@ def shiftSpotLagrange(img, dx, dy, order=4, kargs=None):
         outSlice, ySlices, coeffs = genLagrangeCoeffs(dy)
 
         outImg = np.zeros(shape=img.shape, dtype=img.dtype)
-
-        evalList = ["("]
-        for o in range(order):
-            evalList.append("coeffs[%d]*outImg1[ySlices[%d],:]%s" %
-                            (o, o, ")" if o == order-1 else " + "))
-        evalStr = ''.join(evalList)
-        outImg[outSlice,:] = eval(evalStr)
+        for ii in range(order):
+            outImg[outSlice, :] += coeffs[ii]*outImg1[ySlices[ii], :]
 
     return outImg, None
 

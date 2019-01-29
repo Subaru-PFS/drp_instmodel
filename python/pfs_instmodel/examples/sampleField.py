@@ -1,162 +1,77 @@
-import numpy as np
-from pfs_instmodel.schema.probes import PROBE
+from pfs_instmodel.slit import Slit
+from pfs_instmodel.utils.generators import keepOdd, keepEven
+from pfs_instmodel.makePfsConfig import (makeArcConfig, makeFlatConfig, makeCombConfig, makeScienceConfig,
+                                         makeConstantConfig, Lamps)
 
-def keepNth(input, N):
-    for i in input:
-        if i%N == 0:
-            yield i
+# Fiber identifiers for different slit configurations
+singleFiber = [315]
+doubleFiber = [311, 315]
+lamFibers = [2, 65, 191, 254, 315, 337, 400, 463, 589, 650]
+allFibers = Slit(1).scienceFibers
+oddFibers = [ii for ii in keepOdd(allFibers)]
+evenFibers = [ii for ii in keepEven(allFibers)]
 
-def keepOdd(input):
-    for i in input:
-        if i%2 == 1:
-            yield i
+dark = makeConstantConfig(0, 0, singleFiber, 0.0)
 
-def keepEven(input):
-    for i in input:
-        if i%2 == 0:
-            yield i
+# Configurations with a single fiber
+oneArc = makeArcConfig(0, 0, Lamps.NE | Lamps.HG | Lamps.XE, singleFiber)
+oneNe = makeArcConfig(0, 0, Lamps.NE, singleFiber)
+oneHg = makeArcConfig(0, 0, Lamps.HG, singleFiber)
+oneFlat = makeFlatConfig(0, 0, singleFiber)
+oneComb = makeCombConfig(0, 0, singleFiber, 5)
+oneConst = makeConstantConfig(0, 0, singleFiber, 1.0e4)
+oneSky = makeScienceConfig(0, 0, singleFiber, fracSky=1.0, fracFluxStd=0)
+oneObj = makeScienceConfig(0, 0, singleFiber, fracSky=0.0, fracFluxStd=0.0,
+                           minScienceMag=18.0, maxScienceMag=18.0)
 
-class Fiber(object):
-    SCIENCE = 1
-    ENGINEERING = 2
-    BLANK = 3
+# Configurations with two fibers
+twoArc = makeArcConfig(0, 0, Lamps.NE | Lamps.HG | Lamps.XE, doubleFiber)
+twoNe = makeArcConfig(0, 0, Lamps.NE, doubleFiber)
+twoHg = makeArcConfig(0, 0, Lamps.HG, doubleFiber)
+twoFlat = makeFlatConfig(0, 0, doubleFiber)
+twoComb = makeCombConfig(0, 0, doubleFiber, 5)
+twoConst = makeConstantConfig(0, 0, doubleFiber, 1.0e4)
+twoSky = makeScienceConfig(0, 0, doubleFiber, fracSky=1.0, fracFluxStd=0)
+twoObj = makeScienceConfig(0, 0, doubleFiber, fracSky=0.5, fracFluxStd=0.0,
+                           minScienceMag=18.0, maxScienceMag=18.0)
 
-class Slit(object):
-    """  A temporary definition of a slit. To be replaced by a method in pfs_utils/fiberIds.
+# Configurations with the LAM slit
+lamArc = makeArcConfig(0, 0, Lamps.NE | Lamps.HG | Lamps.XE, lamFibers)
+lamNe = makeArcConfig(0, 0, Lamps.NE, lamFibers)
+lamHg = makeArcConfig(0, 0, Lamps.HG, lamFibers)
+lamFlat = makeFlatConfig(0, 0, lamFibers)
+lamComb = makeCombConfig(0, 0, lamFibers, 5)
+lamConst = makeConstantConfig(0, 0, lamFibers, 1.0e4)
+lamSky = makeScienceConfig(0, 0, lamFibers, fracSky=1.0, fracFluxStd=0)
+lamObj = makeScienceConfig(0, 0, lamFibers, fracSky=0.1, fracFluxStd=0.1,
+                           minScienceMag=18.0, maxScienceMag=22.0)
 
-    That said, this structure clarifies some of logic of the slit layout.
-    """
+# Configurations with all fibers
+allArc = makeArcConfig(0, 0, Lamps.NE | Lamps.HG | Lamps.XE, allFibers)
+allNe = makeArcConfig(0, 0, Lamps.NE, allFibers)
+allHg = makeArcConfig(0, 0, Lamps.HG, allFibers)
+allFlat = makeFlatConfig(0, 0, allFibers)
+allComb = makeCombConfig(0, 0, allFibers, 5)
+allConst = makeConstantConfig(0, 0, allFibers, 1.0e4)
+allSky = makeScienceConfig(0, 0, allFibers, fracSky=1.0, fracFluxStd=0)
+allObj = makeScienceConfig(0, 0, allFibers)
 
-    block1 = ([Fiber.ENGINEERING] +
-              42 * [Fiber.SCIENCE] +
-              [Fiber.BLANK])
-    block2 = ([Fiber.ENGINEERING] +
-              45 * [Fiber.SCIENCE] +
-              [Fiber.BLANK])
-    block3 = ([Fiber.ENGINEERING] +
-              [Fiber.BLANK] +
-              42 * [Fiber.SCIENCE] +
-              [Fiber.BLANK])
-    block4 = ([Fiber.ENGINEERING] +
-              42 * [Fiber.SCIENCE] +
-              [Fiber.ENGINEERING])
-    block5 = ([Fiber.ENGINEERING] +
-              45 * [Fiber.SCIENCE] +
-              [Fiber.ENGINEERING])
-    gap = 19*[Fiber.BLANK]
+# Configurations with odd fibers only
+oddArc = makeArcConfig(0, 0, Lamps.NE | Lamps.HG | Lamps.XE, oddFibers)
+oddNe = makeArcConfig(0, 0, Lamps.NE, oddFibers)
+oddHg = makeArcConfig(0, 0, Lamps.HG, oddFibers)
+oddFlat = makeFlatConfig(0, 0, oddFibers)
+oddComb = makeCombConfig(0, 0, oddFibers, 5)
+oddConst = makeConstantConfig(0, 0, oddFibers, 1.0e4)
+oddSky = makeScienceConfig(0, 0, oddFibers, fracSky=1.0, fracFluxStd=0)
+oddObj = makeScienceConfig(0, 0, oddFibers)
 
-    slit1 = (block1 +
-             block2 +
-             block3 +
-             block2 +
-             block3 +
-             block1 +
-             block4 +
-             gap +
-             block5 +
-             block1[::-1] +
-             block3[::-1] +
-             block1[::-1] +
-             block3[::-1] +
-             block2[::-1] +
-             block1[::-1])
-
-    # The second slit type is identical to the first but with
-    # three blanked-off science fibers.
-    slit2 = list(slit1)
-    for f in (280, 309, 359):
-        slit2[f-1] = Fiber.BLANK
-    slit2 = tuple(slit2)
-
-    slits = slit1, slit1, slit2, slit2
-
-    def __init__(self, slitId):
-        self.fiber0 = 1
-        scienceFibers = []
-        engineeringFibers = []
-
-        for i, fiberType in enumerate(self.slits[slitId]):
-            if fiberType is Fiber.SCIENCE:
-                scienceFibers.append(i)
-            elif fiberType is Fiber.ENGINEERING:
-                engineeringFibers.append(i)
-
-        self._scienceFibers = np.array(scienceFibers, dtype='i4')
-
-    @property
-    def scienceFibers(self):
-        return self._scienceFibers + self.fiber0
-    
-    def scienceFiberToSlitPos(self, scienceFiberNum):
-        """ Return the slit position for the given science fiber.
-        
-        This is only used for the engineering slits as LAM, which were 
-        sent defined in terms of the science fibers.
-        """
-
-        if scienceFiberNum < 0:
-            indexNum = scienceFiberNum + 300
-        else:
-            indexNum = scienceFiberNum + 299
-            
-        return self.scienceFibers[indexNum]
-
-Sm1Slit = Slit(1).scienceFibers
-
-# The illuminated fibers on LAM slit #1
-LamSlit1 = [2, 65, 191, 254, 315, 337, 400, 463, 589, 650]
-
-Lam1Flat = [PROBE(i,0.0,1.0,100.0,200.0,'SIMFLAT', ()) for i in LamSlit1]
-Lam1Arcs = [PROBE(i,0.0,1.0,100.0,200.0,'SIMARC', ()) for i in LamSlit1]
-Lam1Comb = [PROBE(i,0.0,1.0,100.0,200.0,'SIMCOMB', ()) for i in LamSlit1]
-Lam1Slope = [PROBE(i,0.0,1.0,100.0,200.0,'SIMSLOPE', ()) for i in LamSlit1]
-Lam1CdArcs = [PROBE(i,0.0,1.0,100.0,200.0,'SIMARC', ('CdI',)) for i in LamSlit1]
-Lam1HgArcs = [PROBE(i,0.0,1.0,100.0,200.0,'SIMARC', ('HgI',)) for i in LamSlit1]
-Lam1NeArcs = [PROBE(i,0.0,1.0,100.0,200.0,'SIMARC', ('NeI',)) for i in LamSlit1]
-Lam1XeArcs = [PROBE(i,0.0,1.0,100.0,200.0,'SIMARC', ('XeI',)) for i in LamSlit1]
-Lam1KrArcs = [PROBE(i,0.0,1.0,100.0,200.0,'SIMARC', ('KrI',)) for i in LamSlit1]
-Lam1Sky = [PROBE(i,0.0,1.0,100.0,200.0,'SKY', ()) for i in LamSlit1]
-
-Sm1Flat = [PROBE(i,0.0,1.0,100.0,200.0,'SIMFLAT', ()) for i in Sm1Slit]
-Sm1Arcs = [PROBE(i,0.0,1.0,100.0,200.0,'SIMARC', ()) for i in Sm1Slit]
-Sm1Comb = [PROBE(i,0.0,1.0,100.0,200.0,'SIMCOMB', ()) for i in Sm1Slit]
-Sm1Slope = [PROBE(i,0.0,1.0,100.0,200.0,'SIMSLOPE', ()) for i in Sm1Slit]
-Sm1CdArcs = [PROBE(i,0.0,1.0,100.0,200.0,'SIMARC', ('CdI',)) for i in Sm1Slit]
-Sm1HgArcs = [PROBE(i,0.0,1.0,100.0,200.0,'SIMARC', ('HgI',)) for i in Sm1Slit]
-Sm1NeArcs = [PROBE(i,0.0,1.0,100.0,200.0,'SIMARC', ('NeI',)) for i in Sm1Slit]
-Sm1XeArcs = [PROBE(i,0.0,1.0,100.0,200.0,'SIMARC', ('XeI',)) for i in Sm1Slit]
-Sm1KrArcs = [PROBE(i,0.0,1.0,100.0,200.0,'SIMARC', ('KrI',)) for i in Sm1Slit]
-Sm1Sky = [PROBE(i,0.0,1.0,100.0,200.0,'SKY', ()) for i in Sm1Slit]
-
-bundledField = Sm1Slit
-
-combFieldEven = [PROBE(i,0.0,1.0,100.0,200.0,'SIMCOMB', ()) for i in keepEven(bundledField)]
-arcFieldEven = [PROBE(i,0.0,1.0,100.0,200.0,'SIMARC', ()) for i in keepEven(bundledField)]
-neArcsEven = [PROBE(i,0.0,1.0,100.0,200.0,'SIMARC', ('NeI',)) for i in keepEven(bundledField)]
-flatFieldEven = [PROBE(i,0.0,1.0,100.0,200.0,'SIMFLAT', ()) for i in keepEven(bundledField)]
-skyFieldEven =  [PROBE(i,0.0,1.0,100.0,200.0,'SKY', ()) for i in keepEven(bundledField)]
-
-combFieldOdd = [PROBE(i,0.0,1.0,100.0,200.0,'SIMCOMB', ()) for i in keepOdd(bundledField)]
-arcFieldOdd = [PROBE(i,0.0,1.0,100.0,200.0,'SIMARC', ()) for i in keepOdd(bundledField)]
-neArcsOdd = [PROBE(i,0.0,1.0,100.0,200.0,'SIMARC', ('NeI',)) for i in keepOdd(bundledField)]
-flatFieldOdd = [PROBE(i,0.0,1.0,100.0,200.0,'SIMFLAT', ()) for i in keepOdd(bundledField)]
-skyFieldOdd =  [PROBE(i,0.0,1.0,100.0,200.0,'SKY', ()) for i in keepOdd(bundledField)]
-
-combFieldx10 = [PROBE(i,0.0,1.0,100.0,200.0,'SIMCOMB', ()) for i in keepNth(bundledField, 10)]
-arcFieldx10 = [PROBE(i,0.0,1.0,100.0,200.0,'SIMARC', ()) for i in keepNth(bundledField, 10)]
-flatFieldx10 = [PROBE(i,0.0,1.0,100.0,200.0,'SIMFLAT', ()) for i in keepNth(bundledField, 10)]
-skyFieldx10 =  [PROBE(i,0.0,1.0,100.0,200.0,'SKY', ()) for i in keepNth(bundledField, 10)]
-
-combFieldx40 = [PROBE(i,0.0,1.0,100.0,200.0,'SIMCOMB', ()) for i in keepNth(bundledField, 40)]
-arcFieldx40 = [PROBE(i,0.0,1.0,100.0,200.0,'SIMARC', ()) for i in keepNth(bundledField, 40)]
-flatFieldx40 = [PROBE(i,0.0,1.0,100.0,200.0,'SIMFLAT', ()) for i in keepNth(bundledField, 40)]
-skyFieldx40 =  [PROBE(i,0.0,1.0,100.0,200.0,'SKY', ()) for i in keepNth(bundledField, 40)]
-
-oneArc = (PROBE(315,0.0,1.0,100.0,200.0,'SIMARC', ()),)
-oneNe = (PROBE(315,0.0,1.0,100.0,200.0,'SIMARC', ('NeI',)),)
-oneHg = (PROBE(315,0.0,1.0,100.0,200.0,'SIMARC', ('HgI',)),)
-oneFlat = (PROBE(315,0.0,1.0,100.0,200.0,'SIMFLAT', ()),)
-oneSlope = (PROBE(315,0.0,1.0,100.0,200.0,'SIMSLOPE', ()),)
-oneSky = (PROBE(315,0.0,1.0,100.0,200.0,'SKY', ()),)
-
-empty = []
+# Configurations with even fibers only
+evenArc = makeArcConfig(0, 0, Lamps.NE | Lamps.HG | Lamps.XE, evenFibers)
+evenNe = makeArcConfig(0, 0, Lamps.NE, evenFibers)
+evenHg = makeArcConfig(0, 0, Lamps.HG, evenFibers)
+evenFlat = makeFlatConfig(0, 0, evenFibers)
+evenComb = makeCombConfig(0, 0, evenFibers, 5)
+evenConst = makeConstantConfig(0, 0, evenFibers, 1.0e4)
+evenSky = makeScienceConfig(0, 0, evenFibers, fracSky=1.0, fracFluxStd=0)
+evenObj = makeScienceConfig(0, 0, evenFibers)
