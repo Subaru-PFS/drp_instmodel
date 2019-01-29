@@ -175,8 +175,8 @@ def _readSpotHDUs(hdus):
     pass
 
 def _readOneSpotHDU(hdu, focus, doSwapAxes=True):
-    rawspot = hdu.read()
-    header = hdu.read_header()
+    rawspot = hdu.data
+    header = hdu.header
 
     xc = header['XBAR']
     yc = header['YBAR']
@@ -190,10 +190,8 @@ def _readOneSpotHDU(hdu, focus, doSwapAxes=True):
             rawspot, rawspot, (0.0,0.0), header['RPFI']), header
 
 def _readFitsFile(pathSpec, doNorm=True):
-    import fitsio
-
-    spotFile = fitsio.FITS(pathSpec, mode='r')
-    hdu0 = spotFile[0].read_header()
+    spotFile = fits.open(pathSpec)
+    hdu0 = spotFile[0].header
 
     """
     HEADVERS=                    1
@@ -223,8 +221,8 @@ def _readFitsFile(pathSpec, doNorm=True):
     """
 
     headerDict = OrderedDict()
-    for card in hdu0.records():
-        headerDict[card['name']] = card['value']
+    for name in hdu0:
+        headerDict[name] = hdu0[name]
 
     headerDict['DATA_VERSION'] = 100 + headerDict['HEADVERS']
     headerDict['FILENAME'] = pathSpec
