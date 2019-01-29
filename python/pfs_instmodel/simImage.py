@@ -114,7 +114,8 @@ class SimImage(object):
         waveArr[:] = numpy.nan
         for i in range(nFibers):
             rows, waves = self.psf.wavesForRow([f_i[i]])
-            waveArr[i][rows] = waves[0]
+            select = (rows >= 0) & (rows < self.detector.config['ccdSize'][0])
+            waveArr[i] = waves[select]
 
         return waveArr
         
