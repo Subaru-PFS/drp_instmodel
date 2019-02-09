@@ -957,7 +957,7 @@ class SplinedPsf(psf.Psf):
         """
         import lsst.afw.geom as afwGeom
         import lsst.daf.base as dafBase
-        import pfs.drp.stella.utils as drpUtils
+        import pfs.drp.stella as drpStella
 
         pixelScale = self.detector.config['pixelScale']
         ccdSize = self.detector.config['ccdSize']
@@ -971,21 +971,17 @@ class SplinedPsf(psf.Psf):
 
         lam0 = self.spotsInfo['LAM0']
         dlam = self.spotsInfo['LAMINC']
-        lams = np.linspace(lam0, lam0+(nKnots-1)*dlam, nKnots)
+        lams = np.linspace(lam0, lam0+(nKnots-1)*dlam, nKnots, dtype=np.float32)
 
-        dmapIO = drpUtils.detectorMap.DetectorMapIO(bbox, fiberIds.astype('i4'), nKnots)
-
-        allCoeffs = []
         allYKnots = []
-        allXKnots = []
+        allXCenters = []
         for holeId in fiberIds:
             coeffs = self.getCoeffs(holeId)
 
             yKnot = self._focalPlaneYToDetectorY(coeffs.ycCoeffs.get_coeffs(), correctToLL=True) / pixelScale
             xc = self._focalPlaneXToDetectorX(coeffs.xcCoeffs.get_coeffs(), correctToLL=True) / pixelScale
-            allCoeffs.append(coeffs)
-            allYKnots.append(yKnot)
-            allXKnots.append(xc)
+            allYKnots.append(yKnot.astype(np.float32))
+            allXCenters.append(xc.astype(np.float32))
 
             assert len(lams) == len(yKnot)
             assert len(lams) == len(xc)
@@ -993,8 +989,9 @@ class SplinedPsf(psf.Psf):
             midY = len(lams)//2
             self.logger.info("hole %d: xcKnot, xc, wl: %s %s %s" % (holeId,
                                                                     yKnot[midY], xc[midY], lams[midY]))
-            dmapIO.setXCenter(holeId, yKnot, xc)
-            dmapIO.setWavelength(holeId, yKnot, lams)
+
+        detMap = drpStella.DetectorMap(bbox, fiberIds.astype('i4'), allYKnots, allXCenters,
+                                       allYKnots, [lams]*len(fiberIds))
 
         if obsdate is None:
             now = time.gmtime()
@@ -1006,12 +1003,11 @@ class SplinedPsf(psf.Psf):
 
         obsdate = time.strftime('%Y-%m-%dT%H:%M:%S', now)
         calibDate = time.strftime('%Y-%m-%d', now)
-        metadata = dafBase.PropertyList()
+        metadata = detMap.getMetadata()
         metadata.addString('DATE-OBS', obsdate)
-        metadata.addString('CALIB_ID', 'arm="%s" spectrograph=%d filter=NONE calibDate=%s' %
+        metadata.addString('CALIB_ID', 'arm="%s" spectrograph=%d filter=NONE calibDate=%s visit0=0' %
                            (self.detector.arm, self.detector.spectrograph, calibDate))
 
-        dmap = dmapIO.getDetectorMap()
-        drpUtils.writeDetectorMap(dmap, fname, metadata=metadata)
+        detMap.writeFits(fname)
 
-        return dmap, fiberIds, allCoeffs, allYKnots, allXKnots
+        return detMap, fiberIds, allYKnots, allXCenters
