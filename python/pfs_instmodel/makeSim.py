@@ -235,6 +235,7 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
     parser.add_argument('--compress', action='store', default=None,
                         help='fitsio FITS compression type. e.g. RICE')
     parser.add_argument('--pdb', default=False, action='store_true', help="Launch pdb on exception?")
+    parser.add_argument('--detectorMap', help="Name for detectorMap file")
 
     parser.add_argument('--ds9', action='store_true', default=False)
 
@@ -279,6 +280,8 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
                           realBias=args.realBias, realFlat=args.realFlat,
                           imagetyp=args.imagetyp)
         sim.config.write()
+        if args.detectorMap:
+            sim.image.psf.makeDetectorMap(args.detectorMap)
 
     if args.ds9:
         displayImage(sim.image)
