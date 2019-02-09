@@ -133,8 +133,8 @@ class SimImage(object):
                                                     filePattern="%s%s.fits" % (baseTemplate,
                                                                                self.detector.detectorName))
             outputFile = self.fileMgr.getNextFileset()[0]
-            if realBias is True:
-                realBias = int(outputFile[-8])
+        if realBias is True:
+            realBias = int(outputFile[-8])
 
         print("output to %s, addNoise=%s, realBias=%s" %
               (outputFile, addNoise, realBias))
