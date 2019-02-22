@@ -518,6 +518,14 @@ class SplinedPsf(psf.Psf):
         expandDown = fiberImagePixelOffset%psfToSpotPixRatio
         fiberImagePixelOffset -= expandDown
         
+        if True:
+            from types import SimpleNamespace
+            with open("fiber-%d.pickle" % (fiber,), "wb") as ff:
+                pickle.dump(SimpleNamespace(row=pixelRows/psfToSpotPixRatio,
+                                            center=xCenters/pixelScale/psfToSpotPixRatio,
+                                            wavelength=pixelWaves),
+                            ff)
+
         # pixels
         outImgOffset = fiberImagePixelOffset // psfToSpotPixRatio
         self.logger.debug("fiber offset: pix=%s base=%s, mm=%s out=%s" % (fiberImagePixelOffset,

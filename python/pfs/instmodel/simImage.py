@@ -6,10 +6,10 @@ import numpy
 from concurrent.futures import ProcessPoolExecutor
 from concurrent.futures import as_completed
 
-import pfs_instmodel.detector as pfsDet
-import pfs_instmodel.sky as pfsSky
-import pfs_instmodel.splinedPsf as pfsPsf
-reload(pfsPsf)
+import pfs.instmodel.detector as pfsDet
+import pfs.instmodel.sky as pfsSky
+import pfs.instmodel.splinedPsf as pfsPsf
+from pfs.instmodel.spectrum import NullSpectrum
 
 """
 Example
@@ -81,6 +81,9 @@ class SimImage(object):
         """
 
         for i, (fiber, doSky) in enumerate(zip(fibers, doSkyForFiber)):
+            if isinstance(spectra[i], NullSpectrum):
+                # A little naughty, but it results in a HUGE speedup!
+                continue
             parts = self.psf.fiberImage(fiber, spectra[i],
                                         waveRange=waveRange,
                                         shiftPsfs=shiftPsfs)

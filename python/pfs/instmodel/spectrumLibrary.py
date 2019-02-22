@@ -8,6 +8,7 @@ from .spectrum import SlopeSpectrum
 from .spectrum import CombSpectrum
 from .spectrum import TextSpectrum
 from .spectrum import ConstantSpectrum
+from .spectrum import NullSpectrum
 from .spectrum import PfsSimSpectrum
 
 PLANCK = 6.63e-34  # J.s
@@ -73,6 +74,7 @@ class SpectrumLibrary:
             CatalogId.QUARTZ: self.getQuartzSpectrum,
             CatalogId.FLUXSTD: self.getFluxStdSpectrum,
             CatalogId.SKY: self.getSkySpectrum,
+            CatalogId.CONSTANT: self.getConstantSpectrum,
             CatalogId.NULL: self.getNullSpectrum,
             CatalogId.COMB: self.getCombSpectrum,
             CatalogId.SCIENCE: self.getScienceSpectrum,
@@ -97,6 +99,9 @@ class SpectrumLibrary:
         return FlatSpectrum()
 
     def getNullSpectrum(self, objId):
+        return NullSpectrum()
+
+    def getConstantSpectrum(self, objId):
         return ConstantSpectrum(float(objId)*fluxDensityForPhotons(1.0))
 
     def getFluxStdSpectrum(self, objId):

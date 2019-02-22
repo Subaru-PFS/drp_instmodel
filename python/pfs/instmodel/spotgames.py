@@ -853,7 +853,7 @@ def frdShow(frds,
             figName='frd', doClear=True,
             doNorm=True, yrange=None):
 
-    import pfs_instmodel.jegSpots as jegSpots
+    import pfs.instmodel.jegSpots as jegSpots
     
     fig = plt.figure(figName)
     if doClear:

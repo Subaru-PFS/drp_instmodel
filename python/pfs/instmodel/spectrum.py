@@ -334,6 +334,32 @@ class ConstantSpectrum(Spectrum):
         return self.value*(upper - lower)
 
 
+class NullSpectrum(Spectrum):
+    """A spectrum that is zero everywhere"""
+    def interpolate(self, wavelength):
+        return numpy.zeros_like(wavelength)
+
+    def _integrateImpl(self, lower, upper):
+        return 0.0
+
+    def integrate(self, lower, upper):
+        """Integrate the spectrum between multiple wavelength bounds
+
+        Parameters
+        ----------
+        lower : array_like
+            Lower wavelength bounds for the integration, nm.
+        upper : array_like
+            Upper wavelength bounds for the integration, nm.
+
+        Returns
+        -------
+        flux : array_like
+            Integrated fluxes between the wavelength bounds, W/m^2.
+        """
+        return numpy.zeros_like(lower)
+
+
 class PfsSimSpectrum(TableSpectrum):
     """A spectrum read from a pfsSim file
 
