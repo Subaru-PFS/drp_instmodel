@@ -147,14 +147,30 @@ class Detector(object):
 
         # Map self.arm to a filename using some mapper. For now, hardcode
         dataRoot = os.environ.get('DRP_INSTDATA_DIR', '.')
-        filepath = os.path.join(dataRoot, 'data', 'sky', 'yabe%s.dat' % (self.armName))
+        name = {"b": "blu",
+                "r": "red",
+                "n": "nir",
+                "m": "mid"}[self.arm]
+        filepath = os.path.join(dataRoot, 'data', 'throughput', 'pfs_thr_20151204_ext_all_%s.dat' % (name,))
 
-        a = numpy.genfromtxt(filepath, comments='\\')
-
+        data = numpy.genfromtxt(filepath, comments='#')
+        num = len(data)
         # pchip extrapolation only works if two end points are the same.
-        assert a[0,6] == a[1,6]
-        assert a[-1,6] == a[-2,6]
-        self.throughputSpline = scipy.interpolate.PchipInterpolator(a[:,0], a[:,6],
+        # So pad things out
+        wavelength = numpy.empty(num + 4, dtype=data.dtype)
+        throughput = numpy.zeros(num + 4, dtype=data.dtype)
+        wavelength[2:-2] = data[:, 0]
+        throughput[2:-2] = data[:, 10]
+        dw = wavelength[3] - wavelength[2]
+        wavelength[1] = wavelength[2] - dw
+        wavelength[0] = wavelength[1] - dw
+        dw = wavelength[-3] - wavelength[-4]
+        wavelength[-2] = wavelength[-3] + dw
+        wavelength[-1] = wavelength[-2] + dw
+        assert throughput[0] == throughput[1]
+        assert throughput[-1] == throughput[-2]
+
+        self.throughputSpline = scipy.interpolate.PchipInterpolator(wavelength, throughput,
                                                                     extrapolate=True)
         return self.throughputSpline
 
