@@ -1003,10 +1003,11 @@ class SplinedPsf(psf.Psf):
 
         obsdate = time.strftime('%Y-%m-%dT%H:%M:%S', now)
         calibDate = time.strftime('%Y-%m-%d', now)
+        ccd = 3*(self.detector.spectrograph - 1) + dict(b=0, r=1, m=1, n=2)[self.detector.arm]
         metadata = detMap.getMetadata()
         metadata.addString('DATE-OBS', obsdate)
-        metadata.addString('CALIB_ID', 'arm="%s" spectrograph=%d filter=NONE calibDate=%s visit0=0' %
-                           (self.detector.arm, self.detector.spectrograph, calibDate))
+        metadata.addString('CALIB_ID', 'arm=%s spectrograph=%d ccd=%d filter=%s calibDate=%s visit0=0' %
+                           (self.detector.arm, self.detector.spectrograph, ccd, self.detector.arm, calibDate))
 
         detMap.writeFits(fname)
 
