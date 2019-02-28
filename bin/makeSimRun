@@ -34,7 +34,7 @@ for detector in r1 b1; do
     makeSim --detector $detector --pfiDesignId 1 --exptime 900 --noSky --expId 17 --imagetyp DARK
     makeSim --detector $detector --pfiDesignId 1 --exptime 900 --noSky --expId 18 --imagetyp DARK
     makeSim --detector $detector --pfiDesignId 1 --exptime 900 --noSky --expId 19 --imagetyp DARK
-    makeSim --detector $detector --pfiDesignId 2 --exptime 30 --noSky --expId 20 --imagetyp FLAT --xoffset 0
+    makeSim --detector $detector --pfiDesignId 2 --exptime 30 --noSky --expId 20 --imagetyp FLAT --xoffset 0 --detectorMap detectorMap-sim-${detector}.fits
     makeSim --detector $detector --pfiDesignId 2 --exptime 30 --noSky --expId 21 --imagetyp FLAT --xoffset 1000
     makeSim --detector $detector --pfiDesignId 2 --exptime 30 --noSky --expId 22 --imagetyp FLAT --xoffset 2000
     makeSim --detector $detector --pfiDesignId 2 --exptime 30 --noSky --expId 23 --imagetyp FLAT --xoffset 3000
