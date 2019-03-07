@@ -5,6 +5,8 @@ import lsst.afw.geom
 
 from pfs.datamodel.pfsConfig import PfiDesign, TargetType, PfsConfig
 
+FLUXSTD_MAG = 18.0  # ABmag
+
 
 @enum.unique
 class CatalogId(enum.IntEnum):
@@ -255,7 +257,7 @@ def makeConstantDesign(pfiDesignId, fiberIds, value=1, rng=None):
 
 def makeScienceDesign(pfiDesignId, fiberIds,
                       fracSky=0.2, fracFluxStd=0.1,
-                      minScienceMag=18.0, maxScienceMag=24.0, fluxStdMag=18.0,
+                      minScienceMag=18.0, maxScienceMag=24.0,
                       raBoresight=0.0*lsst.afw.geom.degrees,
                       decBoresight=0.0*lsst.afw.geom.degrees,
                       rng=None):
@@ -282,8 +284,6 @@ def makeScienceDesign(pfiDesignId, fiberIds,
         Minimum magnitude of science targets.
     maxScienceMag : `float`
         Maximum magnitude of science targets.
-    fluxStdMag : `float`
-        Magnitude of (all) flux standards.
     raBoresight : `lsst.afw.geom.Angle`
         Right Ascension of the boresight.
     decBoresight : `lsst.afw.geom.Angle`
@@ -330,7 +330,7 @@ def makeScienceDesign(pfiDesignId, fiberIds,
     scienceMags = 22.0*np.ones(numScience, dtype=float)
     mags = np.zeros_like(fiberIds, dtype=float)
     mags[targetTypes == TargetType.SCIENCE] = scienceMags
-    mags[targetTypes == TargetType.FLUXSTD] = fluxStdMag
+    mags[targetTypes == TargetType.FLUXSTD] = FLUXSTD_MAG
     fiberMags = [np.array([mm]) if tt not in noMagTypes else [] for tt, mm in zip(targetTypes, mags)]
 
     return makePfiDesign(pfiDesignId, fiberIds, catIds, objIds, targetTypes,

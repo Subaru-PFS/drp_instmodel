@@ -1,7 +1,7 @@
 import os
 import math
 
-from .makePfsConfig import CatalogId, Lamps
+from .makePfsConfig import CatalogId, Lamps, FLUXSTD_MAG
 from .spectrum import ArcSpectrum
 from .spectrum import FlatSpectrum
 from .spectrum import SlopeSpectrum
@@ -106,7 +106,7 @@ class SpectrumLibrary:
 
     def getFluxStdSpectrum(self, objId):
         assert objId == 0, "Currently only one type of fluxStd spectrum"
-        return SlopeSpectrum(scale=fluxDensityForPhotons(1.0))
+        return ConstantSpectrum(3631e9*10**(-0.4*FLUXSTD_MAG))
 
     def getSkySpectrum(self, objId):
         assert objId == 0, "Currently only one type of sky spectrum"
