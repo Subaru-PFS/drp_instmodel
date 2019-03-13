@@ -3,7 +3,9 @@ import numpy as np
 
 import lsst.afw.geom
 
-from pfs.datamodel.pfsConfig import PfsConfig, TargetType
+from pfs.datamodel.pfsConfig import PfiDesign, TargetType, PfsConfig
+
+FLUXSTD_MAG = 18.0  # ABmag
 
 
 @enum.unique
@@ -16,6 +18,7 @@ class CatalogId(enum.IntEnum):
     NULL = 5  # Blocked and broken
     COMB = 6  # Comb of emission lines
     SCIENCE = 7  # Science spectrum
+    CONSTANT = 8  # Constant value
 
 
 class Lamps(enum.IntFlag):
@@ -27,10 +30,36 @@ class Lamps(enum.IntFlag):
     KR = 0x10  # Krypton
 
 
-def makePfsConfig(pfiDesignId, expId, fiberIds, catIds, objIds, targetTypes,
+def makePfsConfig(pfiDesign, expId, rng=None, pfiErrors=10.0):
+    """Build a ``PfsConfig`` from a ``PfiDesign``
+
+    The ``PfiDesign`` supplies just about everything we need, except for the
+    ``pfiCenter``, which will be a random modification of the ``pfiNominal``.
+
+    Parameters
+    ----------
+    pfiDesign : `pfs.datamodel.PfiDesign`
+        Design for the top-end.
+    expId : `int`
+        Identifier for the exposure. For our purposes, this is just a unique
+        integer.
+    rng : `numpy.random.RandomState`, optional
+        Random number generator. If not specified, we use the default from
+        ``numpy``, which has a non-deterministic seed.
+    pfiErrors : `float`
+        Standard deviation of cobra positioning errors, microns.
+    """
+    if rng is None:
+        rng = np.random
+    centering = rng.normal(scale=pfiErrors, size=pfiDesign.pfiNominal.shape)
+    pfiCenter = pfiDesign.pfiNominal + centering
+    return PfsConfig.fromPfiDesign(pfiDesign, expId, pfiCenter)
+
+
+def makePfiDesign(pfiDesignId, fiberIds, catIds, objIds, targetTypes,
                   fiberMags=None, filterNames=None, raBoresight=0.0*lsst.afw.geom.degrees,
                   decBoresight=0.0*lsst.afw.geom.degrees, rng=None):
-    """Build a ``PfsConfig``
+    """Build a ``PfiDesign``
 
     The top-end settings (``ra``, ``dec``, ``pfiNominal``, ``pfiCenter``) are
     random, but everything else is set up as normal.
@@ -40,9 +69,6 @@ def makePfsConfig(pfiDesignId, expId, fiberIds, catIds, objIds, targetTypes,
     pfiDesignId : `int`
         Identifier for the top-end design. For our purposes, this is just a
         unique integer.
-    expId : `int`
-        Identifier for the exposure. For our purposes, this is just a unique
-        integer.
     fiberIds : `numpy.ndarray` of `int`
         Array of identifiers for fibers that will be lit.
     catIds : `numpy.ndarray` of `int`
@@ -65,12 +91,11 @@ def makePfsConfig(pfiDesignId, expId, fiberIds, catIds, objIds, targetTypes,
 
     Returns
     -------
-    config : `pfs.datamodel.PfsConfig`
-        Configuration of the top-end.
+    design : `pfs.datamodel.PfiDesign`
+        Design of the top-end.
     """
     FIELD_OF_VIEW = 1.5*lsst.afw.geom.degrees
     PFI_SCALE = 800000.0/FIELD_OF_VIEW.asDegrees()  # microns/degree; guess, but not currently important
-    PFI_ERRORS = 10  # microns
     if rng is None:
         rng = np.random
     tract = np.zeros_like(fiberIds, dtype=int)
@@ -86,19 +111,18 @@ def makePfsConfig(pfiDesignId, expId, fiberIds, catIds, objIds, targetTypes,
     dec = np.array([cc.getDec().asDegrees() for cc in coords])
     pfiNominal = (PFI_SCALE*np.array([(rr*np.cos(tt), rr*np.sin(tt)) for
                                       rr, tt in zip(radius, theta)])).astype(np.float32)
-    pfiCenter = (pfiNominal + rng.normal(scale=PFI_ERRORS, size=(len(fiberIds), 2))).astype(np.float32)
 
     if fiberMags is None:
         fiberMags = [[] for _ in fiberIds]
     if filterNames is None:
         filterNames = [[] for _ in fiberIds]
 
-    return PfsConfig(pfiDesignId, expId, raBoresight.asDegrees(), decBoresight.asDegrees(),
+    return PfiDesign(pfiDesignId, raBoresight.asDegrees(), decBoresight.asDegrees(),
                      fiberIds, tract, patch, ra, dec, catIds, objIds, targetTypes,
-                     fiberMags, filterNames, pfiCenter, pfiNominal)
+                     fiberMags, filterNames, pfiNominal)
 
 
-def makeArcConfig(pfiDesignId, expId, arcLamps, fiberIds, rng=None):
+def makeArcDesign(pfiDesignId, arcLamps, fiberIds, rng=None):
     """Build a ``PfsConfig`` for an arc
 
     Parameters
@@ -106,9 +130,6 @@ def makeArcConfig(pfiDesignId, expId, arcLamps, fiberIds, rng=None):
     pfiDesignId : `int`
         Identifier for the top-end design. For our purposes, this is just a
         unique integer.
-    expId : `int`
-        Identifier for the exposure. For our purposes, this is just a unique
-        integer.
     arcLamps : `Lamps` or `int`
         Flag indicating which lamps are on, e.g., `Lamps.NE | Lamps.HG`.
     fiberIds : `numpy.ndarray` of `int`
@@ -119,27 +140,23 @@ def makeArcConfig(pfiDesignId, expId, arcLamps, fiberIds, rng=None):
 
     Returns
     -------
-    config : `pfs.datamodel.PfsConfig`
-        Configuration of the top-end.
+    design : `pfs.datamodel.PfiDesign`
+        Design of the top-end.
     """
     catIds = int(CatalogId.ARC)*np.ones_like(fiberIds, dtype=int)
     objIds = arcLamps*np.ones_like(fiberIds, dtype=int)
     targetTypes = int(TargetType.SCIENCE)*np.ones_like(fiberIds, dtype=int)
-    config = makePfsConfig(pfiDesignId, expId, fiberIds, catIds, objIds, targetTypes)
-    return config
+    return makePfiDesign(pfiDesignId, fiberIds, catIds, objIds, targetTypes, rng=rng)
 
 
-def makeFlatConfig(pfiDesignId, expId, fiberIds, rng=None):
-    """Build a ``PfsConfig`` for a flat
+def makeFlatDesign(pfiDesignId, fiberIds, rng=None):
+    """Build a ``PfiDesign`` for a flat
 
     Parameters
     ----------
     pfiDesignId : `int`
         Identifier for the top-end design. For our purposes, this is just a
         unique integer.
-    expId : `int`
-        Identifier for the exposure. For our purposes, this is just a unique
-        integer.
     fiberIds : `numpy.ndarray` of `int`
         Array of identifiers for fibers that will be lit.
     rng : `numpy.random.RandomState`, optional
@@ -148,27 +165,23 @@ def makeFlatConfig(pfiDesignId, expId, fiberIds, rng=None):
 
     Returns
     -------
-    config : `pfs.datamodel.PfsConfig`
-        Configuration of the top-end.
+    design : `pfs.datamodel.PfiDesign`
+        Design of the top-end.
     """
     catIds = int(CatalogId.QUARTZ)*np.ones_like(fiberIds, dtype=int)
     objIds = np.zeros_like(fiberIds, dtype=int)
     targetTypes = int(TargetType.SCIENCE)*np.ones_like(fiberIds, dtype=int)
-    config = makePfsConfig(pfiDesignId, expId, fiberIds, catIds, objIds, targetTypes)
-    return config
+    return makePfiDesign(pfiDesignId, fiberIds, catIds, objIds, targetTypes, rng=rng)
 
 
-def makeCombConfig(pfiDesignId, expId, fiberIds, spacing=50, rng=None):
-    """Build a ``PfsConfig`` for a comb
+def makeCombDesign(pfiDesignId, fiberIds, spacing=50, rng=None):
+    """Build a ``PfiDesign`` for a comb
 
     Parameters
     ----------
     pfiDesignId : `int`
         Identifier for the top-end design. For our purposes, this is just a
         unique integer.
-    expId : `int`
-        Identifier for the exposure. For our purposes, this is just a unique
-        integer.
     fiberIds : `numpy.ndarray` of `int`
         Array of identifiers for fibers that will be lit.
     spacing : `int`
@@ -180,27 +193,48 @@ def makeCombConfig(pfiDesignId, expId, fiberIds, spacing=50, rng=None):
 
     Returns
     -------
-    config : `pfs.datamodel.PfsConfig`
-        Configuration of the top-end.
+    design : `pfs.datamodel.PfiDesign`
+        Design of the top-end.
     """
     catIds = int(CatalogId.COMB)*np.ones_like(fiberIds, dtype=int)
     objIds = int(spacing)*np.ones_like(fiberIds, dtype=int)
     targetTypes = int(TargetType.SCIENCE)*np.ones_like(fiberIds, dtype=int)
-    config = makePfsConfig(pfiDesignId, expId, fiberIds, catIds, objIds, targetTypes)
-    return config
+    return makePfiDesign(pfiDesignId, fiberIds, catIds, objIds, targetTypes, rng=rng)
 
 
-def makeConstantConfig(pfiDesignId, expId, fiberIds, value=1, rng=None):
-    """Build a ``PfsConfig`` with constant spectra
+def makeDarkDesign(pfiDesignId, fiberIds, rng=None):
+    """Build a ``PfiDesign`` for biases and darks
 
     Parameters
     ----------
     pfiDesignId : `int`
         Identifier for the top-end design. For our purposes, this is just a
         unique integer.
-    expId : `int`
-        Identifier for the exposure. For our purposes, this is just a unique
-        integer.
+    fiberIds : `numpy.ndarray` of `int`
+        Array of identifiers for fibers that would ordinarily be lit.
+    rng : `numpy.random.RandomState`, optional
+        Random number generator. If not specified, we use the default from
+        ``numpy``, which has a non-deterministic seed.
+
+    Returns
+    -------
+    design : `pfs.datamodel.PfiDesign`
+        Design of the top-end.
+    """
+    catIds = int(CatalogId.NULL)*np.ones_like(fiberIds, dtype=int)
+    objIds = np.zeros_like(fiberIds, dtype=int)
+    targetTypes = int(TargetType.BLOCKED)*np.ones_like(fiberIds, dtype=int)
+    return makePfiDesign(pfiDesignId, fiberIds, catIds, objIds, targetTypes, rng=rng)
+
+
+def makeConstantDesign(pfiDesignId, fiberIds, value=1, rng=None):
+    """Build a ``PfiDesign`` with constant spectra
+
+    Parameters
+    ----------
+    pfiDesignId : `int`
+        Identifier for the top-end design. For our purposes, this is just a
+        unique integer.
     fiberIds : `numpy.ndarray` of `int`
         Array of identifiers for fibers that will be lit.
     value : `int`
@@ -212,23 +246,22 @@ def makeConstantConfig(pfiDesignId, expId, fiberIds, value=1, rng=None):
 
     Returns
     -------
-    config : `pfs.datamodel.PfsConfig`
-        Configuration of the top-end.
+    design : `pfs.datamodel.PfiDesign`
+        Design of the top-end.
     """
-    catIds = int(CatalogId.NULL)*np.ones_like(fiberIds, dtype=int)
+    catIds = int(CatalogId.CONSTANT)*np.ones_like(fiberIds, dtype=int)
     objIds = int(value)*np.ones_like(fiberIds, dtype=int)
     targetTypes = int(TargetType.SCIENCE)*np.ones_like(fiberIds, dtype=int)
-    config = makePfsConfig(pfiDesignId, expId, fiberIds, catIds, objIds, targetTypes)
-    return config
+    return makePfiDesign(pfiDesignId, fiberIds, catIds, objIds, targetTypes, rng=rng)
 
 
-def makeScienceConfig(pfiDesignId, expId, fiberIds,
+def makeScienceDesign(pfiDesignId, fiberIds,
                       fracSky=0.2, fracFluxStd=0.1,
-                      minScienceMag=18.0, maxScienceMag=24.0, fluxStdMag=18.0,
+                      minScienceMag=18.0, maxScienceMag=24.0,
                       raBoresight=0.0*lsst.afw.geom.degrees,
                       decBoresight=0.0*lsst.afw.geom.degrees,
                       rng=None):
-    """Build a ``PfsConfig`` for a science exposure
+    """Build a ``PfiDesign`` for a science exposure
 
     Fibers are randomly assigned to sky, flux standards or science targets
     based on the nominated fractions.
@@ -241,9 +274,6 @@ def makeScienceConfig(pfiDesignId, expId, fiberIds,
     pfiDesignId : `int`
         Identifier for the top-end design. For our purposes, this is just a
         unique integer.
-    expId : `int`
-        Identifier for the exposure. For our purposes, this is just a unique
-        integer.
     fiberIds : `numpy.ndarray` of `int`
         Array of identifiers for fibers that will be lit.
     fracSky : `float`
@@ -254,8 +284,6 @@ def makeScienceConfig(pfiDesignId, expId, fiberIds,
         Minimum magnitude of science targets.
     maxScienceMag : `float`
         Maximum magnitude of science targets.
-    fluxStdMag : `float`
-        Magnitude of (all) flux standards.
     raBoresight : `lsst.afw.geom.Angle`
         Right Ascension of the boresight.
     decBoresight : `lsst.afw.geom.Angle`
@@ -266,8 +294,8 @@ def makeScienceConfig(pfiDesignId, expId, fiberIds,
 
     Returns
     -------
-    config : `pfs.datamodel.PfsConfig`
-        Configuration of the top-end.
+    design : `pfs.datamodel.PfiDesign`
+        Design of the top-end.
     """
     if rng is None:
         rng = np.random
@@ -302,10 +330,9 @@ def makeScienceConfig(pfiDesignId, expId, fiberIds,
     scienceMags = 22.0*np.ones(numScience, dtype=float)
     mags = np.zeros_like(fiberIds, dtype=float)
     mags[targetTypes == TargetType.SCIENCE] = scienceMags
-    mags[targetTypes == TargetType.FLUXSTD] = fluxStdMag
+    mags[targetTypes == TargetType.FLUXSTD] = FLUXSTD_MAG
     fiberMags = [np.array([mm]) if tt not in noMagTypes else [] for tt, mm in zip(targetTypes, mags)]
 
-    config = makePfsConfig(pfiDesignId, expId, fiberIds, catIds, objIds, targetTypes,
-                           fiberMags=fiberMags, filterNames=filterNames, raBoresight=raBoresight,
-                           decBoresight=decBoresight, rng=rng)
-    return config
+    return makePfiDesign(pfiDesignId, fiberIds, catIds, objIds, targetTypes,
+                         fiberMags=fiberMags, filterNames=filterNames, raBoresight=raBoresight,
+                         decBoresight=decBoresight, rng=rng)

@@ -40,7 +40,7 @@ def getDataPath(date=None, band='Red', frd=23, focus=0, slitFocus=0, fieldAngle=
         spotDir = os.path.join(os.environ['DRP_INSTDATA_DIR'], 'data/spots/jeg')
 
     if date is None:
-        date = '2017-11-09'
+        date = '2019-01-31'
 
     if date >= '2017-10-29':
         spotFile = os.path.join(spotDir, date, band, 

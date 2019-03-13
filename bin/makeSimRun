@@ -8,39 +8,44 @@ fi
 
 set -e
 
-for detector in r1; do
-    makeSim --detector $detector --field dark --exptime 0 --noSky --expId 0 --imagetyp BIAS
-    makeSim --detector $detector --field dark --exptime 0 --noSky --expId 1 --imagetyp BIAS
-    makeSim --detector $detector --field dark --exptime 0 --noSky --expId 2 --imagetyp BIAS
-    makeSim --detector $detector --field dark --exptime 0 --noSky --expId 3 --imagetyp BIAS
-    makeSim --detector $detector --field dark --exptime 0 --noSky --expId 4 --imagetyp BIAS
-    makeSim --detector $detector --field dark --exptime 0 --noSky --expId 5 --imagetyp BIAS
-    makeSim --detector $detector --field dark --exptime 0 --noSky --expId 6 --imagetyp BIAS
-    makeSim --detector $detector --field dark --exptime 0 --noSky --expId 7 --imagetyp BIAS
-    makeSim --detector $detector --field dark --exptime 0 --noSky --expId 8 --imagetyp BIAS
-    makeSim --detector $detector --field dark --exptime 0 --noSky --expId 9 --imagetyp BIAS
-    makeSim --detector $detector --field dark --exptime 900 --noSky --expId 10 --imagetyp DARK
-    makeSim --detector $detector --field dark --exptime 900 --noSky --expId 11 --imagetyp DARK
-    makeSim --detector $detector --field dark --exptime 900 --noSky --expId 12 --imagetyp DARK
-    makeSim --detector $detector --field dark --exptime 900 --noSky --expId 13 --imagetyp DARK
-    makeSim --detector $detector --field dark --exptime 900 --noSky --expId 14 --imagetyp DARK
-    makeSim --detector $detector --field dark --exptime 900 --noSky --expId 15 --imagetyp DARK
-    makeSim --detector $detector --field dark --exptime 900 --noSky --expId 16 --imagetyp DARK
-    makeSim --detector $detector --field dark --exptime 900 --noSky --expId 17 --imagetyp DARK
-    makeSim --detector $detector --field dark --exptime 900 --noSky --expId 18 --imagetyp DARK
-    makeSim --detector $detector --field dark --exptime 900 --noSky --expId 19 --imagetyp DARK
-    makeSim --detector $detector --field ${fibers}Flat --exptime 30 --noSky --expId 20 --imagetyp FLAT --xoffset 0
-    makeSim --detector $detector --field ${fibers}Flat --exptime 30 --noSky --expId 21 --imagetyp FLAT --xoffset 1000
-    makeSim --detector $detector --field ${fibers}Flat --exptime 30 --noSky --expId 22 --imagetyp FLAT --xoffset 2000
-    makeSim --detector $detector --field ${fibers}Flat --exptime 30 --noSky --expId 23 --imagetyp FLAT --xoffset 3000
-    makeSim --detector $detector --field ${fibers}Flat --exptime 30 --noSky --expId 24 --imagetyp FLAT --xoffset 4000
-    makeSim --detector $detector --field ${fibers}Flat --exptime 30 --noSky --expId 25 --imagetyp FLAT --xoffset 5000
-    makeSim --detector $detector --field ${fibers}Flat --exptime 30 --noSky --expId 26 --imagetyp FLAT --xoffset -1000
-    makeSim --detector $detector --field ${fibers}Flat --exptime 30 --noSky --expId 27 --imagetyp FLAT --xoffset -2000
-    makeSim --detector $detector --field ${fibers}Flat --exptime 30 --noSky --expId 28 --imagetyp FLAT --xoffset -3000
-    makeSim --detector $detector --field ${fibers}Flat --exptime 30 --noSky --expId 29 --imagetyp FLAT --xoffset -4000
-    makeSim --detector $detector --field ${fibers}Flat --exptime 30 --noSky --expId 30 --imagetyp FLAT --xoffset -5000
-    makeSim --detector $detector --field ${fibers}Ne --exptime 1 --noSky --expId 31 --imagetyp ARC
-    makeSim --detector $detector --field ${fibers}Obj --exptime 900 --expId 32 --imagetyp OBJECT --allOutput
-    makeSim --detector $detector --field ${fibers}Obj --exptime 900 --expId 33 --imagetyp OBJECT --allOutput
+makePfiDesign --field dark --pfiDesignId 1
+makePfiDesign --field ${fibers}Flat --pfiDesignId 2
+makePfiDesign --field ${fibers}Ne --pfiDesignId 3
+makePfiDesign --field ${fibers}Obj --pfiDesignId 4
+
+for detector in r1 b1; do
+    makeSim --detector $detector --pfiDesignId 1 --exptime 0 --noSky --expId 0 --imagetyp BIAS
+    makeSim --detector $detector --pfiDesignId 1 --exptime 0 --noSky --expId 1 --imagetyp BIAS
+    makeSim --detector $detector --pfiDesignId 1 --exptime 0 --noSky --expId 2 --imagetyp BIAS
+    makeSim --detector $detector --pfiDesignId 1 --exptime 0 --noSky --expId 3 --imagetyp BIAS
+    makeSim --detector $detector --pfiDesignId 1 --exptime 0 --noSky --expId 4 --imagetyp BIAS
+    makeSim --detector $detector --pfiDesignId 1 --exptime 0 --noSky --expId 5 --imagetyp BIAS
+    makeSim --detector $detector --pfiDesignId 1 --exptime 0 --noSky --expId 6 --imagetyp BIAS
+    makeSim --detector $detector --pfiDesignId 1 --exptime 0 --noSky --expId 7 --imagetyp BIAS
+    makeSim --detector $detector --pfiDesignId 1 --exptime 0 --noSky --expId 8 --imagetyp BIAS
+    makeSim --detector $detector --pfiDesignId 1 --exptime 0 --noSky --expId 9 --imagetyp BIAS
+    makeSim --detector $detector --pfiDesignId 1 --exptime 900 --noSky --expId 10 --imagetyp DARK
+    makeSim --detector $detector --pfiDesignId 1 --exptime 900 --noSky --expId 11 --imagetyp DARK
+    makeSim --detector $detector --pfiDesignId 1 --exptime 900 --noSky --expId 12 --imagetyp DARK
+    makeSim --detector $detector --pfiDesignId 1 --exptime 900 --noSky --expId 13 --imagetyp DARK
+    makeSim --detector $detector --pfiDesignId 1 --exptime 900 --noSky --expId 14 --imagetyp DARK
+    makeSim --detector $detector --pfiDesignId 1 --exptime 900 --noSky --expId 15 --imagetyp DARK
+    makeSim --detector $detector --pfiDesignId 1 --exptime 900 --noSky --expId 16 --imagetyp DARK
+    makeSim --detector $detector --pfiDesignId 1 --exptime 900 --noSky --expId 17 --imagetyp DARK
+    makeSim --detector $detector --pfiDesignId 1 --exptime 900 --noSky --expId 18 --imagetyp DARK
+    makeSim --detector $detector --pfiDesignId 1 --exptime 900 --noSky --expId 19 --imagetyp DARK
+    makeSim --detector $detector --pfiDesignId 2 --exptime 30 --noSky --expId 20 --imagetyp FLAT --xoffset 0 --detectorMap detectorMap-sim-${detector}.fits
+    makeSim --detector $detector --pfiDesignId 2 --exptime 30 --noSky --expId 21 --imagetyp FLAT --xoffset 1000
+    makeSim --detector $detector --pfiDesignId 2 --exptime 30 --noSky --expId 22 --imagetyp FLAT --xoffset 2000
+    makeSim --detector $detector --pfiDesignId 2 --exptime 30 --noSky --expId 23 --imagetyp FLAT --xoffset 3000
+    makeSim --detector $detector --pfiDesignId 2 --exptime 30 --noSky --expId 24 --imagetyp FLAT --xoffset 4000
+    makeSim --detector $detector --pfiDesignId 2 --exptime 30 --noSky --expId 25 --imagetyp FLAT --xoffset 5000
+    makeSim --detector $detector --pfiDesignId 2 --exptime 30 --noSky --expId 26 --imagetyp FLAT --xoffset -1000
+    makeSim --detector $detector --pfiDesignId 2 --exptime 30 --noSky --expId 27 --imagetyp FLAT --xoffset -2000
+    makeSim --detector $detector --pfiDesignId 2 --exptime 30 --noSky --expId 28 --imagetyp FLAT --xoffset -3000
+    makeSim --detector $detector --pfiDesignId 2 --exptime 30 --noSky --expId 29 --imagetyp FLAT --xoffset -4000
+    makeSim --detector $detector --pfiDesignId 2 --exptime 30 --noSky --expId 30 --imagetyp FLAT --xoffset -5000
+    makeSim --detector $detector --pfiDesignId 3 --exptime 1 --noSky --expId 31 --imagetyp ARC
+    makeSim --detector $detector --pfiDesignId 4 --exptime 900 --expId 32 --imagetyp OBJECT --allOutput
+    makeSim --detector $detector --pfiDesignId 4 --exptime 900 --expId 33 --imagetyp OBJECT --allOutput
 done
