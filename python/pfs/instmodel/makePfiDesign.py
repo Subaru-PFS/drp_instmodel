@@ -1,50 +1,64 @@
 import numpy as np
-import pfs.instmodel.fieldDefinitions
+from pfs.instmodel.slit import Slit
+from pfs.instmodel.utils.generators import keepOdd, keepEven
+from pfs.instmodel.makePfsConfig import makeScienceDesign
 
 """Generate a PfiDesign"""
 
-__all__ = ["run", "main"]
 
-
-def run(field, pfiDesignId, seed=None, dirName="."):
-    """Make a PfiDesign
+def parseFibers(fibers):
+    """Parse the list of fibers
 
     Parameters
     ----------
-    field : `str`
-        Field type; must be defined in ``pfs.instmodel.fieldDefinitions``.
-    pfiDesignId : `int`
-        Top-end design identifier.
-    seed : `int`, optional
-        RNG seed.
-    dirName : `str`
-        Output directory.
+    fibers : `str`
+        Whitespace-separated list of fiber IDs, or symbolic name representing a
+        list of fiber IDs (single, double, lam, all, odd, even).
 
     Returns
     -------
-    pfiDesign : `pfs.datamodel.PfiDesign`
-        Top-end design.
+    fiberIds : `list` of `int`
+        Fiber identifiers.
     """
-    if field not in pfs.instmodel.fieldDefinitions.__all__:
-        raise RuntimeError("Unrecognised field: %s" % (field,))
-    rng = np.random.RandomState(seed) if seed is not None else None
-    pfiDesign = getattr(pfs.instmodel.fieldDefinitions, field)(rng=rng)
-    pfiDesign.pfiDesignId = pfiDesignId
-    pfiDesign.write(dirName)
-    return pfiDesign
+    allFibers = Slit(1).scienceFibers
+    menu = {"single": [315],
+            "double": [311, 315],
+            "lam": [2, 65, 191, 254, 315, 337, 400, 463, 589, 650],
+            "all": allFibers,
+            "odd": [ii for ii in keepOdd(allFibers)],
+            "even": [ii for ii in keepEven(allFibers)],
+    }
+
+    if fibers.lower() in menu:
+        return menu[fibers.lower()]
+    fibers = (int(ff) for ff in fibers.split())
+    return [ff for ff in fibers if ff in allFibers]
 
 
 def main():
     """Main entrypoint when running as a script"""
     from argparse import ArgumentParser
     parser = ArgumentParser(description="Generate a PfiDesign")
-    parser.add_argument("--field", choices=pfs.instmodel.fieldDefinitions.__all__, required=True,
-                        help="Field type")
+    parser.add_argument("--fibers", type=parseFibers, required=True,
+                        help="Fibers to light (single, double, lam, all, odd, even; or "
+                             "space-delimited integers)")
     parser.add_argument("--pfiDesignId", type=int, required=True, help="Top-end design identifier")
+    parser.add_argument("--fracSky", type=float, default=0.2, help="Fraction of fibers to use for sky")
+    parser.add_argument("--fracFluxStd", type=float, default=0.1,
+                        help="Fraction of fibers to use for flux standards")
+    parser.add_argument("--minScienceMag", type=float, default=18.0,
+                        help="Minimum magnitude of science objects")
+    parser.add_argument("--maxScienceMag", type=float, default=24.0,
+                        help="Maximum magnitude of science objects")
+    parser.add_argument("--fluxStdMag", type=float, default=18.0, help="Magnitude of flux standards")
     parser.add_argument("--seed", type=int, help="RNG seed")
     parser.add_argument("--dirName", default=".", help="Output directory")
     args = parser.parse_args()
-    run(args.field, args.pfiDesignId, args.seed, args.dirName)
+
+    rng = np.random.RandomState(args.seed) if args.seed is not None else None
+    pfiDesign = makeScienceDesign(args.pfiDesignId, args.fibers, args.fracSky, args.fracFluxStd,
+                                  args.minScienceMag, args.maxScienceMag, args.fluxStdMag, rng=rng)
+    pfiDesign.write(args.dirName)
 
 
 if __name__ == "__main__":

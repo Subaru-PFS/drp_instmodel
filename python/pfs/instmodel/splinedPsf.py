@@ -437,6 +437,8 @@ class SplinedPsf(psf.Psf):
 
         # Evaluate at highest resolution
         pixelScale = self.spotScale
+        psfToSpotRatio = self.detector.config['pixelScale'] / pixelScale
+        psfToSpotPixRatio = int(round(psfToSpotRatio))
         
         if waveRange is None:
             waveRange = self.wave.min(), self.wave.max()
@@ -457,6 +459,15 @@ class SplinedPsf(psf.Psf):
         upper[-1] = pixelWaves[-1] + 0.5*(pixelWaves[-1] - pixelWaves[-2])
 
         flux = spectrum.integrate(lower, upper)  # W/m^2
+
+        select = flux > 0
+        if not np.any(select):
+            self.logger.info("fiber %-3d : no flux from spectrum %s" % (fiber, spectrum))
+            return None, None, psfToSpotPixRatio, []
+        flux = flux[select]
+        pixelRows = pixelRows[select]
+        pixelWaves = pixelWaves[select]
+
         # Convert flux to photons
         # E = n.h.nu = F.T.A
         # n = F.T.A.lambda/h/c
@@ -486,9 +497,6 @@ class SplinedPsf(psf.Psf):
         fiberPsfs, psfIds, centers = self.psfsAt([fiber], waves, everyNth=everyNth)
 
         xCenters, yCenters = centers
-
-        psfToSpotRatio = self.detector.config['pixelScale'] / pixelScale
-        psfToSpotPixRatio = int(round(psfToSpotRatio))
 
         # pixels
         traceWidth = int((xCenters.max() - xCenters.min())/pixelScale) + 1
