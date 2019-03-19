@@ -360,6 +360,51 @@ class NullSpectrum(Spectrum):
         return numpy.zeros_like(lower)
 
 
+class SumSpectrum(Spectrum):
+    """A spectrum that is the sum of one or more other spectra"""
+    def __init__(self, *spectra):
+        super().__init__()
+        self.spectra = spectra
+
+    def interpolate(self, wavelength):
+        """Interpolate the spectrum at the nominated wavelength
+
+        Parameters
+        ----------
+        wavelength : array_like
+            Vector of wavelengths at which to interpolate, nm.
+
+        Returns
+        -------
+        flux : array_like
+            Vector of flux densities at the provided ``wavelength``s.
+        """
+        result = self.spectra[0].interpolate(wavelength)
+        for ss in self.spectra[1:]:
+            result += ss.interpolate(wavelength)
+        return result
+
+    def integrate(self, lower, upper):
+        """Integrate the spectrum between multiple wavelength bounds
+
+        Parameters
+        ----------
+        lower : array_like
+            Lower wavelength bounds for the integration, nm.
+        upper : array_like
+            Upper wavelength bounds for the integration, nm.
+
+        Returns
+        -------
+        flux : array_like
+            Integrated fluxes between the wavelength bounds, W/m^2.
+        """
+        result = self.spectra[0].integrate(lower, upper)
+        for ss in self.spectra[1:]:
+            result += ss.integrate(lower, upper)
+        return result
+
+
 class PfsSimSpectrum(TableSpectrum):
     """A spectrum read from a pfsSim file
 
