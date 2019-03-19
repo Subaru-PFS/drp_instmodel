@@ -104,6 +104,7 @@ def makeScienceDesign(pfiDesignId, fiberIds,
                       fracSky=0.2, fracFluxStd=0.1,
                       minScienceMag=18.0, maxScienceMag=24.0,
                       fluxStdMag=18.0,
+                      scienceCatId=0, scienceObjId=None,
                       raBoresight=0.0*lsst.afw.geom.degrees,
                       decBoresight=0.0*lsst.afw.geom.degrees,
                       rng=None):
@@ -130,6 +131,10 @@ def makeScienceDesign(pfiDesignId, fiberIds,
         Minimum magnitude of science targets.
     maxScienceMag : `float`
         Maximum magnitude of science targets.
+    scienceCatId : `int`, optional
+        Catalog identifier for science targets.
+    scienceObjId : iterable of `int`, optional
+        Object identifiers for science targets.
     fluxStdMag : `float`
         Magnitude of flux standard targets.
     raBoresight : `lsst.afw.geom.Angle`
@@ -148,7 +153,6 @@ def makeScienceDesign(pfiDesignId, fiberIds,
     if rng is None:
         rng = np.random
 
-    objIds = np.ones_like(fiberIds, dtype=int)
     numFibers = len(fiberIds)
     numSky = int(fracSky*numFibers)
     numFluxStd = int(fracFluxStd*numFibers)
@@ -160,13 +164,16 @@ def makeScienceDesign(pfiDesignId, fiberIds,
     rng.shuffle(targetTypes)
     assert len(targetTypes) == len(fiberIds)
 
-    # Currently only have one type of spectrum (objId=0) for each kind of target, so makes this easy
-    objIds = np.zeros_like(fiberIds, dtype=int)
+    objId = np.zeros_like(fiberIds, dtype=int)  # Object ID for all fibers
+    catId = np.zeros_like(objId)
     if numScience > 0:
-        scienceIds = np.arange(numScience, dtype=int)
-        rng.shuffle(scienceIds)
-        objIds[targetTypes == TargetType.SCIENCE] = scienceIds
-    catIds = np.zeros_like(objIds)
+        if scienceObjId is None:
+            scienceObjId = np.arange(numScience, dtype=int)
+        rng.shuffle(scienceObjId)
+        if len(scienceObjId) > numScience:
+            scienceObjId = scienceObjId[:numScience]
+        objId[targetTypes == TargetType.SCIENCE] = scienceObjId
+        catId[targetTypes == TargetType.SCIENCE] = scienceCatId
 
     noMagTypes = (TargetType.SKY, TargetType.BROKEN, TargetType.BLOCKED)
     filterNames = [["i"] if tt not in noMagTypes else [] for tt in targetTypes]
@@ -176,6 +183,6 @@ def makeScienceDesign(pfiDesignId, fiberIds,
     mags[targetTypes == TargetType.FLUXSTD] = fluxStdMag
     fiberMags = [np.array([mm]) if tt not in noMagTypes else [] for tt, mm in zip(targetTypes, mags)]
 
-    return makePfiDesign(pfiDesignId, fiberIds, catIds, objIds, targetTypes,
+    return makePfiDesign(pfiDesignId, fiberIds, catId, objId, targetTypes,
                          fiberMags=fiberMags, filterNames=filterNames, raBoresight=raBoresight,
                          decBoresight=decBoresight, rng=rng)

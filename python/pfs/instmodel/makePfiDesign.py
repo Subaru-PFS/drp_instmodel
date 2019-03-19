@@ -35,6 +35,22 @@ def parseFibers(fibers):
     return [ff for ff in fibers if ff in allFibers]
 
 
+def parseObjId(text):
+    """Parse the list of object IDs
+
+    Parameters
+    ----------
+    text : `str`
+        Whitespace-separated list of object IDs.
+
+    Returns
+    -------
+    objIds : `list` of `int`
+        Object identifiers.
+    """
+    return [int(ii) for ii in text.split()]
+
+
 def main():
     """Main entrypoint when running as a script"""
     from argparse import ArgumentParser
@@ -51,13 +67,17 @@ def main():
     parser.add_argument("--maxScienceMag", type=float, default=24.0,
                         help="Maximum magnitude of science objects")
     parser.add_argument("--fluxStdMag", type=float, default=18.0, help="Magnitude of flux standards")
+    parser.add_argument("--scienceCatId", type=int, default=0, help="Catalog ID for science targets")
+    parser.add_argument("--scienceObjId", type=parseObjId,
+                        help="Object IDs for science targets (space-delimited integers)")
     parser.add_argument("--seed", type=int, help="RNG seed")
     parser.add_argument("--dirName", default=".", help="Output directory")
     args = parser.parse_args()
 
     rng = np.random.RandomState(args.seed) if args.seed is not None else None
     pfiDesign = makeScienceDesign(args.pfiDesignId, args.fibers, args.fracSky, args.fracFluxStd,
-                                  args.minScienceMag, args.maxScienceMag, args.fluxStdMag, rng=rng)
+                                  args.minScienceMag, args.maxScienceMag, args.fluxStdMag,
+                                  args.scienceCatId, args.scienceObjId, rng=rng)
     pfiDesign.write(args.dirName)
 
 
