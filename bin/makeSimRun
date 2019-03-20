@@ -5,6 +5,10 @@ if [ -z "$pfiDesignId" ]; then
     echo "Missing pfiDesignId value"
     exit 1
 fi
+pfiDesignId2=$2
+if [ -z "$pfiDesignId2" ]; then
+    pfiDesignId2=$pfiDesignId
+fi
 
 set -e
 
@@ -42,5 +46,5 @@ for detector in r1 b1; do
     makeSim --detector $detector --pfiDesignId $pfiDesignId --exptime 30 --domeClosed --expId 30 --imagetyp FLAT --lamps QUARTZ --xoffset -5000
     makeSim --detector $detector --pfiDesignId $pfiDesignId --exptime 1 --domeClosed --expId 31 --imagetyp ARC --lamps NE
     makeSim --detector $detector --pfiDesignId $pfiDesignId --exptime 900 --expId 32 --imagetyp OBJECT --allOutput
-    makeSim --detector $detector --pfiDesignId $pfiDesignId --exptime 900 --expId 33 --imagetyp OBJECT --allOutput
+    makeSim --detector $detector --pfiDesignId $pfiDesignId2 --exptime 900 --expId 33 --imagetyp OBJECT --allOutput
 done
