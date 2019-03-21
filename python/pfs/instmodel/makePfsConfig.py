@@ -166,9 +166,20 @@ def makeScienceDesign(pfiDesignId, fiberIds,
 
     objId = np.zeros_like(fiberIds, dtype=int)  # Object ID for all fibers
     catId = np.zeros_like(objId)
+    objIdStart = 1
+    if numFluxStd > 0:
+        catId[targetTypes == TargetType.FLUXSTD] = 0
+        fluxStdObjId = np.arange(numFluxStd, dtype=int) + objIdStart
+        objIdStart += numFluxStd
+        rng.shuffle(fluxStdObjId)
+        objId[targetTypes == TargetType.FLUXSTD] = fluxStdObjId
+
     if numScience > 0:
         if scienceObjId is None:
             scienceObjId = np.arange(numScience, dtype=int)
+            if scienceCatId == 0:
+                scienceObjId += objIdStart
+                objIdStart += numScience
         rng.shuffle(scienceObjId)
         if len(scienceObjId) > numScience:
             scienceObjId = scienceObjId[:numScience]
