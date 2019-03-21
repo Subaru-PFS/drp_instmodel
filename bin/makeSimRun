@@ -10,41 +10,46 @@ if [ -z "$pfiDesignId2" ]; then
     pfiDesignId2=$pfiDesignId
 fi
 
+makeSimExposure() {
+    for detector in r1 b1; do
+        makeSim --detector $detector $(echo "$@" | sed "s|@DETECTOR@|$detector|g") &
+    done
+    wait
+}
+
 set -e
 
-for detector in r1 b1; do
-    makeSim --detector $detector --pfiDesignId $pfiDesignId --exptime 0 --domeClosed --expId 0 --imagetyp BIAS
-    makeSim --detector $detector --pfiDesignId $pfiDesignId --exptime 0 --domeClosed --expId 1 --imagetyp BIAS
-    makeSim --detector $detector --pfiDesignId $pfiDesignId --exptime 0 --domeClosed --expId 2 --imagetyp BIAS
-    makeSim --detector $detector --pfiDesignId $pfiDesignId --exptime 0 --domeClosed --expId 3 --imagetyp BIAS
-    makeSim --detector $detector --pfiDesignId $pfiDesignId --exptime 0 --domeClosed --expId 4 --imagetyp BIAS
-    makeSim --detector $detector --pfiDesignId $pfiDesignId --exptime 0 --domeClosed --expId 5 --imagetyp BIAS
-    makeSim --detector $detector --pfiDesignId $pfiDesignId --exptime 0 --domeClosed --expId 6 --imagetyp BIAS
-    makeSim --detector $detector --pfiDesignId $pfiDesignId --exptime 0 --domeClosed --expId 7 --imagetyp BIAS
-    makeSim --detector $detector --pfiDesignId $pfiDesignId --exptime 0 --domeClosed --expId 8 --imagetyp BIAS
-    makeSim --detector $detector --pfiDesignId $pfiDesignId --exptime 0 --domeClosed --expId 9 --imagetyp BIAS
-    makeSim --detector $detector --pfiDesignId $pfiDesignId --exptime 900 --domeClosed --expId 10 --imagetyp DARK
-    makeSim --detector $detector --pfiDesignId $pfiDesignId --exptime 900 --domeClosed --expId 11 --imagetyp DARK
-    makeSim --detector $detector --pfiDesignId $pfiDesignId --exptime 900 --domeClosed --expId 12 --imagetyp DARK
-    makeSim --detector $detector --pfiDesignId $pfiDesignId --exptime 900 --domeClosed --expId 13 --imagetyp DARK
-    makeSim --detector $detector --pfiDesignId $pfiDesignId --exptime 900 --domeClosed --expId 14 --imagetyp DARK
-    makeSim --detector $detector --pfiDesignId $pfiDesignId --exptime 900 --domeClosed --expId 15 --imagetyp DARK
-    makeSim --detector $detector --pfiDesignId $pfiDesignId --exptime 900 --domeClosed --expId 16 --imagetyp DARK
-    makeSim --detector $detector --pfiDesignId $pfiDesignId --exptime 900 --domeClosed --expId 17 --imagetyp DARK
-    makeSim --detector $detector --pfiDesignId $pfiDesignId --exptime 900 --domeClosed --expId 18 --imagetyp DARK
-    makeSim --detector $detector --pfiDesignId $pfiDesignId --exptime 900 --domeClosed --expId 19 --imagetyp DARK
-    makeSim --detector $detector --pfiDesignId $pfiDesignId --exptime 30 --domeClosed --expId 20 --imagetyp FLAT --lamps QUARTZ --xoffset 0 --detectorMap detectorMap-sim-${detector}.fits
-    makeSim --detector $detector --pfiDesignId $pfiDesignId --exptime 30 --domeClosed --expId 21 --imagetyp FLAT --lamps QUARTZ --xoffset 1000
-    makeSim --detector $detector --pfiDesignId $pfiDesignId --exptime 30 --domeClosed --expId 22 --imagetyp FLAT --lamps QUARTZ --xoffset 2000
-    makeSim --detector $detector --pfiDesignId $pfiDesignId --exptime 30 --domeClosed --expId 23 --imagetyp FLAT --lamps QUARTZ --xoffset 3000
-    makeSim --detector $detector --pfiDesignId $pfiDesignId --exptime 30 --domeClosed --expId 24 --imagetyp FLAT --lamps QUARTZ --xoffset 4000
-    makeSim --detector $detector --pfiDesignId $pfiDesignId --exptime 30 --domeClosed --expId 25 --imagetyp FLAT --lamps QUARTZ --xoffset 5000
-    makeSim --detector $detector --pfiDesignId $pfiDesignId --exptime 30 --domeClosed --expId 26 --imagetyp FLAT --lamps QUARTZ --xoffset -1000
-    makeSim --detector $detector --pfiDesignId $pfiDesignId --exptime 30 --domeClosed --expId 27 --imagetyp FLAT --lamps QUARTZ --xoffset -2000
-    makeSim --detector $detector --pfiDesignId $pfiDesignId --exptime 30 --domeClosed --expId 28 --imagetyp FLAT --lamps QUARTZ --xoffset -3000
-    makeSim --detector $detector --pfiDesignId $pfiDesignId --exptime 30 --domeClosed --expId 29 --imagetyp FLAT --lamps QUARTZ --xoffset -4000
-    makeSim --detector $detector --pfiDesignId $pfiDesignId --exptime 30 --domeClosed --expId 30 --imagetyp FLAT --lamps QUARTZ --xoffset -5000
-    makeSim --detector $detector --pfiDesignId $pfiDesignId --exptime 1 --domeClosed --expId 31 --imagetyp ARC --lamps NE
-    makeSim --detector $detector --pfiDesignId $pfiDesignId --exptime 900 --expId 32 --imagetyp OBJECT --allOutput
-    makeSim --detector $detector --pfiDesignId $pfiDesignId2 --exptime 900 --expId 33 --imagetyp OBJECT --allOutput
-done
+makeSimExposure --pfiDesignId $pfiDesignId --exptime 0 --domeClosed --expId 0 --imagetyp BIAS
+makeSimExposure --pfiDesignId $pfiDesignId --exptime 0 --domeClosed --expId 1 --imagetyp BIAS
+makeSimExposure --pfiDesignId $pfiDesignId --exptime 0 --domeClosed --expId 2 --imagetyp BIAS
+makeSimExposure --pfiDesignId $pfiDesignId --exptime 0 --domeClosed --expId 3 --imagetyp BIAS
+makeSimExposure --pfiDesignId $pfiDesignId --exptime 0 --domeClosed --expId 4 --imagetyp BIAS
+makeSimExposure --pfiDesignId $pfiDesignId --exptime 0 --domeClosed --expId 5 --imagetyp BIAS
+makeSimExposure --pfiDesignId $pfiDesignId --exptime 0 --domeClosed --expId 6 --imagetyp BIAS
+makeSimExposure --pfiDesignId $pfiDesignId --exptime 0 --domeClosed --expId 7 --imagetyp BIAS
+makeSimExposure --pfiDesignId $pfiDesignId --exptime 0 --domeClosed --expId 8 --imagetyp BIAS
+makeSimExposure --pfiDesignId $pfiDesignId --exptime 0 --domeClosed --expId 9 --imagetyp BIAS
+makeSimExposure --pfiDesignId $pfiDesignId --exptime 900 --domeClosed --expId 10 --imagetyp DARK
+makeSimExposure --pfiDesignId $pfiDesignId --exptime 900 --domeClosed --expId 11 --imagetyp DARK
+makeSimExposure --pfiDesignId $pfiDesignId --exptime 900 --domeClosed --expId 12 --imagetyp DARK
+makeSimExposure --pfiDesignId $pfiDesignId --exptime 900 --domeClosed --expId 13 --imagetyp DARK
+makeSimExposure --pfiDesignId $pfiDesignId --exptime 900 --domeClosed --expId 14 --imagetyp DARK
+makeSimExposure --pfiDesignId $pfiDesignId --exptime 900 --domeClosed --expId 15 --imagetyp DARK
+makeSimExposure --pfiDesignId $pfiDesignId --exptime 900 --domeClosed --expId 16 --imagetyp DARK
+makeSimExposure --pfiDesignId $pfiDesignId --exptime 900 --domeClosed --expId 17 --imagetyp DARK
+makeSimExposure --pfiDesignId $pfiDesignId --exptime 900 --domeClosed --expId 18 --imagetyp DARK
+makeSimExposure --pfiDesignId $pfiDesignId --exptime 900 --domeClosed --expId 19 --imagetyp DARK
+makeSimExposure --pfiDesignId $pfiDesignId --exptime 30 --domeClosed --expId 20 --imagetyp FLAT --lamps QUARTZ --xoffset 0 --detectorMap detectorMap-sim-@DETECTOR@.fits
+makeSimExposure --pfiDesignId $pfiDesignId --exptime 30 --domeClosed --expId 21 --imagetyp FLAT --lamps QUARTZ --xoffset 1000
+makeSimExposure --pfiDesignId $pfiDesignId --exptime 30 --domeClosed --expId 22 --imagetyp FLAT --lamps QUARTZ --xoffset 2000
+makeSimExposure --pfiDesignId $pfiDesignId --exptime 30 --domeClosed --expId 23 --imagetyp FLAT --lamps QUARTZ --xoffset 3000
+makeSimExposure --pfiDesignId $pfiDesignId --exptime 30 --domeClosed --expId 24 --imagetyp FLAT --lamps QUARTZ --xoffset 4000
+makeSimExposure --pfiDesignId $pfiDesignId --exptime 30 --domeClosed --expId 25 --imagetyp FLAT --lamps QUARTZ --xoffset 5000
+makeSimExposure --pfiDesignId $pfiDesignId --exptime 30 --domeClosed --expId 26 --imagetyp FLAT --lamps QUARTZ --xoffset -1000
+makeSimExposure --pfiDesignId $pfiDesignId --exptime 30 --domeClosed --expId 27 --imagetyp FLAT --lamps QUARTZ --xoffset -2000
+makeSimExposure --pfiDesignId $pfiDesignId --exptime 30 --domeClosed --expId 28 --imagetyp FLAT --lamps QUARTZ --xoffset -3000
+makeSimExposure --pfiDesignId $pfiDesignId --exptime 30 --domeClosed --expId 29 --imagetyp FLAT --lamps QUARTZ --xoffset -4000
+makeSimExposure --pfiDesignId $pfiDesignId --exptime 30 --domeClosed --expId 30 --imagetyp FLAT --lamps QUARTZ --xoffset -5000
+makeSimExposure --pfiDesignId $pfiDesignId --exptime 1 --domeClosed --expId 31 --imagetyp ARC --lamps NE
+makeSimExposure --pfiDesignId $pfiDesignId --exptime 900 --expId 32 --imagetyp OBJECT --allOutput
+makeSimExposure --pfiDesignId $pfiDesignId2 --exptime 900 --expId 33 --imagetyp OBJECT --allOutput
