@@ -181,6 +181,7 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
     parser.add_argument('-p', '--pfiDesignId', type=int, required=True, help="pfiDesignId")
     parser.add_argument('--dirName', default=".", help="Directory in which to write")
     parser.add_argument('--spectraDir', default=".", help="Directory from which to read spectra")
+    parser.add_argument('--pfsConfig', default=False, action="store_true", help="Generate pfsConfig?")
     parser.add_argument('--lamps', default="", help="List of lamps that are on (QUARTZ,NE,HG,XE,CD,KR)")
     parser.add_argument('-f', '--fibers', action='store', default=None)
     parser.add_argument('-v', '--verbose', action='store_true')
@@ -260,7 +261,8 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
                           compress=args.compress, allOutput=args.allOutput,
                           realBias=args.realBias, realFlat=args.realFlat,
                           imagetyp=args.imagetyp)
-        sim.config.write()
+        if args.pfsConfig:
+            sim.config.write()
         if args.detectorMap:
             sim.image.psf.makeDetectorMap(args.detectorMap)
 
