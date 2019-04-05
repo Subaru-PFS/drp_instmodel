@@ -81,31 +81,25 @@ class SimImage(object):
         """
 
         for i, (fiber, doSky) in enumerate(zip(fibers, doSkyForFiber)):
-            if isinstance(spectra[i], NullSpectrum):
-                # A little naughty, but it results in a HUGE speedup!
-                continue
-            parts = self.psf.fiberImage(fiber, spectra[i],
-                                        waveRange=waveRange,
-                                        shiftPsfs=shiftPsfs)
-
-            fiberImage, outImgOffset, psfToSpotPixRatio, geometry = parts
-
-            skyImage = None
-            skyOffset = None
-            if doSky:
-                skyParts = self.psf.fiberImage(fiber, skySpectrum, waveRange=waveRange, shiftPsfs=shiftPsfs)
-                skyImage = skyParts[0]
-                skyOffset = skyParts[1]
-
-            # transfer flux from oversampled fiber image to final resolution output image
-            self.psf.addOversampledImage(fiberImage, self.exposure,
-                                         outImgOffset, psfToSpotPixRatio,
-                                         skyImage, skyOffset)
-
-            self.fibers[fiber] = dict(spectrum=spectra[i],
-                                      geometry=geometry)
-
+            self.addSingleFiber(fiber, spectra[i], doSky, skySpectrum, waveRange, shiftPsfs)
         return self.exposure
+
+    def addSingleFiber(self, fiber, spectrum, doSky, skySpectrum, waveRange=None, shiftPsfs=True):
+        """Add image of the given fiber"""
+        parts = self.psf.fiberImage(fiber, spectrum, waveRange=waveRange, shiftPsfs=shiftPsfs)
+        fiberImage, outImgOffset, psfToSpotPixRatio, geometry = parts
+        if fiberImage is not None:
+            # transfer flux from oversampled fiber image to final resolution output image
+            self.psf.addOversampledImage(fiberImage, self.exposure, outImgOffset, psfToSpotPixRatio)
+
+        self.fibers[fiber] = dict(spectrum=spectrum, geometry=geometry)
+
+        if doSky:
+            skyParts = self.psf.fiberImage(fiber, skySpectrum, waveRange=waveRange, shiftPsfs=shiftPsfs)
+            skyImage = skyParts[0]
+            skyOffset = skyParts[1]
+            if skyImage is not None:
+                self.psf.addOversampledImage(skyImage, self.exposure, skyOffset, psfToSpotPixRatio)
 
     def waveImage(self):
         """ """
