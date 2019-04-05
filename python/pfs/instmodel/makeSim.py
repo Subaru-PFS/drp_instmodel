@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-
-from importlib import reload
 from contextlib import contextmanager
 
 import argparse
@@ -11,14 +8,11 @@ from types import SimpleNamespace
 import numpy as np
 
 from pfs.datamodel.pfsConfig import TargetType
-from .utils import schema
 import pfs.instmodel.simImage as simImage
 import pfs.instmodel.sky as pfsSky
 from pfs.datamodel import PfiDesign
 from pfs.instmodel.makePfsConfig import makePfsConfig
-from .spectrumLibrary import SpectrumLibrary
-import pfs.instmodel.spectrum as pfsSpectrum
-reload(pfsSpectrum)
+from .lightSource import LightSource, Lamps
 
 
 @contextmanager
@@ -36,9 +30,10 @@ def pdbOnException(enable=True):
 
 
 def makeSim(detector, pfiDesignId=0, expId=0, fiberFilter=None,
+            lamps=Lamps.NONE, spectraDir=None,
             frd=None, focus=0, date=None, psf=None, dtype='u2',
             everyNth=20,
-            addNoise=True, addSky=True, combSpacing=50, shiftPsfs=True,
+            addNoise=True, domeOpen=True, combSpacing=50, shiftPsfs=True,
             constantPsf=False, constantX=False,
             xOffset=0.0, yOffset=0.0,
             realBias=None,
@@ -80,13 +75,13 @@ s
     logger.info("addNoise=%s" % (addNoise))
 
     fibers = config.fiberId
-    if addSky:
-        doSkyForFiber = [tt in set([TargetType.SCIENCE, TargetType.FLUXSTD]) for
+    if domeOpen:
+        doSkyForFiber = [tt in set([TargetType.SCIENCE, TargetType.SKY, TargetType.FLUXSTD]) for
                          tt in config.targetType]
     else:
         doSkyForFiber = np.zeros_like(fibers, dtype=bool)
-    library = SpectrumLibrary(skyModel)
-    spectra = [library.getSpectrum(catId, objId) for catId, objId in zip(config.catId, config.objId)]
+    source = LightSource(domeOpen, lamps, skyModel, design, spectraDir)
+    spectra = [source.getSpectrum(fiberId) for fiberId in fibers]
     sim.addFibers(fibers,
                   spectra=spectra,
                   doSkyForFiber=doSkyForFiber,
@@ -99,17 +94,6 @@ def displayImage(img):
     import ds9
     disp = ds9.ds9()
     disp.set_np2arr(img)
-
-
-def loadConfig(fieldName):
-    """ Load the given field definition.
-
-    Currently just looks in a static file (examples/sampleField.py).
-    """
-    # Decide on where to save field definitions, and add the usual path crap
-    configs = schema.loadParFile(os.path.join(os.environ["DRP_INSTMODEL_DIR"],
-                                              "examples", "sampleField.py"))
-    return configs[fieldName]
 
 
 def expandRangeArg(arg):
@@ -195,7 +179,9 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
     parser.add_argument('-d', '--detector', action='store', required=True)
     parser.add_argument('-e', '--expId', type=int, required=True, help="Exposure identifier")
     parser.add_argument('-p', '--pfiDesignId', type=int, required=True, help="pfiDesignId")
-    parser.add_argument('--dirName', default=".", help="Directory from ")
+    parser.add_argument('--dirName', default=".", help="Directory in which to write")
+    parser.add_argument('--spectraDir', default=".", help="Directory from which to read spectra")
+    parser.add_argument('--lamps', default="", help="List of lamps that are on (QUARTZ,NE,HG,XE,CD,KR)")
     parser.add_argument('-f', '--fibers', action='store', default=None)
     parser.add_argument('-v', '--verbose', action='store_true')
     parser.add_argument('--exptime', action='store', default=1, type=float)
@@ -210,7 +196,7 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
     parser.add_argument('--yoffset', action='store', type=float, default=0.0,
                         help='shift in slit position along dispersion, in microns')
     parser.add_argument('--noNoise', action='store_true')
-    parser.add_argument('--noSky', action='store_true', default=False, help="Disable adding sky (for calibs)")
+    parser.add_argument('--domeClosed', action='store_true', default=False, help="Close the dome (so no sky)")
     parser.add_argument('--allOutput', action='store_true',
                         help='whether to add (many) additional HDUs abut the simulation')
     parser.add_argument('--realBias', action='store', type=str2file, default='True')
@@ -245,11 +231,13 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
                       pfiDesignId=args.pfiDesignId,
                       expId=args.expId,
                       fiberFilter=fibers,
+                      lamps=Lamps.fromString(args.lamps),
+                      spectraDir=args.spectraDir,
                       frd=args.frd, focus=args.focus, date=args.date,
                       dtype=args.dtype,
                       everyNth=args.everyNth,
                       addNoise=not args.noNoise,
-                      addSky=not args.noSky,
+                      domeOpen=not args.domeClosed,
                       combSpacing=args.combSpacing,
                       shiftPsfs=args.shiftPsfs,
                       constantPsf=args.constantPsf,
