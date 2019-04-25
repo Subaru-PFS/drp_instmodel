@@ -6,6 +6,8 @@ import time
 
 import astropy.io.fits as pyfits
 from .utils import geom
+from .arm import Arm
+
 
 class Exposure(object):
     def __init__(self, detector, 
@@ -151,7 +153,7 @@ class Exposure(object):
         else:
             dataRoot = os.environ.get('DRP_INSTDATA_DIR', '.')
             fileglob = os.path.join(dataRoot, 'data', 'pfs', 'biases', 'PF?A0*%d%d%d.fits' %
-                                    (biasID, 1, 2 if self.detector.arm == 'r' else 1))
+                                    (biasID, 1, 2 if self.detector.arm == Arm.RED else 1))
 
             print("looking for biases %s" % (fileglob))
             filepaths = glob.glob(fileglob)
@@ -172,7 +174,7 @@ class Exposure(object):
 
         dataRoot = os.environ.get('DRP_INSTDATA_DIR', '.')
         fileglob = os.path.join(dataRoot, 'data', 'pfs', 'flats', 'pfsFlat-*-%d%s.fits' %
-                                (1, self.detector.arm))
+                                (1, self.detector.arm.value))
 
         print("looking for flats %s" % (fileglob))
         filepaths = glob.glob(fileglob)

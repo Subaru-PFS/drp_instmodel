@@ -8,6 +8,7 @@ from types import SimpleNamespace
 import numpy as np
 
 from pfs.datamodel.pfsConfig import TargetType
+from pfs.instmodel.arm import Arm
 import pfs.instmodel.simImage as simImage
 import pfs.instmodel.sky as pfsSky
 from pfs.datamodel import PfsDesign
@@ -35,6 +36,7 @@ def makeSim(detector, pfsDesignId=0, expId=0, fiberFilter=None,
             everyNth=20,
             addNoise=True, domeOpen=True, combSpacing=50, shiftPsfs=True,
             constantPsf=False, constantX=False,
+            zenithDistance=45.0, aerosol=1.0, pwv=1.6,
             xOffset=0.0, yOffset=0.0,
             realBias=None,
             dirName=".",
@@ -62,13 +64,14 @@ s
 
     simID = dict(detector=detector, frd=frd, focus=focus, date=date)
 
-    sim = simImage.SimImage(detector, simID=simID, psf=psf, dtype=dtype,
+    arm = Arm.fromDetectorName(detector)
+    skyModel = pfsSky.StaticSkyModel(arm, zenithDistance, aerosol, pwv)
+    sim = simImage.SimImage(detector, skyModel, simID=simID, psf=psf, dtype=dtype,
                             everyNth=everyNth,
                             addNoise=addNoise,
                             constantPsf=constantPsf, constantX=constantX,
                             slitOffset=(xOffset/1000.0, yOffset/1000.0),
                             logger=logger)
-    skyModel = pfsSky.StaticSkyModel(sim.detector.armName)  # plus field info....
     design = PfsDesign.read(pfsDesignId, dirName=dirName)
     config = makePfsConfig(design, expId)
 
@@ -85,7 +88,6 @@ s
     sim.addFibers(fibers,
                   spectra=spectra,
                   doSkyForFiber=doSkyForFiber,
-                  skySpectrum=skyModel.getSkyAt(),
                   shiftPsfs=shiftPsfs)
     return SimpleNamespace(image=sim, config=config)
 
@@ -215,6 +217,9 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
                         help='fitsio FITS compression type. e.g. RICE')
     parser.add_argument('--pdb', default=False, action='store_true', help="Launch pdb on exception?")
     parser.add_argument('--detectorMap', help="Name for detectorMap file")
+    parser.add_argument('--zenithDistance', type=float, default=45.0, help="Zenith distance (degrees)")
+    parser.add_argument('--aerosol', type=float, default=1.0, help="Aerosol power-law index")
+    parser.add_argument('--pwv', type=float, default=1.6, help="Precipitable water vapour (mm)")
 
     parser.add_argument('--ds9', action='store_true', default=False)
 
@@ -244,6 +249,9 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
                       shiftPsfs=args.shiftPsfs,
                       constantPsf=args.constantPsf,
                       constantX=args.constantX,
+                      zenithDistance=args.zenithDistance,
+                      aerosol=args.aerosol,
+                      pwv=args.pwv,
                       xOffset=args.xoffset,
                       yOffset=args.yoffset,
                       realBias=args.realBias,
