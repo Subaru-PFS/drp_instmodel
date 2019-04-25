@@ -19,59 +19,59 @@ makeSimExposure() {
 
 set -e
 
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 0 --domeClosed --expId 0 --imagetyp BIAS
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 0 --domeClosed --expId 1 --imagetyp BIAS
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 0 --domeClosed --expId 2 --imagetyp BIAS
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 0 --domeClosed --expId 3 --imagetyp BIAS
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 0 --domeClosed --expId 4 --imagetyp BIAS
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 0 --domeClosed --expId 5 --imagetyp BIAS
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 0 --domeClosed --expId 6 --imagetyp BIAS
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 0 --domeClosed --expId 7 --imagetyp BIAS
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 0 --domeClosed --expId 8 --imagetyp BIAS
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 0 --domeClosed --expId 9 --imagetyp BIAS
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 900 --domeClosed --expId 10 --imagetyp DARK
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 900 --domeClosed --expId 11 --imagetyp DARK
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 900 --domeClosed --expId 12 --imagetyp DARK
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 900 --domeClosed --expId 13 --imagetyp DARK
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 900 --domeClosed --expId 14 --imagetyp DARK
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 900 --domeClosed --expId 15 --imagetyp DARK
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 900 --domeClosed --expId 16 --imagetyp DARK
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 900 --domeClosed --expId 17 --imagetyp DARK
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 900 --domeClosed --expId 18 --imagetyp DARK
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 900 --domeClosed --expId 19 --imagetyp DARK
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --domeClosed --expId 20 --imagetyp FLAT --lamps QUARTZ --xoffset 0 --detectorMap detectorMap-sim-@DETECTOR@.fits
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --domeClosed --expId 21 --imagetyp FLAT --lamps QUARTZ --xoffset 0
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --domeClosed --expId 22 --imagetyp FLAT --lamps QUARTZ --xoffset 0
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --domeClosed --expId 23 --imagetyp FLAT --lamps QUARTZ --xoffset 1000
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --domeClosed --expId 24 --imagetyp FLAT --lamps QUARTZ --xoffset 1000
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --domeClosed --expId 25 --imagetyp FLAT --lamps QUARTZ --xoffset 1000
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --domeClosed --expId 26 --imagetyp FLAT --lamps QUARTZ --xoffset 2000
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --domeClosed --expId 27 --imagetyp FLAT --lamps QUARTZ --xoffset 2000
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --domeClosed --expId 28 --imagetyp FLAT --lamps QUARTZ --xoffset 2000
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --domeClosed --expId 29 --imagetyp FLAT --lamps QUARTZ --xoffset 3000
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --domeClosed --expId 30 --imagetyp FLAT --lamps QUARTZ --xoffset 3000
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --domeClosed --expId 31 --imagetyp FLAT --lamps QUARTZ --xoffset 3000
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --domeClosed --expId 32 --imagetyp FLAT --lamps QUARTZ --xoffset 4000
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --domeClosed --expId 33 --imagetyp FLAT --lamps QUARTZ --xoffset 4000
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --domeClosed --expId 34 --imagetyp FLAT --lamps QUARTZ --xoffset 4000
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --domeClosed --expId 35 --imagetyp FLAT --lamps QUARTZ --xoffset 5000
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --domeClosed --expId 36 --imagetyp FLAT --lamps QUARTZ --xoffset 5000
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --domeClosed --expId 37 --imagetyp FLAT --lamps QUARTZ --xoffset 5000
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --domeClosed --expId 38 --imagetyp FLAT --lamps QUARTZ --xoffset -1000
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --domeClosed --expId 39 --imagetyp FLAT --lamps QUARTZ --xoffset -1000
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --domeClosed --expId 40 --imagetyp FLAT --lamps QUARTZ --xoffset -1000
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --domeClosed --expId 41 --imagetyp FLAT --lamps QUARTZ --xoffset -2000
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --domeClosed --expId 42 --imagetyp FLAT --lamps QUARTZ --xoffset -2000
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --domeClosed --expId 43 --imagetyp FLAT --lamps QUARTZ --xoffset -2000
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --domeClosed --expId 44 --imagetyp FLAT --lamps QUARTZ --xoffset -3000
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --domeClosed --expId 45 --imagetyp FLAT --lamps QUARTZ --xoffset -3000
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --domeClosed --expId 46 --imagetyp FLAT --lamps QUARTZ --xoffset -3000
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --domeClosed --expId 47 --imagetyp FLAT --lamps QUARTZ --xoffset -4000
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --domeClosed --expId 48 --imagetyp FLAT --lamps QUARTZ --xoffset -4000
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --domeClosed --expId 49 --imagetyp FLAT --lamps QUARTZ --xoffset -4000
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --domeClosed --expId 50 --imagetyp FLAT --lamps QUARTZ --xoffset -5000
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --domeClosed --expId 51 --imagetyp FLAT --lamps QUARTZ --xoffset -5000
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --domeClosed --expId 52 --imagetyp FLAT --lamps QUARTZ --xoffset -5000
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 1 --domeClosed --expId 53 --imagetyp ARC --lamps NE
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 900 --expId 54 --imagetyp OBJECT --allOutput
-makeSimExposure --pfsDesignId $pfsDesignId2 --exptime 900 --expId 55 --imagetyp OBJECT --allOutput
+makeSimExposure --pfsDesignId $pfsDesignId --exptime 0 --expId 0 --type bias
+makeSimExposure --pfsDesignId $pfsDesignId --exptime 0 --expId 1 --type bias
+makeSimExposure --pfsDesignId $pfsDesignId --exptime 0 --expId 2 --type bias
+makeSimExposure --pfsDesignId $pfsDesignId --exptime 0 --expId 3 --type bias
+makeSimExposure --pfsDesignId $pfsDesignId --exptime 0 --expId 4 --type bias
+makeSimExposure --pfsDesignId $pfsDesignId --exptime 0 --expId 5 --type bias
+makeSimExposure --pfsDesignId $pfsDesignId --exptime 0 --expId 6 --type bias
+makeSimExposure --pfsDesignId $pfsDesignId --exptime 0 --expId 7 --type bias
+makeSimExposure --pfsDesignId $pfsDesignId --exptime 0 --expId 8 --type bias
+makeSimExposure --pfsDesignId $pfsDesignId --exptime 0 --expId 9 --type bias
+makeSimExposure --pfsDesignId $pfsDesignId --exptime 900 --expId 10 --type dark
+makeSimExposure --pfsDesignId $pfsDesignId --exptime 900 --expId 11 --type dark
+makeSimExposure --pfsDesignId $pfsDesignId --exptime 900 --expId 12 --type dark
+makeSimExposure --pfsDesignId $pfsDesignId --exptime 900 --expId 13 --type dark
+makeSimExposure --pfsDesignId $pfsDesignId --exptime 900 --expId 14 --type dark
+makeSimExposure --pfsDesignId $pfsDesignId --exptime 900 --expId 15 --type dark
+makeSimExposure --pfsDesignId $pfsDesignId --exptime 900 --expId 16 --type dark
+makeSimExposure --pfsDesignId $pfsDesignId --exptime 900 --expId 17 --type dark
+makeSimExposure --pfsDesignId $pfsDesignId --exptime 900 --expId 18 --type dark
+makeSimExposure --pfsDesignId $pfsDesignId --exptime 900 --expId 19 --type dark
+makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --expId 20 --type flat --xoffset 0 --detectorMap detectorMap-sim-@DETECTOR@.fits
+makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --expId 21 --type flat --xoffset 0 --detectorMap detectorMap-sim-@DETECTOR@.fits
+makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --expId 22 --type flat --xoffset 0 --detectorMap detectorMap-sim-@DETECTOR@.fits
+makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --expId 23 --type flat --xoffset 1000
+makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --expId 24 --type flat --xoffset 1000
+makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --expId 25 --type flat --xoffset 1000
+makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --expId 26 --type flat --xoffset 2000
+makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --expId 27 --type flat --xoffset 2000
+makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --expId 28 --type flat --xoffset 2000
+makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --expId 29 --type flat --xoffset 3000
+makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --expId 30 --type flat --xoffset 3000
+makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --expId 31 --type flat --xoffset 3000
+makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --expId 32 --type flat --xoffset 4000
+makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --expId 33 --type flat --xoffset 4000
+makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --expId 34 --type flat --xoffset 4000
+makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --expId 35 --type flat --xoffset 5000
+makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --expId 36 --type flat --xoffset 5000
+makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --expId 37 --type flat --xoffset 5000
+makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --expId 38 --type flat --xoffset -1000
+makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --expId 39 --type flat --xoffset -1000
+makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --expId 40 --type flat --xoffset -1000
+makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --expId 41 --type flat --xoffset -2000
+makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --expId 42 --type flat --xoffset -2000
+makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --expId 43 --type flat --xoffset -2000
+makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --expId 44 --type flat --xoffset -3000
+makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --expId 45 --type flat --xoffset -3000
+makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --expId 46 --type flat --xoffset -3000
+makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --expId 47 --type flat --xoffset -4000
+makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --expId 48 --type flat --xoffset -4000
+makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --expId 49 --type flat --xoffset -4000
+makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --expId 50 --type flat --xoffset -5000
+makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --expId 51 --type flat --xoffset -5000
+makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --expId 52 --type flat --xoffset -5000
+makeSimExposure --pfsDesignId $pfsDesignId --exptime 1 --expId 53 --type arc --lamps NE
+makeSimExposure --pfsDesignId $pfsDesignId --exptime 900 --expId 54 --type object --allOutput
+makeSimExposure --pfsDesignId $pfsDesignId2 --exptime 900 --expId 55 --type object --allOutput

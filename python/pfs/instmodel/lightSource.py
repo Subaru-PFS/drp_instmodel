@@ -130,7 +130,8 @@ class LightSource:
     ----------
     domeOpen : `bool`
         Is the dome open?
-    lamps : `
+    lamps : `Lamps`
+        Lamps that are active.
     skyModel : `SkyModel`
         Model of the night sky emission.
     pfsDesign : `pfs.datamodel.PfsDesign`
@@ -142,7 +143,7 @@ class LightSource:
     def __init__(self, domeOpen, lamps, skyModel, pfsDesign, spectraDir=None):
         self.domeOpen = domeOpen
         self.lamps = lamps
-        if domeOpen and lamps:
+        if domeOpen and lamps != Lamps.NONE:
             raise RuntimeError("Dome open but lamps on")
         self.skyModel = skyModel
         self.pfsDesign = pfsDesign

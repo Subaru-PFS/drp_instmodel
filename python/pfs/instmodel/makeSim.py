@@ -178,16 +178,18 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
     parser = argparse.ArgumentParser(description="generate a simulated image", 
                                      formatter_class=argparse.RawDescriptionHelpFormatter,
                                      epilog=helpDoc)
-    parser.add_argument('-d', '--detector', action='store', required=True)
+    parser.add_argument('-d', '--detector', action='store', required=True, help="Detector name, e.g., r1")
     parser.add_argument('-e', '--expId', type=int, required=True, help="Exposure identifier")
     parser.add_argument('-p', '--pfsDesignId', type=int, required=True, help="pfsDesignId")
     parser.add_argument('--dirName', default=".", help="Directory in which to write")
     parser.add_argument('--spectraDir', default=".", help="Directory from which to read spectra")
     parser.add_argument('--pfsConfig', default=False, action="store_true", help="Generate pfsConfig?")
+    parser.add_argument('--type', required=True, choices=("bias", "dark", "flat", "arc", "object"),
+                        help="Type of image")
     parser.add_argument('--lamps', default="", help="List of lamps that are on (QUARTZ,NE,HG,XE,CD,KR)")
     parser.add_argument('-f', '--fibers', action='store', default=None)
     parser.add_argument('-v', '--verbose', action='store_true')
-    parser.add_argument('--exptime', action='store', default=1, type=float)
+    parser.add_argument('--exptime', action='store', default=0.0, type=float)
     parser.add_argument('--focus', action='store', default=0, type=int)
     parser.add_argument('--frd', action='store', default=23, type=int)
     parser.add_argument('--date', action='store')
@@ -199,15 +201,12 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
     parser.add_argument('--yoffset', action='store', type=float, default=0.0,
                         help='shift in slit position along dispersion, in microns')
     parser.add_argument('--noNoise', action='store_true')
-    parser.add_argument('--domeClosed', action='store_true', default=False, help="Close the dome (so no sky)")
     parser.add_argument('--allOutput', action='store_true',
                         help='whether to add (many) additional HDUs abut the simulation')
     parser.add_argument('--realBias', action='store', type=str2file, default='True')
     parser.add_argument('--realFlat', action='store', type=str2bool, default='False',
                         help='Apply an imaging flat. Use False/None to avoid.')
     parser.add_argument('--shiftPsfs', action='store_false')
-    parser.add_argument('--imagetyp', action='store', default=None,
-                        help='IMAGETYP,EXPTIME pair')
     parser.add_argument('--combSpacing', action='store', type=float, default=50)
     parser.add_argument('--constantPsf', action='store', type=float, default=0,
                         help='Use a single PSF for the entire field.')
@@ -233,6 +232,19 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
     fibers = expandRangeArg(args.fibers)
     lamps = Lamps.fromString(args.lamps)
 
+    lamps = Lamps.fromString(args.lamps)
+    if args.type == "arc" and lamps in (Lamps.NONE, Lamps.QUARTZ):
+        raise RuntimeError("Arc requested, but no lamps specified")
+    if args.type == "flat":
+        if lamps == Lamps.NONE:
+            lamps = Lamps.QUARTZ
+        if lamps != Lamps.QUARTZ:
+            raise RuntimeError("Flat requested, but lamps specified (%s)" % (args.lamps,))
+    if args.type == "bias" and args.exptime != 0:
+        raise RuntimeError("Bias requested, but non-zero exposure time specified (%f)" % (args.exptime))
+    if args.type == "dark" and lamps != Lamps.NONE:
+        raise RuntimeError("Dark requested, but lamps specified (%s)" % (args.lamps,))
+
     with pdbOnException(args.pdb):
         sim = makeSim(args.detector,
                       pfsDesignId=args.pfsDesignId,
@@ -244,7 +256,7 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
                       dtype=args.dtype,
                       everyNth=args.everyNth,
                       addNoise=not args.noNoise,
-                      domeOpen=not args.domeClosed,
+                      domeOpen=args.type == "object",
                       combSpacing=args.combSpacing,
                       shiftPsfs=args.shiftPsfs,
                       constantPsf=args.constantPsf,
@@ -271,7 +283,7 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
                           exptime=args.exptime, pfsDesignId=args.pfsDesignId,
                           compress=args.compress, allOutput=args.allOutput,
                           realBias=args.realBias, realFlat=args.realFlat,
-                          imagetyp=args.imagetyp, addCards=header)
+                          imagetyp=args.type.upper(), addCards=header)
         if args.pfsConfig:
             sim.config.write()
         if args.detectorMap:
