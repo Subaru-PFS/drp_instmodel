@@ -36,7 +36,7 @@ def makeSim(detector, pfsDesignId=0, expId=0, fiberFilter=None,
             everyNth=20,
             addNoise=True, domeOpen=True, combSpacing=50, shiftPsfs=True,
             constantPsf=False, constantX=False,
-            zenithDistance=45.0, aerosol=1.0, pwv=1.6,
+            zenithDistance=45.0, aerosol=1.0, pwv=1.6, extinctSky=False,
             xOffset=0.0, yOffset=0.0,
             realBias=None,
             dirName=".",
@@ -65,7 +65,7 @@ s
     simID = dict(detector=detector, frd=frd, focus=focus, date=date)
 
     arm = Arm.fromDetectorName(detector)
-    skyModel = pfsSky.StaticSkyModel(arm, zenithDistance, aerosol, pwv)
+    skyModel = pfsSky.StaticSkyModel(arm, zenithDistance, aerosol, pwv, extinctSky)
     sim = simImage.SimImage(detector, skyModel, simID=simID, psf=psf, dtype=dtype,
                             everyNth=everyNth,
                             addNoise=addNoise,
@@ -219,6 +219,7 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
     parser.add_argument('--zenithDistance', type=float, default=45.0, help="Zenith distance (degrees)")
     parser.add_argument('--aerosol', type=float, default=1.0, help="Aerosol power-law index")
     parser.add_argument('--pwv', type=float, default=1.6, help="Precipitable water vapour (mm)")
+    parser.add_argument('--extinctSky', default=False, action="store_true", help="Apply extinction to sky?")
 
     parser.add_argument('--ds9', action='store_true', default=False)
 
@@ -264,6 +265,7 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
                       zenithDistance=args.zenithDistance,
                       aerosol=args.aerosol,
                       pwv=args.pwv,
+                      extinctSky=args.extinctSky,
                       xOffset=args.xoffset,
                       yOffset=args.yoffset,
                       realBias=args.realBias,

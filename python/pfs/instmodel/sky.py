@@ -24,13 +24,16 @@ class SkyModel(object):
     aerosol : `float`
         Angstrom exponent for the aerosols (power-law index of wavelength for
         the optical depth).
+    extinctSky : `bool`
+        Apply extinction to the sky spectrum?
     """
 
-    def __init__(self, arm, zenithDistance=45.0, pwv=1.6, aerosol=1.0):
+    def __init__(self, arm, zenithDistance=45.0, pwv=1.6, aerosol=1.0, extinctSky=False):
         self.arm = arm
         self.zenithDistance = zenithDistance
         self.pwv = pwv
         self.aerosol = aerosol
+        self.extinctSky = extinctSky
 
     def __str__(self):
         return ("%s(arm=%s, zenithDistance=%f, pwv=%f, aerosol=%f)" %
@@ -137,7 +140,8 @@ class StaticSkyModel(SkyModel):
 
     def getSky(self):
         """Return a spline for the sky"""
-        return TableSpectrum(self.skyWavelength, self.skyFlux)
+        sky = TableSpectrum(self.skyWavelength, self.skyFlux)
+        return sky*self.getExtinction() if self.extinctSky else sky
 
     def getExtinction(self):
         return TableSpectrum(self.extWavelength, self.extTransparency)
