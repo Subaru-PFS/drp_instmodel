@@ -3,6 +3,7 @@ import logging
 import numpy
 import os
 import time
+import warnings
 
 import astropy.io.fits as pyfits
 from .utils import geom
@@ -123,7 +124,9 @@ class Exposure(object):
             hdr.set(*c)
 
         hdu0 = pyfits.CompImageHDU(outIm, name='image')
-        hdu0.header.extend(hdr)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", pyfits.verify.VerifyWarning)  # creating HIERARCH keys
+            hdu0.header.extend(hdr)
 
         # hdu0.data = outIm
         hdulist.append(hdu0)
@@ -138,7 +141,7 @@ class Exposure(object):
                 hdulist.append(pyfits.CompImageHDU(self.pixelImage, name='active'))
 
         hdulist.update_extend()
-        hdulist.writeto(outputFile, checksum=True, clobber=True)
+        hdulist.writeto(outputFile, checksum=True, overwrite=True)
 
         return hdulist
     
