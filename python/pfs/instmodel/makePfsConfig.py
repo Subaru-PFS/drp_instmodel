@@ -3,20 +3,20 @@ import numpy as np
 
 import lsst.afw.geom
 
-from pfs.datamodel.pfsConfig import PfiDesign, TargetType, PfsConfig
+from pfs.datamodel.pfsConfig import PfsDesign, TargetType, PfsConfig
 
 FLUXSTD_MAG = 18.0  # ABmag
 
 
-def makePfsConfig(pfiDesign, expId, rng=None, pfiErrors=10.0):
-    """Build a ``PfsConfig`` from a ``PfiDesign``
+def makePfsConfig(pfsDesign, expId, rng=None, pfiErrors=10.0):
+    """Build a ``PfsConfig`` from a ``PfsDesign``
 
-    The ``PfiDesign`` supplies just about everything we need, except for the
+    The ``PfsDesign`` supplies just about everything we need, except for the
     ``pfiCenter``, which will be a random modification of the ``pfiNominal``.
 
     Parameters
     ----------
-    pfiDesign : `pfs.datamodel.PfiDesign`
+    pfsDesign : `pfs.datamodel.PfsDesign`
         Design for the top-end.
     expId : `int`
         Identifier for the exposure. For our purposes, this is just a unique
@@ -29,22 +29,22 @@ def makePfsConfig(pfiDesign, expId, rng=None, pfiErrors=10.0):
     """
     if rng is None:
         rng = np.random
-    centering = rng.normal(scale=pfiErrors, size=pfiDesign.pfiNominal.shape)
-    pfiCenter = pfiDesign.pfiNominal + centering
-    return PfsConfig.fromPfiDesign(pfiDesign, expId, pfiCenter)
+    centering = rng.normal(scale=pfiErrors, size=pfsDesign.pfiNominal.shape)
+    pfiCenter = pfsDesign.pfiNominal + centering
+    return PfsConfig.fromPfsDesign(pfsDesign, expId, pfiCenter)
 
 
-def makePfiDesign(pfiDesignId, fiberIds, catIds, objIds, targetTypes,
+def makePfsDesign(pfsDesignId, fiberIds, catIds, objIds, targetTypes,
                   fiberMags=None, filterNames=None, raBoresight=0.0*lsst.afw.geom.degrees,
                   decBoresight=0.0*lsst.afw.geom.degrees, rng=None):
-    """Build a ``PfiDesign``
+    """Build a ``PfsDesign``
 
     The top-end settings (``ra``, ``dec``, ``pfiNominal``, ``pfiCenter``) are
     random, but everything else is set up as normal.
 
     Parameters
     ----------
-    pfiDesignId : `int`
+    pfsDesignId : `int`
         Identifier for the top-end design. For our purposes, this is just a
         unique integer.
     fiberIds : `numpy.ndarray` of `int`
@@ -69,7 +69,7 @@ def makePfiDesign(pfiDesignId, fiberIds, catIds, objIds, targetTypes,
 
     Returns
     -------
-    design : `pfs.datamodel.PfiDesign`
+    design : `pfs.datamodel.PfsDesign`
         Design of the top-end.
     """
     FIELD_OF_VIEW = 1.5*lsst.afw.geom.degrees
@@ -95,12 +95,12 @@ def makePfiDesign(pfiDesignId, fiberIds, catIds, objIds, targetTypes,
     if filterNames is None:
         filterNames = [[] for _ in fiberIds]
 
-    return PfiDesign(pfiDesignId, raBoresight.asDegrees(), decBoresight.asDegrees(),
+    return PfsDesign(pfsDesignId, raBoresight.asDegrees(), decBoresight.asDegrees(),
                      fiberIds, tract, patch, ra, dec, catIds, objIds, targetTypes,
                      fiberMags, filterNames, pfiNominal)
 
 
-def makeScienceDesign(pfiDesignId, fiberIds,
+def makeScienceDesign(pfsDesignId, fiberIds,
                       fracSky=0.2, fracFluxStd=0.1,
                       minScienceMag=18.0, maxScienceMag=24.0,
                       fluxStdMag=18.0,
@@ -108,7 +108,7 @@ def makeScienceDesign(pfiDesignId, fiberIds,
                       raBoresight=0.0*lsst.afw.geom.degrees,
                       decBoresight=0.0*lsst.afw.geom.degrees,
                       rng=None):
-    """Build a ``PfiDesign`` for a science exposure
+    """Build a ``PfsDesign`` for a science exposure
 
     Fibers are randomly assigned to sky, flux standards or science targets
     based on the nominated fractions.
@@ -118,7 +118,7 @@ def makeScienceDesign(pfiDesignId, fiberIds,
 
     Parameters
     ----------
-    pfiDesignId : `int`
+    pfsDesignId : `int`
         Identifier for the top-end design. For our purposes, this is just a
         unique integer.
     fiberIds : `numpy.ndarray` of `int`
@@ -147,7 +147,7 @@ def makeScienceDesign(pfiDesignId, fiberIds,
 
     Returns
     -------
-    design : `pfs.datamodel.PfiDesign`
+    design : `pfs.datamodel.PfsDesign`
         Design of the top-end.
     """
     if rng is None:
@@ -194,6 +194,6 @@ def makeScienceDesign(pfiDesignId, fiberIds,
     mags[targetTypes == TargetType.FLUXSTD] = fluxStdMag
     fiberMags = [np.array([mm]) if tt not in noMagTypes else [] for tt, mm in zip(targetTypes, mags)]
 
-    return makePfiDesign(pfiDesignId, fiberIds, catId, objId, targetTypes,
+    return makePfsDesign(pfsDesignId, fiberIds, catId, objId, targetTypes,
                          fiberMags=fiberMags, filterNames=filterNames, raBoresight=raBoresight,
                          decBoresight=decBoresight, rng=rng)

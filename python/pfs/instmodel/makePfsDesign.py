@@ -3,7 +3,7 @@ from pfs.instmodel.slit import Slit
 from pfs.instmodel.utils.generators import keepOdd, keepEven
 from pfs.instmodel.makePfsConfig import makeScienceDesign
 
-"""Generate a PfiDesign"""
+"""Generate a PfsDesign"""
 
 
 def parseFibers(fibers):
@@ -54,11 +54,11 @@ def parseObjId(text):
 def main():
     """Main entrypoint when running as a script"""
     from argparse import ArgumentParser
-    parser = ArgumentParser(description="Generate a PfiDesign")
+    parser = ArgumentParser(description="Generate a PfsDesign")
     parser.add_argument("--fibers", type=parseFibers, required=True,
                         help="Fibers to light (single, double, lam, all, odd, even; or "
                              "space-delimited integers)")
-    parser.add_argument("--pfiDesignId", type=int, required=True, help="Top-end design identifier")
+    parser.add_argument("--pfsDesignId", type=int, required=True, help="Top-end design identifier")
     parser.add_argument("--fracSky", type=float, default=0.2, help="Fraction of fibers to use for sky")
     parser.add_argument("--fracFluxStd", type=float, default=0.1,
                         help="Fraction of fibers to use for flux standards")
@@ -75,10 +75,10 @@ def main():
     args = parser.parse_args()
 
     rng = np.random.RandomState(args.seed) if args.seed is not None else None
-    pfiDesign = makeScienceDesign(args.pfiDesignId, args.fibers, args.fracSky, args.fracFluxStd,
+    pfsDesign = makeScienceDesign(args.pfsDesignId, args.fibers, args.fracSky, args.fracFluxStd,
                                   args.minScienceMag, args.maxScienceMag, args.fluxStdMag,
                                   args.scienceCatId, args.scienceObjId, rng=rng)
-    pfiDesign.write(args.dirName)
+    pfsDesign.write(args.dirName)
 
 
 if __name__ == "__main__":
