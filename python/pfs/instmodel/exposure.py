@@ -73,7 +73,7 @@ class Exposure(object):
             return time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime(t))
                                     
     def writeto(self, outputFile, doCombine=True, doWriteAll=True,
-                exptime=1.0, pfiDesignId=0x0,
+                exptime=1.0, pfsDesignId=0x0,
                 addNoise=True, compress='RICE',
                 realBias=None, realFlat=None,
                 addCards=(),
@@ -97,7 +97,7 @@ class Exposure(object):
         hdr.set('DATE-OBS', self.ts(), 'Crude sim time')
         hdr.set('W_SIMBIA', realBias)
         hdr.set('W_SIMFLA', realFlat)
-        hdr.set('W_PFDSGN', pfiDesignId)
+        hdr.set('W_PFDSGN', pfsDesignId)
         
         if imagetyp is not None:
             parts = imagetyp.split(',')

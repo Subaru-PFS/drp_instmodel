@@ -10,7 +10,7 @@ import numpy as np
 from pfs.datamodel.pfsConfig import TargetType
 import pfs.instmodel.simImage as simImage
 import pfs.instmodel.sky as pfsSky
-from pfs.datamodel import PfiDesign
+from pfs.datamodel import PfsDesign
 from pfs.instmodel.makePfsConfig import makePfsConfig
 from .lightSource import LightSource, Lamps
 
@@ -29,7 +29,7 @@ def pdbOnException(enable=True):
         raise
 
 
-def makeSim(detector, pfiDesignId=0, expId=0, fiberFilter=None,
+def makeSim(detector, pfsDesignId=0, expId=0, fiberFilter=None,
             lamps=Lamps.NONE, spectraDir=None,
             frd=None, focus=0, date=None, psf=None, dtype='u2',
             everyNth=20,
@@ -69,7 +69,7 @@ s
                             slitOffset=(xOffset/1000.0, yOffset/1000.0),
                             logger=logger)
     skyModel = pfsSky.StaticSkyModel(sim.detector.armName)  # plus field info....
-    design = PfiDesign.read(pfiDesignId, dirName=dirName)
+    design = PfsDesign.read(pfsDesignId, dirName=dirName)
     config = makePfsConfig(design, expId)
 
     logger.info("addNoise=%s" % (addNoise))
@@ -178,7 +178,7 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
                                      epilog=helpDoc)
     parser.add_argument('-d', '--detector', action='store', required=True)
     parser.add_argument('-e', '--expId', type=int, required=True, help="Exposure identifier")
-    parser.add_argument('-p', '--pfiDesignId', type=int, required=True, help="pfiDesignId")
+    parser.add_argument('-p', '--pfsDesignId', type=int, required=True, help="pfsDesignId")
     parser.add_argument('--dirName', default=".", help="Directory in which to write")
     parser.add_argument('--spectraDir', default=".", help="Directory from which to read spectra")
     parser.add_argument('--pfsConfig', default=False, action="store_true", help="Generate pfsConfig?")
@@ -229,7 +229,7 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
 
     with pdbOnException(args.pdb):
         sim = makeSim(args.detector,
-                      pfiDesignId=args.pfiDesignId,
+                      pfsDesignId=args.pfsDesignId,
                       expId=args.expId,
                       fiberFilter=fibers,
                       lamps=Lamps.fromString(args.lamps),
@@ -257,7 +257,7 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
     imageName = "PF%1s%1s%06d%1d%1d.fits" % (site, category, visit, spectrograph, armNum)
     with pdbOnException(args.pdb):
         sim.image.writeTo(os.path.join(args.dirName, imageName), addNoise=not args.noNoise,
-                          exptime=args.exptime, pfiDesignId=args.pfiDesignId,
+                          exptime=args.exptime, pfsDesignId=args.pfsDesignId,
                           compress=args.compress, allOutput=args.allOutput,
                           realBias=args.realBias, realFlat=args.realFlat,
                           imagetyp=args.imagetyp)
