@@ -104,6 +104,24 @@ class Lamps(IntFlag):
             result |= getattr(cls, ll)
         return result
 
+    def toFitsCards(self):
+        """Generate appropriate FITS headers
+
+        Returns
+        -------
+        headers : `list` of `tuple`
+            FITS cards, each with elements: keyword, value, comment
+        """
+        mapping = {
+            Lamps.QUARTZ: "W_AITQTH",
+            Lamps.NE: "W_AITNEO",
+            Lamps.HG: "W_AITHGA",
+            Lamps.XE: "W_AITXEN",
+            Lamps.KR: "W_AITKRY",
+        }
+        assert (self & Lamps.CD) == 0, "No keyword defined for Cd lamp"
+        return [(mapping[key], (self & key) > 0, "Lamp %s is on" % key.name) for key in mapping]
+
 
 class LightSource:
     """Where the light going down the fibers is coming from
