@@ -119,8 +119,10 @@ class SimImage(object):
     def writeTo(self, outputFile=None, addNoise=True,
                 exptime=1.0, pfsDesignId=0x0,
                 compress='RICE', allOutput=False,
-                imagetyp=None, realBias=None, realFlat=None):
-        
+                imagetyp=None, realBias=None, realFlat=None,
+                addCards=None):
+        if addCards is None:
+            addCards = []
         if outputFile is None:
             from .utils import SeqPath
 
@@ -136,7 +138,7 @@ class SimImage(object):
         print("output to %s, addNoise=%s, realBias=%s" %
               (outputFile, addNoise, realBias))
 
-        addCards = self.psf.getCards()
+        addCards += self.psf.getCards()
         
         self.exposure.writeto(outputFile, addNoise=addNoise,
                               exptime=exptime, pfsDesignId=pfsDesignId,
