@@ -226,13 +226,14 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
         args.realBias = None
 
     fibers = expandRangeArg(args.fibers)
+    lamps = Lamps.fromString(args.lamps)
 
     with pdbOnException(args.pdb):
         sim = makeSim(args.detector,
                       pfsDesignId=args.pfsDesignId,
                       expId=args.expId,
                       fiberFilter=fibers,
-                      lamps=Lamps.fromString(args.lamps),
+                      lamps=lamps,
                       spectraDir=args.spectraDir,
                       frd=args.frd, focus=args.focus, date=args.date,
                       dtype=args.dtype,
@@ -260,7 +261,7 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
                           exptime=args.exptime, pfsDesignId=args.pfsDesignId,
                           compress=args.compress, allOutput=args.allOutput,
                           realBias=args.realBias, realFlat=args.realFlat,
-                          imagetyp=args.imagetyp)
+                          imagetyp=args.imagetyp, addCards=lamps.toFitsCards())
         if args.pfsConfig:
             sim.config.write()
         if args.detectorMap:
