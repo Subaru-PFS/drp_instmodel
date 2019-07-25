@@ -163,10 +163,10 @@ class SplinedPsf(psf.Psf):
                 return self.perFiberCoeffs[fibers]
 
     def getCards(self):
-        cards = [('HIERARCH sim.slit.xoffset', self.slitOffset[0], 'slit fiber offset, mm'),
-                 ('HIERARCH sim.slit.yoffset', self.slitOffset[1], 'slit wavelength offset, mm')]
-
-        return cards
+        return [('W_ENFCAZ', self.slitOffset[0], 'spatial slit offset, mm'),
+                ('W_ENFCAY', self.slitOffset[1], 'spectral slit offset, mm'),
+                ('W_ENFCAX', 0.0, 'focus offset, mm'),
+                ]
 
     def _focalPlaneXToDetectorX(self, x, correctToLL=False):
         """ Given focal plane positions, return detector positions.
