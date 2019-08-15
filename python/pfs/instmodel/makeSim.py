@@ -257,11 +257,13 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
     armNum = {'b': 1, 'r': 2, 'n': 3, 'm': 4}[args.detector[0]]
     imageName = "PF%1s%1s%06d%1d%1d.fits" % (site, category, visit, spectrograph, armNum)
     with pdbOnException(args.pdb):
+        header = lamps.toFitsCards()
+        header.append(("W_VISIT", visit, "Visit identifier"))
         sim.image.writeTo(os.path.join(args.dirName, imageName), addNoise=not args.noNoise,
                           exptime=args.exptime, pfsDesignId=args.pfsDesignId,
                           compress=args.compress, allOutput=args.allOutput,
                           realBias=args.realBias, realFlat=args.realFlat,
-                          imagetyp=args.imagetyp, addCards=lamps.toFitsCards())
+                          imagetyp=args.imagetyp, addCards=header)
         if args.pfsConfig:
             sim.config.write()
         if args.detectorMap:
