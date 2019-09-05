@@ -105,6 +105,41 @@ class Spectrum(object):
         """
         return -numpy.inf, numpy.inf
 
+    def __imul__(self, value):
+        raise NotImplementedError("Method must be defined by subclass")
+
+    def normalize(self, filterName, magnitude):
+        """Normalize the spectrum to the nominated magnitude
+
+        Parameters
+        ----------
+        filterName : `str`
+            Name of filter bandpass. Must be listed in our menu of recognised
+            filters.
+        magnitude : `float`
+            AB magnitude in the filter bandpass.
+
+        Returns
+        -------
+        norm : `float`
+            Normalisation applied.
+        """
+
+        menu = {"i": "wHSC-i2.txt"}
+        if filterName not in menu:
+            raise RuntimeError(f"Unrecognised filter: {filterName}")
+
+        bandpass = TextSpectrum(os.path.join(os.environ["DRP_INSTDATA_DIR"], "data", "hsc", menu[filterName]),
+                                wavelengthScale=0.1)
+        ab = ConstantSpectrum(10.0**(-0.4*(magnitude + 48.6))*1.0e9*1.0e23)  # ABmag reference spectrum, nJy
+
+        options = dict(epsabs=0.0, epsrel=2.0e-3, limit=100)  # integration options
+        current = ProductSpectrum(self, bandpass, PhotonCounting()).integrate(*bandpass.bounds(), **options)
+        expected = ProductSpectrum(ab, bandpass, PhotonCounting()).integrate(*bandpass.bounds(), **options)
+        norm = expected/current
+        self *= norm
+        return norm
+
 
 class TableSpectrum(Spectrum):
     """A Spectrum defined by a lookup table
@@ -149,6 +184,10 @@ class TableSpectrum(Spectrum):
     def bounds(self):
         return self.wavelength[0], self.wavelength[-1]
 
+    def __imul__(self, value):
+        self.flux *= value
+        return self
+
 
 class SlopeSpectrum(Spectrum):
     """A spectrum consisting of a slope in F_nu
@@ -165,6 +204,10 @@ class SlopeSpectrum(Spectrum):
         # Make 3800..12700 go to 1-(0.062) to 1+(0.27)
         return ((wavelength/10000.0 - 1)/10 + 1)*self.scale
 
+    def __imul__(self, value):
+        self.scale *= value
+        return self
+
 
 class FlatSpectrum(Spectrum):
     """A spectrum simulating a flat-field lamp: a black body
@@ -180,6 +223,10 @@ class FlatSpectrum(Spectrum):
     def interpolate(self, wavelength):
         """return a quartz lamp spectrum, as seen by our detector."""
         return self.scale*blackbody(wavelength, 5000.0)
+
+    def __imul__(self, value):
+        self.scale *= value
+        return self
 
 
 class LineSpectrum(Spectrum):
@@ -223,9 +270,12 @@ class LineSpectrum(Spectrum):
     def integrate(self, lower, upper):
         return numpy.vectorize(self._integrateImpl)(lower, upper)
 
-
     def bounds(self):
         return self.wavelength[0], self.wavelength[-1]
+
+    def __imul__(self, value):
+        self.flux *= value
+        return self
 
 
 class ArcSpectrum(LineSpectrum):
@@ -334,6 +384,10 @@ class ConstantSpectrum(Spectrum):
     def _integrateImpl(self, lower, upper):
         return self.value*(upper - lower)
 
+    def __imul__(self, value):
+        self.value *= value
+        return self
+
 
 class NullSpectrum(Spectrum):
     """A spectrum that is zero everywhere"""
@@ -359,6 +413,10 @@ class NullSpectrum(Spectrum):
             Integrated fluxes between the wavelength bounds, W/m^2.
         """
         return numpy.zeros_like(lower)
+
+    def __imul__(self, value):
+        # No change!
+        return self
 
 
 class SumSpectrum(Spectrum):
@@ -405,6 +463,39 @@ class SumSpectrum(Spectrum):
             result += ss.integrate(lower, upper)
         return result
 
+    def __imul__(self, value):
+        for ss in self.spectra:
+            ss *= value
+        return self
+
+
+class ProductSpectrum(Spectrum):
+    """A spectrum that is the product of one or more spectra
+
+    Possibly useful for convolving a spectrum by a filter curve.
+    """
+    def __init__(self, *spectra):
+        super().__init__()
+        self.spectra = spectra
+
+    def interpolate(self, wavelength):
+        """Interpolate the spectrum at the nominated wavelength
+
+        Parameters
+        ----------
+        wavelength : array_like
+            Vector of wavelengths at which to interpolate, nm.
+
+        Returns
+        -------
+        flux : array_like
+            Vector of flux densities at the provided ``wavelength``s.
+        """
+        result = self.spectra[0].interpolate(wavelength)
+        for ss in self.spectra[1:]:
+            result *= ss.interpolate(wavelength)
+        return result
+
 
 class PfsSimSpectrum(TableSpectrum):
     """A spectrum read from a pfsSim file
@@ -423,3 +514,42 @@ class PfsSimSpectrum(TableSpectrum):
             flux = ff[1].data
             wavelength = ff[2].data
         super().__init__(wavelength*wavelengthScale, flux*fluxScale)
+
+
+class PhotonCounting(Spectrum):
+    """A photon-counting spectrum (1/nu)
+
+    Useful for converting a filter curve to a photon-counting filter curve.
+
+    This has no normalisation, because you're using this to set the
+    normalisation.
+    """
+    def interpolate(self, wavelength):
+        """Interpolate the spectrum at the nominated wavelength
+
+        Parameters
+        ----------
+        wavelength : array_like
+            Vector of wavelengths at which to interpolate, nm.
+
+        Returns
+        -------
+        flux : array_like
+            Vector of flux densities at the provided ``wavelength``s.
+        """
+        return self.interpolateFrequency(SPEED_OF_LIGHT/wavelength)
+
+    def interpolateFrequency(self, frequency):
+        """Interpolate the spectrum at the nominated freqency
+
+        Parameters
+        ----------
+        frequency : array_like
+            Vector of frequencies at which to interpolate, Hz.
+
+        Returns
+        -------
+        flux : array_like
+            Vector of flux densities at the provided ``frequency``s.
+        """
+        return 1.0/frequency
