@@ -208,7 +208,7 @@ class LightSource:
         tract = self.pfsDesign.tract[index]
         patch = self.pfsDesign.patch[index]
         targetType = self.pfsDesign.targetType[index]
-        fiberMags = self.pfsDesign.fiberMag[index]
+        fiberMags = dict(zip(self.pfsDesign.filterNames[index], self.pfsDesign.fiberMag[index]))
         return SimpleNamespace(index=index, catId=catId, objId=objId, tract=tract, patch=patch,
                                targetType=targetType, fiberMags=fiberMags)
 
