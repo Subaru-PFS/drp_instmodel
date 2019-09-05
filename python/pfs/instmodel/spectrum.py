@@ -553,3 +553,26 @@ class PhotonCounting(Spectrum):
             Vector of flux densities at the provided ``frequency``s.
         """
         return 1.0/frequency
+
+
+class AmbreSpectrum(TableSpectrum):
+    """A spectrum read from an AMBRE FITS file
+
+    The FITS columns are:
+    1- wavelength (in \AA)
+    2- relative flux (normalized to the local continuum)
+    3- absolute flux (in erg/cm^2/s/A)
+
+    Parameters
+    ----------
+    filename : `str`
+        Path to file to read.
+    """
+    def __init__(self, filename):
+        with astropy.io.fits.open(filename) as ff:
+            wavelength = ff[1].data["wavelength"]  # Angstroms
+            flux = ff[1].data["flux"]  # erg/cm^2/s/A
+        wavelength *= 0.1  # Convert to nm
+        flux *= 10*wavelength*wavelength/SPEED_OF_LIGHT  # Convert to Fnu in erg/cm^2/s/Hz
+        flux *= 1.0e23*1.0e9  # Convert to nJy
+        super().__init__(wavelength, flux)
