@@ -1,6 +1,7 @@
 import numpy
 import os
 import scipy
+import scipy.integrate
 import astropy.io.fits
 
 from .utils import blackbody
@@ -47,7 +48,7 @@ class Spectrum(object):
         """
         return self.interpolate(SPEED_OF_LIGHT/frequency)
 
-    def _integrateImpl(self, lower, upper):
+    def _integrateImpl(self, lower, upper, **kwargs):
         """Integrate the spectrum between a single set of frequency bounds
 
         Note that this works with frequency rather than wavelength.
@@ -68,9 +69,9 @@ class Spectrum(object):
         flux : `float`
             Integrated flux between the frequency bounds, nJy.Hz.s
         """
-        return scipy.integrate.quad(self.interpolateFrequency, lower, upper)[0]
+        return scipy.integrate.quad(self.interpolateFrequency, lower, upper, **kwargs)[0]
 
-    def integrate(self, lower, upper):
+    def integrate(self, lower, upper, **kwargs):
         """Integrate the spectrum between multiple wavelength bounds
 
         Parameters
@@ -88,7 +89,7 @@ class Spectrum(object):
         lowerFreq = SPEED_OF_LIGHT/upper
         upperFreq = SPEED_OF_LIGHT/lower
         scale = 1.0e-9*1.0e-26  # nJy.Hz --> W/m^2
-        return scale*numpy.vectorize(self._integrateImpl)(lowerFreq, upperFreq)
+        return scale*numpy.vectorize(self._integrateImpl)(lowerFreq, upperFreq, **kwargs)
 
     def bounds(self):
         """Return the wavelength bounds of the spectrum.
