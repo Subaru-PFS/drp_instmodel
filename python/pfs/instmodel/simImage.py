@@ -47,6 +47,13 @@ class SimImage(object):
         self.exposure = self.detector.makeExposure(dtype=dtype)
         self.fibers = {}
 
+    def clone(self):
+        """Return a copy of ``self``"""
+        new = type(self)(self.detector.detectorName, self.sky, self.psf, self.exposure.dtype)
+        new.exposure = self.exposure.clone()
+        new.fibers = self.fibers.copy()
+        return new
+
     @property
     def image(self):
         return self.exposure.image
