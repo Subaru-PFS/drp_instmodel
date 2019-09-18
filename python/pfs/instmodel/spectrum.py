@@ -173,12 +173,12 @@ class FlatSpectrum(Spectrum):
     scale : `float`
         Scale to apply to spectrum.
     """
-    def __init__(self, scale=2.0e-19):  # Scale chosen manually to get reasonable counts in 30 sec
+    def __init__(self, scale=7.0e-20):  # Scale chosen manually to get reasonable counts in 30 sec
         self.scale = scale
 
     def interpolate(self, wavelength):
         """return a quartz lamp spectrum, as seen by our detector."""
-        return self.scale*blackbody(wavelength, 3800.0)
+        return self.scale*blackbody(wavelength, 5000.0)
 
 
 class LineSpectrum(Spectrum):
