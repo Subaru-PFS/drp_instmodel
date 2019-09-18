@@ -9,6 +9,14 @@ pfsDesignId2=$2
 if [ -z "$pfsDesignId2" ]; then
     pfsDesignId2=$pfsDesignId
 fi
+pfsDesignIdOdd=$3
+if [ -z "$pfsDesignIdOdd" ]; then
+    pfsDesignIdOdd=$pfsDesignId
+fi
+pfsDesignIdEven=$4
+if [ -z "$pfsDesignIdEven" ]; then
+    pfsDesignIdEven=$pfsDesignId
+fi
 
 makeSimExposure() {
     for detector in r1 b1; do
@@ -75,3 +83,5 @@ makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --expId 52 --type flat -
 makeSimExposure --pfsDesignId $pfsDesignId --exptime 1 --expId 53 --type arc --lamps NE
 makeSimExposure --pfsDesignId $pfsDesignId --exptime 900 --expId 54 --type object --allOutput
 makeSimExposure --pfsDesignId $pfsDesignId2 --exptime 900 --expId 55 --type object --allOutput
+makeSimExposure --pfsDesignId $pfsDesignIdOdd --exptime 30 --visit 56 --type flat --lamps QUARTZ --xoffset 0
+makeSimExposure --pfsDesignId $pfsDesignIdEven --exptime 30 --visit 57 --type flat --lamps QUARTZ --xoffset 0
