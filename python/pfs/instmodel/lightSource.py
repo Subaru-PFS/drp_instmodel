@@ -11,7 +11,7 @@ from .spectrum import SlopeSpectrum
 from .spectrum import ConstantSpectrum
 from .spectrum import NullSpectrum
 from .spectrum import PfsSimSpectrum
-from .spectrum import SumSpectrum
+from .spectrum import AmbreSpectrum
 
 
 __all__ = ["fluxForPhotons", "fluxDensityForPhotons", "DomeStatus", "LightSource"]
@@ -208,7 +208,7 @@ class LightSource:
         tract = self.pfsDesign.tract[index]
         patch = self.pfsDesign.patch[index]
         targetType = self.pfsDesign.targetType[index]
-        fiberMags = self.pfsDesign.fiberMag[index]
+        fiberMags = dict(zip(self.pfsDesign.filterNames[index], self.pfsDesign.fiberMag[index]))
         return SimpleNamespace(index=index, catId=catId, objId=objId, tract=tract, patch=patch,
                                targetType=targetType, fiberMags=fiberMags)
 
@@ -289,10 +289,6 @@ class LightSource:
     def getFluxStdSpectrum(self, target):
         """Return a flux standard spectrum
 
-        XXX We haven't discussed how the pipeline will represent and store
-        spectra used for flux standards, so for now let's just make this a
-        constant F_nu spectrum.
-
         Parameters
         ----------
         target : struct
@@ -303,4 +299,17 @@ class LightSource:
         result : `Spectrum`
             Flux standard spectrum
         """
-        return self.getConstantSpectrum(target)
+        menu = ["p6500_g+4.0_m0.0_t01_z+0.00_a+0.00.AMBRE.fits",
+                "p6500_g+4.0_m0.0_t01_z-1.00_a+0.00.AMBRE.fits",
+                "p7000_g+4.0_m0.0_t01_z+0.00_a+0.00.AMBRE.fits",
+                "p7000_g+4.0_m0.0_t01_z-1.00_a+0.00.AMBRE.fits",
+                "p7500_g+4.0_m0.0_t01_z+0.00_a+0.00.AMBRE.fits",
+                "p7500_g+4.0_m0.0_t01_z-1.00_a+0.00.AMBRE.fits",
+                ]
+        filename = os.path.join(os.environ["DRP_INSTDATA_DIR"], "data", "objects", "fluxCal",
+                                menu[target.objId % len(menu)])
+        spectrum = AmbreSpectrum(filename)
+
+        filterName = "i"
+        spectrum.normalize(filterName, target.fiberMags[filterName])
+        return spectrum
