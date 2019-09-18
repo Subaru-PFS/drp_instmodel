@@ -157,6 +157,13 @@ class Spectrum(object):
         """
         raise NotImplementedError("Subclasses must implement")
 
+    def hasFlux(self):
+        """Return whether there is any flux
+
+        This is intended for optimising the case where the fiber can be ignored.
+        """
+        return True
+
 
 class TableSpectrum(Spectrum):
     """A Spectrum defined by a lookup table
@@ -276,6 +283,9 @@ class SlopeSpectrum(FunctionalSpectrum):
         self.scale *= value
         return self
 
+    def hasFlux(self):
+        return self.scale > 0
+
 
 class FlatSpectrum(FunctionalSpectrum):
     """A spectrum simulating a flat-field lamp: a black body
@@ -295,6 +305,9 @@ class FlatSpectrum(FunctionalSpectrum):
     def __imul__(self, value):
         self.scale *= value
         return self
+
+    def hasFlux(self):
+        return self.scale > 0
 
 
 class LineSpectrum(Spectrum):
@@ -347,6 +360,9 @@ class LineSpectrum(Spectrum):
 
     def __mul__(self, other):
         return LineSpectrum(self.wavelength, self.flux*other.interpolate(self.wavelength))
+
+    def hasFlux(self):
+        return numpy.any(self.flux > 0)
 
 
 class ArcSpectrum(LineSpectrum):
@@ -459,6 +475,9 @@ class ConstantSpectrum(FunctionalSpectrum):
         self.value *= value
         return self
 
+    def hasFlux(self):
+        return self.value > 0
+
 
 class NullSpectrum(FunctionalSpectrum):
     """A spectrum that is zero everywhere"""
@@ -494,6 +513,9 @@ class NullSpectrum(FunctionalSpectrum):
 
     def __rmul__(self, other):
         return NullSpectrum()
+
+    def hasFlux(self):
+        return False
 
 
 class SumSpectrum(Spectrum):
@@ -545,6 +567,9 @@ class SumSpectrum(Spectrum):
             ss *= value
         return self
 
+    def hasFlux(self):
+        return any(ss.hasFlux() for ss in self.spectra)
+
 
 class ProductSpectrum(Spectrum):
     """A spectrum that is the product of one or more spectra
@@ -572,6 +597,9 @@ class ProductSpectrum(Spectrum):
         for ss in self.spectra[1:]:
             result *= ss.interpolate(wavelength)
         return result
+
+    def hasFlux(self):
+        return all(ss.hasFlux() for ss in self.spectra)
 
 
 class PfsSimSpectrum(TableSpectrum):
