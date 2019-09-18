@@ -34,7 +34,7 @@ def makeSim(detector, pfsDesignId=0, expId=0, fiberFilter=None,
             lamps=Lamps.NONE, spectraDir=None,
             frd=None, focus=0, date=None, psf=None, dtype='u2',
             everyNth=20,
-            addNoise=True, domeOpen=True, combSpacing=50, shiftPsfs=True,
+            domeOpen=True, combSpacing=50, shiftPsfs=True,
             constantPsf=False, constantX=False,
             zenithDistance=45.0, aerosol=1.0, pwv=1.6, extinctSky=False,
             xOffset=0.0, yOffset=0.0,
@@ -68,14 +68,11 @@ s
     skyModel = pfsSky.StaticSkyModel(arm, zenithDistance, aerosol, pwv, extinctSky)
     sim = simImage.SimImage(detector, skyModel, simID=simID, psf=psf, dtype=dtype,
                             everyNth=everyNth,
-                            addNoise=addNoise,
                             constantPsf=constantPsf, constantX=constantX,
                             slitOffset=(xOffset/1000.0, yOffset/1000.0),
                             logger=logger)
     design = PfsDesign.read(pfsDesignId, dirName=dirName)
     config = makePfsConfig(design, expId)
-
-    logger.info("addNoise=%s" % (addNoise))
 
     fibers = config.fiberId
     if domeOpen:
@@ -256,7 +253,6 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
                       frd=args.frd, focus=args.focus, date=args.date,
                       dtype=args.dtype,
                       everyNth=args.everyNth,
-                      addNoise=not args.noNoise,
                       domeOpen=args.type == "object",
                       combSpacing=args.combSpacing,
                       shiftPsfs=args.shiftPsfs,
