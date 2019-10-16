@@ -69,7 +69,7 @@ class Spectrum(object):
         flux : `float`
             Integrated flux between the frequency bounds, nJy.Hz.s
         """
-        return scipy.integrate.quad(self.interpolateFrequency, lower, upper, **kwargs)[0]
+        return scipy.integrate.quadrature(self.interpolateFrequency, lower, upper, **kwargs)[0]
 
     def integrate(self, lower, upper, **kwargs):
         """Integrate the spectrum between multiple wavelength bounds
@@ -133,7 +133,7 @@ class Spectrum(object):
                                 wavelengthScale=0.1)
         ab = ConstantSpectrum(10.0**(-0.4*(magnitude + 48.6))*1.0e9*1.0e23)  # ABmag reference spectrum, nJy
 
-        options = dict(epsabs=0.0, epsrel=2.0e-3, limit=100)  # integration options
+        options = dict(tol=0.0, rtol=2.0e-3, maxiter=100)
         current = ProductSpectrum(self, bandpass, PhotonCounting()).integrate(*bandpass.bounds(), **options)
         expected = ProductSpectrum(ab, bandpass, PhotonCounting()).integrate(*bandpass.bounds(), **options)
         norm = expected/current
