@@ -30,18 +30,12 @@ set -e
 makeSimExposure --pfsDesignId $pfsDesignId --exptime 0 --visit 0 --visit 1 --visit 2 --visit 3 --visit 4 --visit 5 --visit 6 --visit 7 --visit 8 --visit 9 --type bias
 makeSimExposure --pfsDesignId $pfsDesignId --exptime 900 --visit 10 --visit 11 --visit 12 --visit 13 --visit 14 --visit 15 --visit 16 --visit 17 --visit 18 --visit 19 --type dark
 makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --visit 20 --visit 21 --visit 22 --type flat --xoffset 0 --detectorMap detectorMap-sim-@DETECTOR@.fits
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --visit 23 --visit 24 --visit 25 --type flat --xoffset 1000
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --visit 26 --visit 27 --visit 28 --type flat --xoffset 2000
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --visit 29 --visit 30 --visit 31 --type flat --xoffset 3000
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --visit 32 --visit 33 --visit 34 --type flat --xoffset 4000
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --visit 35 --visit 36 --visit 37 --type flat --xoffset 5000
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --visit 38 --visit 39 --visit 40 --type flat --xoffset -1000
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --visit 41 --visit 42 --visit 43 --type flat --xoffset -2000
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --visit 44 --visit 45 --visit 46 --type flat --xoffset -3000
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --visit 47 --visit 48 --visit 49 --type flat --xoffset -4000
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --visit 50 --visit 51 --visit 52 --type flat --xoffset -5000
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 1 --visit 53 --type ARC --lamps NE
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 900 --visit 54 --type OBJECT --allOutput
-makeSimExposure --pfsDesignId $pfsDesignId2 --exptime 900 --visit 55 --type OBJECT --allOutput
-makeSimExposure --pfsDesignId $pfsDesignIdOdd --exptime 30 --visit 56 --type flat --xoffset 0
-makeSimExposure --pfsDesignId $pfsDesignIdEven --exptime 30 --visit 57 --type flat --xoffset 0
+makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --visit 23 --visit 24 --visit 25 --type flat --xoffset 2000
+makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --visit 26 --visit 27 --visit 28 --type flat --xoffset 4000
+makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --visit 29 --visit 30 --visit 31 --type flat --xoffset -2000
+makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --visit 32 --visit 33 --visit 34 --type flat --xoffset -4000
+makeSimExposure --pfsDesignId $pfsDesignId --exptime 1 --visit 35 --type ARC --lamps NE
+makeSimExposure --pfsDesignId $pfsDesignId --exptime 900 --visit 36 --type object --allOutput
+makeSimExposure --pfsDesignId $pfsDesignId2 --exptime 900 --visit 37 --type object --allOutput
+makeSimExposure --pfsDesignId $pfsDesignIdOdd --exptime 30 --visit 38 --type flat --xoffset 0
+makeSimExposure --pfsDesignId $pfsDesignIdEven --exptime 30 --visit 39 --type flat --xoffset 0
