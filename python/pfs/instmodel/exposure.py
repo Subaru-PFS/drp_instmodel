@@ -3,9 +3,12 @@ import logging
 import numpy
 import os
 import time
+import warnings
 
 import astropy.io.fits as pyfits
 from .utils import geom
+from .arm import Arm
+
 
 class Exposure(object):
     def __init__(self, detector, 
@@ -121,7 +124,9 @@ class Exposure(object):
             hdr.set(*c)
 
         hdu0 = pyfits.CompImageHDU(outIm, name='image')
-        hdu0.header.extend(hdr)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", pyfits.verify.VerifyWarning)  # creating HIERARCH keys
+            hdu0.header.extend(hdr)
 
         # hdu0.data = outIm
         hdulist.append(hdu0)
@@ -136,7 +141,7 @@ class Exposure(object):
                 hdulist.append(pyfits.CompImageHDU(self.pixelImage, name='active'))
 
         hdulist.update_extend()
-        hdulist.writeto(outputFile, checksum=True, clobber=True)
+        hdulist.writeto(outputFile, checksum=True, overwrite=True)
 
         return hdulist
     
@@ -151,7 +156,7 @@ class Exposure(object):
         else:
             dataRoot = os.environ.get('DRP_INSTDATA_DIR', '.')
             fileglob = os.path.join(dataRoot, 'data', 'pfs', 'biases', 'PF?A0*%d%d%d.fits' %
-                                    (biasID, 1, 2 if self.detector.arm == 'r' else 1))
+                                    (biasID, 1, 2 if self.detector.arm == Arm.RED else 1))
 
             print("looking for biases %s" % (fileglob))
             filepaths = glob.glob(fileglob)
@@ -172,7 +177,7 @@ class Exposure(object):
 
         dataRoot = os.environ.get('DRP_INSTDATA_DIR', '.')
         fileglob = os.path.join(dataRoot, 'data', 'pfs', 'flats', 'pfsFlat-*-%d%s.fits' %
-                                (1, self.detector.arm))
+                                (1, self.detector.arm.value))
 
         print("looking for flats %s" % (fileglob))
         filepaths = glob.glob(fileglob)

@@ -22,7 +22,7 @@ _______
                                 spectra=[irSky]*len(fibers))
 """
 class SimImage(object):
-    def __init__(self, detector, sky=None, psf=None, simID=None,
+    def __init__(self, detector, sky, psf=None, simID=None,
                  addNoise=True, dtype='i4',
                  everyNth=20,
                  constantPsf=False, constantX=False,
@@ -34,7 +34,7 @@ class SimImage(object):
         self.logger = logger
 
         self.detector = pfsDet.Detector(detector)
-        self.sky = sky if sky else pfsSky.StaticSkyModel(self.detector.armName)
+        self.sky = sky
         self.psf = psf if psf else pfsPsf.SplinedPsf(self.detector, spotID=simID,
                                                      everyNth=everyNth,
                                                      slitOffset=slitOffset,
@@ -51,7 +51,7 @@ class SimImage(object):
     def image(self):
         return self.exposure.image
 
-    def addFibers(self, fibers, spectra, doSkyForFiber, skySpectrum, waveRange=None,
+    def addFibers(self, fibers, spectra, doSkyForFiber, waveRange=None,
                   shiftPsfs=True):
         """ Add images of the given fibers. 
 
@@ -81,12 +81,13 @@ class SimImage(object):
         """
 
         for i, (fiber, doSky) in enumerate(zip(fibers, doSkyForFiber)):
-            self.addSingleFiber(fiber, spectra[i], doSky, skySpectrum, waveRange, shiftPsfs)
+            self.addSingleFiber(fiber, spectra[i], doSky, waveRange, shiftPsfs)
         return self.exposure
 
-    def addSingleFiber(self, fiber, spectrum, doSky, skySpectrum, waveRange=None, shiftPsfs=True):
+    def addSingleFiber(self, fiber, spectrum, doSky, waveRange=None, shiftPsfs=True):
         """Add image of the given fiber"""
-        parts = self.psf.fiberImage(fiber, spectrum, waveRange=waveRange, shiftPsfs=shiftPsfs)
+        parts = self.psf.fiberImage(fiber, spectrum*self.sky.getExtinction(),
+                                    waveRange=waveRange, shiftPsfs=shiftPsfs)
         fiberImage, outImgOffset, psfToSpotPixRatio, geometry = parts
         if fiberImage is not None:
             # transfer flux from oversampled fiber image to final resolution output image
@@ -95,7 +96,7 @@ class SimImage(object):
         self.fibers[fiber] = dict(spectrum=spectrum, geometry=geometry)
 
         if doSky:
-            skyParts = self.psf.fiberImage(fiber, skySpectrum, waveRange=waveRange, shiftPsfs=shiftPsfs)
+            skyParts = self.psf.fiberImage(fiber, self.sky.getSky(), waveRange=waveRange, shiftPsfs=shiftPsfs)
             skyImage = skyParts[0]
             skyOffset = skyParts[1]
             if skyImage is not None:

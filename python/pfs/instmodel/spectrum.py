@@ -140,6 +140,23 @@ class Spectrum(object):
         self *= norm
         return norm
 
+    def __mul__(self, other):
+        """Multiply a spectrum by another
+
+        E.g., to apply a transmission function.
+
+        Parameters
+        ----------
+        other : `Spectrum`
+            Spectrum to multiply by.
+
+        Returns
+        -------
+        result : `Spectrum`
+            Multiplied spectrum. May not be the same as ``self``!
+        """
+        raise NotImplementedError("Subclasses must implement")
+
 
 class TableSpectrum(Spectrum):
     """A Spectrum defined by a lookup table
@@ -188,8 +205,59 @@ class TableSpectrum(Spectrum):
         self.flux *= value
         return self
 
+    def resolution(self):
+        """Return the average resolution, nm"""
+        return (self.wavelength[1:] - self.wavelength[:-1]).mean()
 
-class SlopeSpectrum(Spectrum):
+    def __mul__(self, other):
+        """Multiply spectrum by another
+
+        We interpolate the lower-resolution spectrum to the higher-resolution
+        and multiply.
+        """
+        if isinstance(other, TableSpectrum) and self.resolution() > other.resolution():
+            wavelength = other.wavelength
+            flux = self.interpolate(wavelength)*other.flux
+        else:
+            wavelength = self.wavelength
+            flux = self.flux*other.interpolate(self.wavelength)
+        return TableSpectrum(wavelength, flux)
+
+    def __rmul__(self, other):
+        """Multiply spectrum by another
+
+        Reflected (swapped) arguments version.
+        The operation commutes, so this is the same as ``__mul__``.
+        """
+        return self.__mul__(other)
+
+
+class FunctionalSpectrum(Spectrum):
+    """A spectrum generated from a functional form
+
+    The functional form is provided by the ``interpolate`` method.
+    """
+    def interpolate(self, wavelength):
+        raise NotImplementedError("Subclasses must define")
+
+    def __mul__(self, other):
+        """Multiply by another spectrum"""
+        if not isinstance(other, FunctionalSpectrum):
+            return NotImplemented
+        return MultipliedSpectrum(self, other)
+
+
+class MultipliedSpectrum(FunctionalSpectrum):
+    """A spectrum generated from multiplying two `FunctionalSpectrum`s"""
+    def __init__(self, left, right):
+        self.left = left
+        self.right = right
+
+    def interpolate(self, wavelength):
+        return self.left.iterpolate(wavelength)*self.right.interpolate(wavelength)
+
+
+class SlopeSpectrum(FunctionalSpectrum):
     """A spectrum consisting of a slope in F_nu
 
     Parameters
@@ -209,7 +277,7 @@ class SlopeSpectrum(Spectrum):
         return self
 
 
-class FlatSpectrum(Spectrum):
+class FlatSpectrum(FunctionalSpectrum):
     """A spectrum simulating a flat-field lamp: a black body
 
     Parameters
@@ -276,6 +344,9 @@ class LineSpectrum(Spectrum):
     def __imul__(self, value):
         self.flux *= value
         return self
+
+    def __mul__(self, other):
+        return LineSpectrum(self.wavelength, self.flux*other.interpolate(self.wavelength))
 
 
 class ArcSpectrum(LineSpectrum):
@@ -367,7 +438,7 @@ class TextSpectrum(TableSpectrum):
         super().__init__(data['wavelength']*wavelengthScale, data['flux']*fluxScale)
 
 
-class ConstantSpectrum(Spectrum):
+class ConstantSpectrum(FunctionalSpectrum):
     """A spectrum that is constant everywhere
 
     Parameters
@@ -389,7 +460,7 @@ class ConstantSpectrum(Spectrum):
         return self
 
 
-class NullSpectrum(Spectrum):
+class NullSpectrum(FunctionalSpectrum):
     """A spectrum that is zero everywhere"""
     def interpolate(self, wavelength):
         return numpy.zeros_like(wavelength)
@@ -417,6 +488,12 @@ class NullSpectrum(Spectrum):
     def __imul__(self, value):
         # No change!
         return self
+
+    def __mul__(self, other):
+        return NullSpectrum()
+
+    def __rmul__(self, other):
+        return NullSpectrum()
 
 
 class SumSpectrum(Spectrum):

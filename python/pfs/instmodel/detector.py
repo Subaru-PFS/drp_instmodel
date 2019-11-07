@@ -4,6 +4,8 @@ import scipy.interpolate
 
 from .utils import configFile
 from . import exposure
+from .arm import Arm
+
 
 class Detector(object):
     """ Placeholder for _all_ per-camera properties. 'Detector' is abused, since there
@@ -35,10 +37,10 @@ class Detector(object):
 
     @property
     def arm(self):
-        return self.detectorName[0]
+        return Arm(self.detectorName[0])
     @property
     def armName(self):
-        armNames = dict(b='Blue', r='Red', n='NIR')
+        armNames = {Arm.BLUE: 'Blue', Arm.RED: 'Red', Arm.NIR: 'NIR'}
         return armNames[self.arm]
     @property
     def spectrograph(self):
@@ -142,15 +144,15 @@ class Detector(object):
         640.0   0.1008  1.0000  1.0000  1.0000  1.0000  0.1008
         650.0   0.2357  1.0000  1.0000  1.0000  1.0000  0.2357
 
-        We use the first and the last columns.
+        We use the first and the second-last columns.
         """
 
         # Map self.arm to a filename using some mapper. For now, hardcode
         dataRoot = os.environ.get('DRP_INSTDATA_DIR', '.')
-        name = {"b": "blu",
-                "r": "red",
-                "n": "nir",
-                "m": "mid"}[self.arm]
+        name = {Arm.BLUE: "blu",
+                Arm.RED: "red",
+                Arm.NIR: "nir",
+                Arm.MID: "mid"}[self.arm]
         filepath = os.path.join(dataRoot, 'data', 'throughput', 'pfs_thr_20151204_ext_all_%s.dat' % (name,))
 
         data = numpy.genfromtxt(filepath, comments='#')
@@ -160,7 +162,7 @@ class Detector(object):
         wavelength = numpy.empty(num + 4, dtype=data.dtype)
         throughput = numpy.zeros(num + 4, dtype=data.dtype)
         wavelength[2:-2] = data[:, 0]
-        throughput[2:-2] = data[:, 10]
+        throughput[2:-2] = data[:, 9]  # total throughput without the atmosphere
         dw = wavelength[3] - wavelength[2]
         wavelength[1] = wavelength[2] - dw
         wavelength[0] = wavelength[1] - dw
