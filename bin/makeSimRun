@@ -9,69 +9,39 @@ pfsDesignId2=$2
 if [ -z "$pfsDesignId2" ]; then
     pfsDesignId2=$pfsDesignId
 fi
+pfsDesignIdOdd=$3
+if [ -z "$pfsDesignIdOdd" ]; then
+    pfsDesignIdOdd=$pfsDesignId
+fi
+pfsDesignIdEven=$4
+if [ -z "$pfsDesignIdEven" ]; then
+    pfsDesignIdEven=$pfsDesignId
+fi
+numCores=$5
+if [ -z "$numCores" ]; then
+    numCores=1
+fi
 
 makeSimExposure() {
     for detector in r1 b1; do
-        makeSim --detector $detector $([ $detector = "r1" ] && echo "--pfsConfig") $(echo "$@" | sed "s|@DETECTOR@|$detector|g") &
+        COMMANDS+=("makeSim --detector $detector $([ $detector = "r1" ] && echo "--pfsConfig") $(echo "$@" | sed "s|@DETECTOR@|$detector|g")")
     done
-    wait
 }
 
 set -e
 
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 0 --expId 0 --type bias
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 0 --expId 1 --type bias
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 0 --expId 2 --type bias
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 0 --expId 3 --type bias
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 0 --expId 4 --type bias
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 0 --expId 5 --type bias
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 0 --expId 6 --type bias
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 0 --expId 7 --type bias
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 0 --expId 8 --type bias
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 0 --expId 9 --type bias
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 900 --expId 10 --type dark
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 900 --expId 11 --type dark
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 900 --expId 12 --type dark
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 900 --expId 13 --type dark
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 900 --expId 14 --type dark
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 900 --expId 15 --type dark
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 900 --expId 16 --type dark
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 900 --expId 17 --type dark
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 900 --expId 18 --type dark
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 900 --expId 19 --type dark
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --expId 20 --type flat --xoffset 0 --detectorMap detectorMap-sim-@DETECTOR@.fits
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --expId 21 --type flat --xoffset 0 --detectorMap detectorMap-sim-@DETECTOR@.fits
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --expId 22 --type flat --xoffset 0 --detectorMap detectorMap-sim-@DETECTOR@.fits
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --expId 23 --type flat --xoffset 1000
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --expId 24 --type flat --xoffset 1000
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --expId 25 --type flat --xoffset 1000
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --expId 26 --type flat --xoffset 2000
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --expId 27 --type flat --xoffset 2000
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --expId 28 --type flat --xoffset 2000
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --expId 29 --type flat --xoffset 3000
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --expId 30 --type flat --xoffset 3000
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --expId 31 --type flat --xoffset 3000
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --expId 32 --type flat --xoffset 4000
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --expId 33 --type flat --xoffset 4000
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --expId 34 --type flat --xoffset 4000
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --expId 35 --type flat --xoffset 5000
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --expId 36 --type flat --xoffset 5000
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --expId 37 --type flat --xoffset 5000
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --expId 38 --type flat --xoffset -1000
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --expId 39 --type flat --xoffset -1000
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --expId 40 --type flat --xoffset -1000
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --expId 41 --type flat --xoffset -2000
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --expId 42 --type flat --xoffset -2000
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --expId 43 --type flat --xoffset -2000
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --expId 44 --type flat --xoffset -3000
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --expId 45 --type flat --xoffset -3000
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --expId 46 --type flat --xoffset -3000
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --expId 47 --type flat --xoffset -4000
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --expId 48 --type flat --xoffset -4000
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --expId 49 --type flat --xoffset -4000
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --expId 50 --type flat --xoffset -5000
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --expId 51 --type flat --xoffset -5000
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --expId 52 --type flat --xoffset -5000
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 1 --expId 53 --type arc --lamps NE
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 900 --expId 54 --type object --allOutput
-makeSimExposure --pfsDesignId $pfsDesignId2 --exptime 900 --expId 55 --type object --allOutput
+COMMANDS=()
+makeSimExposure --pfsDesignId $pfsDesignId --exptime 0 --visit 0 --visit 1 --visit 2 --visit 3 --visit 4 --visit 5 --visit 6 --visit 7 --visit 8 --visit 9 --type bias
+makeSimExposure --pfsDesignId $pfsDesignId --exptime 900 --visit 10 --visit 11 --visit 12 --visit 13 --visit 14 --visit 15 --visit 16 --visit 17 --visit 18 --visit 19 --type dark
+makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --visit 20 --visit 21 --visit 22 --type flat --xoffset 0 --detectorMap detectorMap-sim-@DETECTOR@.fits
+makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --visit 23 --visit 24 --visit 25 --type flat --xoffset 2000
+makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --visit 26 --visit 27 --visit 28 --type flat --xoffset 4000
+makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --visit 29 --visit 30 --visit 31 --type flat --xoffset -2000
+makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --visit 32 --visit 33 --visit 34 --type flat --xoffset -4000
+makeSimExposure --pfsDesignId $pfsDesignId --exptime 1 --visit 35 --type arc --lamps NE
+makeSimExposure --pfsDesignId $pfsDesignId --exptime 900 --visit 36 --type object --allOutput
+makeSimExposure --pfsDesignId $pfsDesignId2 --exptime 900 --visit 37 --type object --allOutput
+makeSimExposure --pfsDesignId $pfsDesignIdOdd --exptime 30 --visit 38 --type flat --xoffset 0
+makeSimExposure --pfsDesignId $pfsDesignIdEven --exptime 30 --visit 39 --type flat --xoffset 0
+
+IFS=$'\n' printf '%s\n' "${COMMANDS[@]}" | xargs -d $'\n' -n 1 -P $numCores --verbose sh -c

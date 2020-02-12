@@ -23,7 +23,7 @@ _______
 """
 class SimImage(object):
     def __init__(self, detector, sky, psf=None, simID=None,
-                 addNoise=True, dtype='i4',
+                 dtype='i4',
                  everyNth=20,
                  constantPsf=False, constantX=False,
                  slitOffset=(0.0, 0.0),
@@ -44,8 +44,15 @@ class SimImage(object):
         if constantX:
             self.psf.setConstantX()
 
-        self.exposure = self.detector.makeExposure(dtype=dtype, addNoise=addNoise)
+        self.exposure = self.detector.makeExposure(dtype=dtype)
         self.fibers = {}
+
+    def clone(self):
+        """Return a copy of ``self``"""
+        new = type(self)(self.detector.detectorName, self.sky, self.psf, self.exposure.dtype)
+        new.exposure = self.exposure.clone()
+        new.fibers = self.fibers.copy()
+        return new
 
     @property
     def image(self):

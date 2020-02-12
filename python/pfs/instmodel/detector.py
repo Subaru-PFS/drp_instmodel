@@ -59,11 +59,11 @@ class Detector(object):
     def ycMmOffset(self):
         return self.ycPixOffset*self.config['pixelScale']
 
-    def makeExposure(self, addBias=True, addNoise=True, dtype=None):
+    def makeExposure(self, dtype=None):
 
         if dtype is None:
             dtype = self.dtype
-        exp = exposure.Exposure(self, dtype=dtype, addNoise=addNoise)
+        exp = exposure.Exposure(self, dtype=dtype)
 
         return exp
 

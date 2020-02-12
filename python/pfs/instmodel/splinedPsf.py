@@ -434,12 +434,15 @@ class SplinedPsf(psf.Psf):
     def fiberImage(self, fiber, spectrum, waveRange=None,
                    shiftPsfs=True, everyNth=None, applyThroughput=True):
         """ Return an interpolated image of a fiber """
-
         # Evaluate at highest resolution
         pixelScale = self.spotScale
         psfToSpotRatio = self.detector.config['pixelScale'] / pixelScale
         psfToSpotPixRatio = int(round(psfToSpotRatio))
-        
+
+        if not spectrum.hasFlux():
+            self.logger.info(f"Fiber {fiber:-3d} : no flux from spectrum {spectrum}")
+            return None, None, psfToSpotPixRatio, []
+
         if waveRange is None:
             waveRange = self.wave.min(), self.wave.max()
 

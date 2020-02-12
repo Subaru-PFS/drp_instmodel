@@ -12,31 +12,37 @@ from .arm import Arm
 
 class Exposure(object):
     def __init__(self, detector, 
-                 doNew=True, 
-                 addBias=False,
-                 addNoise=False,
                  dtype='u2'):
         """ """
         
         self.detector = detector
-        self.addNoise = addNoise
         self.dtype = dtype
         self.logger = logging.getLogger('exposure')
         self.logger.setLevel(logging.INFO)
-        
-        if doNew:
-            self._flux = numpy.zeros(self.detector.config['ccdSize'], dtype='f4')
-            self._mask = numpy.zeros(self.detector.config['ccdSize'], dtype='u2')
-            self._sky = numpy.zeros(self.detector.config['ccdSize'], dtype='f4')
-            self.planes = dict()
-            self.addPlane('flux', self._flux)
-            self.addPlane('mask', self._mask)
-            self.addPlane('sky', self._sky)
-            self.pixelImage = None
 
-        if addBias:
-            bias = self.detector.addBias(self)
-            self.addPlane('bias', bias)
+        self._flux = numpy.zeros(self.detector.config['ccdSize'], dtype='f4')
+        self._mask = numpy.zeros(self.detector.config['ccdSize'], dtype='u2')
+        self._sky = numpy.zeros(self.detector.config['ccdSize'], dtype='f4')
+        self.planes = dict()
+        self.addPlane('flux', self._flux)
+        self.addPlane('mask', self._mask)
+        self.addPlane('sky', self._sky)
+        self.pixelImage = None
+
+    def clone(self):
+        """Return a copy of ``self``
+
+        This is probably most useful *before* calling the ``readout``,
+        ``writeto``, ``loadBias`` or ``loadFlat`` methods, which add details
+        specific to one particular instance to this object.
+        """
+        new = type(self)(self.detector, dtype=self.dtype)
+        for attr in ("_flux", "_mask", "_sky"):
+            getattr(new, attr)[:] = getattr(self, attr)
+        for plane in self.planes:
+            if plane not in new.planes:
+                new.addPlane(self.planes[plane])
+        return new
 
     def __str__(self):
         return "Exposure(rows=%s, cols=%s, dtype=%s, planes=%s)" % (self._flux.shape[0],

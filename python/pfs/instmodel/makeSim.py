@@ -30,11 +30,11 @@ def pdbOnException(enable=True):
         raise
 
 
-def makeSim(detector, pfsDesignId=0, expId=0, fiberFilter=None,
+def makeSim(detector, pfsDesignId=0, fiberFilter=None,
             lamps=Lamps.NONE, spectraDir=None,
             frd=None, focus=0, date=None, psf=None, dtype='u2',
             everyNth=20,
-            addNoise=True, domeOpen=True, combSpacing=50, shiftPsfs=True,
+            domeOpen=True, combSpacing=50, shiftPsfs=True,
             constantPsf=False, constantX=False,
             zenithDistance=45.0, aerosol=1.0, pwv=1.6, extinctSky=False,
             xOffset=0.0, yOffset=0.0,
@@ -68,19 +68,15 @@ s
     skyModel = pfsSky.StaticSkyModel(arm, zenithDistance, aerosol, pwv, extinctSky)
     sim = simImage.SimImage(detector, skyModel, simID=simID, psf=psf, dtype=dtype,
                             everyNth=everyNth,
-                            addNoise=addNoise,
                             constantPsf=constantPsf, constantX=constantX,
                             slitOffset=(xOffset/1000.0, yOffset/1000.0),
                             logger=logger)
     design = PfsDesign.read(pfsDesignId, dirName=dirName)
-    config = makePfsConfig(design, expId)
 
-    logger.info("addNoise=%s" % (addNoise))
-
-    fibers = config.fiberId
+    fibers = design.fiberId
     if domeOpen:
         doSkyForFiber = [tt in set([TargetType.SCIENCE, TargetType.SKY, TargetType.FLUXSTD]) for
-                         tt in config.targetType]
+                         tt in design.targetType]
     else:
         doSkyForFiber = np.zeros_like(fibers, dtype=bool)
     source = LightSource(domeOpen, lamps, skyModel, design, spectraDir)
@@ -89,7 +85,7 @@ s
                   spectra=spectra,
                   doSkyForFiber=doSkyForFiber,
                   shiftPsfs=shiftPsfs)
-    return SimpleNamespace(image=sim, config=config)
+    return SimpleNamespace(image=sim, design=design)
 
 
 def displayImage(img):
@@ -179,7 +175,7 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
                                      formatter_class=argparse.RawDescriptionHelpFormatter,
                                      epilog=helpDoc)
     parser.add_argument('-d', '--detector', action='store', required=True, help="Detector name, e.g., r1")
-    parser.add_argument('-e', '--expId', type=int, required=True, help="Exposure identifier")
+    parser.add_argument('--visit', type=int, action="append", required=True, help="Visit number")
     parser.add_argument('-p', '--pfsDesignId', type=int, required=True, help="pfsDesignId")
     parser.add_argument('--dirName', default=".", help="Directory in which to write")
     parser.add_argument('--spectraDir', default=".", help="Directory from which to read spectra")
@@ -249,14 +245,12 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
     with pdbOnException(args.pdb):
         sim = makeSim(args.detector,
                       pfsDesignId=args.pfsDesignId,
-                      expId=args.expId,
                       fiberFilter=fibers,
                       lamps=lamps,
                       spectraDir=args.spectraDir,
                       frd=args.frd, focus=args.focus, date=args.date,
                       dtype=args.dtype,
                       everyNth=args.everyNth,
-                      addNoise=not args.noNoise,
                       domeOpen=args.type == "object",
                       combSpacing=args.combSpacing,
                       shiftPsfs=args.shiftPsfs,
@@ -274,23 +268,27 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
 
     site = 'F'  # Fake
     category = 'A'  # Science (as opposed to metrology camera, etc.)
-    visit = args.expId
     spectrograph = int(args.detector[1])
     armNum = {'b': 1, 'r': 2, 'n': 3, 'm': 4}[args.detector[0]]
-    imageName = "PF%1s%1s%06d%1d%1d.fits" % (site, category, visit, spectrograph, armNum)
-    with pdbOnException(args.pdb):
-        header = lamps.toFitsCards()
-        header.append(("W_VISIT", visit, "Visit identifier"))
-        sim.image.writeTo(os.path.join(args.dirName, imageName), addNoise=not args.noNoise,
+
+    for visit in args.visit:
+        imageName = "PF%1s%1s%06d%1d%1d.fits" % (site, category, visit, spectrograph, armNum)
+        with pdbOnException(args.pdb):
+            image = sim.image.clone()
+            config = makePfsConfig(sim.design, visit)
+
+            header = lamps.toFitsCards()
+            header.append(("W_VISIT", visit, "Visit identifier"))
+            image.writeTo(os.path.join(args.dirName, imageName), addNoise=not args.noNoise,
                           exptime=args.exptime, pfsDesignId=args.pfsDesignId,
                           compress=args.compress, allOutput=args.allOutput,
                           realBias=args.realBias, realFlat=args.realFlat,
                           imagetyp=args.type.upper(), addCards=header)
-        if args.pfsConfig:
-            sim.config.write()
-        if args.detectorMap:
-            sim.image.psf.makeDetectorMap(args.detectorMap)
+            if args.pfsConfig:
+                config.write()
 
+    if args.detectorMap:
+        sim.image.psf.makeDetectorMap(args.detectorMap)
     if args.ds9:
         displayImage(sim.image)
     return sim

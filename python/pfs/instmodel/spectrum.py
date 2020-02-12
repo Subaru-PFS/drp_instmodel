@@ -69,7 +69,7 @@ class Spectrum(object):
         flux : `float`
             Integrated flux between the frequency bounds, nJy.Hz.s
         """
-        return scipy.integrate.quad(self.interpolateFrequency, lower, upper, **kwargs)[0]
+        return scipy.integrate.quadrature(self.interpolateFrequency, lower, upper, **kwargs)[0]
 
     def integrate(self, lower, upper, **kwargs):
         """Integrate the spectrum between multiple wavelength bounds
@@ -133,7 +133,7 @@ class Spectrum(object):
                                 wavelengthScale=0.1)
         ab = ConstantSpectrum(10.0**(-0.4*(magnitude + 48.6))*1.0e9*1.0e23)  # ABmag reference spectrum, nJy
 
-        options = dict(epsabs=0.0, epsrel=2.0e-3, limit=100)  # integration options
+        options = dict(tol=0.0, rtol=2.0e-3, maxiter=100)
         current = ProductSpectrum(self, bandpass, PhotonCounting()).integrate(*bandpass.bounds(), **options)
         expected = ProductSpectrum(ab, bandpass, PhotonCounting()).integrate(*bandpass.bounds(), **options)
         norm = expected/current
@@ -156,6 +156,13 @@ class Spectrum(object):
             Multiplied spectrum. May not be the same as ``self``!
         """
         raise NotImplementedError("Subclasses must implement")
+
+    def hasFlux(self):
+        """Return whether there is any flux
+
+        This is intended for optimising the case where the fiber can be ignored.
+        """
+        return True
 
 
 class TableSpectrum(Spectrum):
@@ -276,6 +283,9 @@ class SlopeSpectrum(FunctionalSpectrum):
         self.scale *= value
         return self
 
+    def hasFlux(self):
+        return self.scale > 0
+
 
 class FlatSpectrum(FunctionalSpectrum):
     """A spectrum simulating a flat-field lamp: a black body
@@ -295,6 +305,9 @@ class FlatSpectrum(FunctionalSpectrum):
     def __imul__(self, value):
         self.scale *= value
         return self
+
+    def hasFlux(self):
+        return self.scale > 0
 
 
 class LineSpectrum(Spectrum):
@@ -347,6 +360,9 @@ class LineSpectrum(Spectrum):
 
     def __mul__(self, other):
         return LineSpectrum(self.wavelength, self.flux*other.interpolate(self.wavelength))
+
+    def hasFlux(self):
+        return numpy.any(self.flux > 0)
 
 
 class ArcSpectrum(LineSpectrum):
@@ -459,6 +475,9 @@ class ConstantSpectrum(FunctionalSpectrum):
         self.value *= value
         return self
 
+    def hasFlux(self):
+        return self.value > 0
+
 
 class NullSpectrum(FunctionalSpectrum):
     """A spectrum that is zero everywhere"""
@@ -494,6 +513,9 @@ class NullSpectrum(FunctionalSpectrum):
 
     def __rmul__(self, other):
         return NullSpectrum()
+
+    def hasFlux(self):
+        return False
 
 
 class SumSpectrum(Spectrum):
@@ -545,6 +567,9 @@ class SumSpectrum(Spectrum):
             ss *= value
         return self
 
+    def hasFlux(self):
+        return any(ss.hasFlux() for ss in self.spectra)
+
 
 class ProductSpectrum(Spectrum):
     """A spectrum that is the product of one or more spectra
@@ -572,6 +597,9 @@ class ProductSpectrum(Spectrum):
         for ss in self.spectra[1:]:
             result *= ss.interpolate(wavelength)
         return result
+
+    def hasFlux(self):
+        return all(ss.hasFlux() for ss in self.spectra)
 
 
 class PfsSimSpectrum(TableSpectrum):
