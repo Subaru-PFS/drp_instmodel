@@ -38,10 +38,13 @@ makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --visit 23 --visit 24 --
 makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --visit 26 --visit 27 --visit 28 --type flat --xoffset 4000
 makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --visit 29 --visit 30 --visit 31 --type flat --xoffset -2000
 makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --visit 32 --visit 33 --visit 34 --type flat --xoffset -4000
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 1 --visit 35 --type arc --lamps NE
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 900 --visit 36 --type object --allOutput
-makeSimExposure --pfsDesignId $pfsDesignId2 --exptime 900 --visit 37 --type object --allOutput
-makeSimExposure --pfsDesignId $pfsDesignIdOdd --exptime 30 --visit 38 --type flat --xoffset 0
-makeSimExposure --pfsDesignId $pfsDesignIdEven --exptime 30 --visit 39 --type flat --xoffset 0
+makeSimExposure --pfsDesignId $pfsDesignId --exptime 2 --visit 35 --type arc --lamps NE
+makeSimExposure --pfsDesignId $pfsDesignId --exptime 5 --visit 36 --type arc --lamps HG
+makeSimExposure --pfsDesignId $pfsDesignId --exptime 20 --visit 37 --type arc --lamps XE
+makeSimExposure --pfsDesignId $pfsDesignId --exptime 40 --visit 38 --type arc --lamps KR
+makeSimExposure --pfsDesignId $pfsDesignId --exptime 900 --visit 39 --type object --allOutput
+makeSimExposure --pfsDesignId $pfsDesignId2 --exptime 900 --visit 40 --type object --allOutput
+makeSimExposure --pfsDesignId $pfsDesignIdOdd --exptime 30 --visit 41 --type flat --xoffset 0 --imagetyp flat_odd
+makeSimExposure --pfsDesignId $pfsDesignIdEven --exptime 30 --visit 42 --type flat --xoffset 0 --imagetyp flat_even
 
 IFS=$'\n' printf '%s\n' "${COMMANDS[@]}" | xargs -d $'\n' -n 1 -P $numCores --verbose sh -c
