@@ -279,6 +279,7 @@ class LightSource:
             lamps.append("NeI")
         if self.lamps & Lamps.HG:
             lamps.append("HgI")
+            lamps.append("ArI")
         if self.lamps & Lamps.XE:
             lamps.append("XeI")
         if self.lamps & Lamps.CD:
