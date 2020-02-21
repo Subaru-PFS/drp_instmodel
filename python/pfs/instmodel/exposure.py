@@ -107,24 +107,6 @@ class Exposure(object):
         hdr.set('W_SIMBIA', realBias)
         hdr.set('W_SIMFLA', realFlat)
         hdr.set('W_PFDSGN', pfsDesignId)
-        
-        if imagetyp is not None:
-            parts = imagetyp.split(',')
-            if len(parts) == 1:
-                imageTyp = parts[0]
-                details = None
-            elif len(parts) == 2:
-                imageTyp, details = parts
-            else:
-                self.logger.warn('unknown imagetype: %s', imagetyp)
-
-            hdr.set('IMAGETYP', imageTyp)
-
-            if details is not None:
-                if details in {'Ne', 'Xe', 'HgAr'}:
-                    hdr.set('W_AIT_SRC_%s' % (details), True)
-                else:
-                    self.logger.warn('unknown detail: %s', details)
 
         for c in addCards:
             hdr.set(*c)
