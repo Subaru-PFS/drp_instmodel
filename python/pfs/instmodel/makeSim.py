@@ -182,6 +182,7 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
     parser.add_argument('--pfsConfig', default=False, action="store_true", help="Generate pfsConfig?")
     parser.add_argument('--type', required=True, choices=("bias", "dark", "flat", "arc", "object"),
                         help="Type of image")
+    parser.add_argument('--imagetyp', help="Value for IMAGETYP header")
     parser.add_argument('--lamps', default="", help="List of lamps that are on (QUARTZ,NE,HG,XE,CD,KR)")
     parser.add_argument('-f', '--fibers', action='store', default=None)
     parser.add_argument('-v', '--verbose', action='store_true')
@@ -279,6 +280,7 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
 
             header = lamps.toFitsCards()
             header.append(("W_VISIT", visit, "Visit identifier"))
+            header.append(("IMAGETYP", (args.imagetyp or args.type).upper(), "Image type"))
             image.writeTo(os.path.join(args.dirName, imageName), addNoise=not args.noNoise,
                           exptime=args.exptime, pfsDesignId=args.pfsDesignId,
                           compress=args.compress, allOutput=args.allOutput,

@@ -279,12 +279,13 @@ class LightSource:
             lamps.append("NeI")
         if self.lamps & Lamps.HG:
             lamps.append("HgI")
+            lamps.append("ArI")
         if self.lamps & Lamps.XE:
             lamps.append("XeI")
         if self.lamps & Lamps.CD:
-            lamps.lamps("CdI")
+            lamps.append("CdI")
         if self.lamps & Lamps.KR:
-            lamps.lamps("KrI")
+            lamps.append("KrI")
         return ArcSpectrum(lamps, scale=fluxForPhotons(10000.0))
 
     def getFluxStdSpectrum(self, target):

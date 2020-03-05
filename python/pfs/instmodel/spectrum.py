@@ -396,7 +396,7 @@ class ArcSpectrum(LineSpectrum):
             self.lines = self.lines[select]
 
         # Flux scale in the file is somewhat arbitrary; convert it to something of order 1.
-        super().__init__(self.lines["wavelength"], scale*self.lines["flux"]*1.0e-2)
+        super().__init__(self.lines["wavelength"], scale*self.lines["flux"]*1.0e-3)
 
     def __str__(self):
         return("ArcSpectrum(lampset=%s, scale=%s, nlines=%d, waverange=(%g,%g))" %
