@@ -40,8 +40,8 @@ makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --visit 17 --visit 18 --
 makeSimExposure --pfsDesignId $pfsDesignId --exptime 30 --visit 20 --visit 21 --type flat --xoffset -4000
 makeSimExposure --pfsDesignId $pfsDesignId --exptime 2 --visit 22 --type arc --lamps NE
 makeSimExposure --pfsDesignId $pfsDesignId --exptime 5 --visit 23 --type arc --lamps HG
-makeSimExposure --pfsDesignId $pfsDesignId --exptime 900 --visit 24 --type object --allOutput
-makeSimExposure --pfsDesignId $pfsDesignId2 --exptime 900 --visit 25 --type object --allOutput
+makeSimExposure --pfsDesignId $pfsDesignId --exptime 900 --visit 24 --type object
+makeSimExposure --pfsDesignId $pfsDesignId2 --exptime 900 --visit 25 --type object
 makeSimExposure --pfsDesignId $pfsDesignIdOdd --exptime 30 --visit 26 --type flat --xoffset 0 --imagetyp flat_odd
 makeSimExposure --pfsDesignId $pfsDesignIdEven --exptime 30 --visit 27 --type flat --xoffset 0 --imagetyp flat_even
 
