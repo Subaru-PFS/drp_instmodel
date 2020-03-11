@@ -7,14 +7,13 @@ from pfs.datamodel.pfsConfig import TargetType
 
 from .spectrum import ArcSpectrum
 from .spectrum import FlatSpectrum
-from .spectrum import SlopeSpectrum
 from .spectrum import ConstantSpectrum
 from .spectrum import NullSpectrum
 from .spectrum import PfsSimSpectrum
 from .spectrum import AmbreSpectrum
 
 
-__all__ = ["fluxForPhotons", "fluxDensityForPhotons", "DomeStatus", "LightSource"]
+__all__ = ["fluxForPhotons", "fluxDensityForPhotons", "LightSource"]
 
 PLANCK = 6.63e-34  # J.s
 SPEED_OF_LIGHT = 3.0e8*1.0e9  # nm/s
