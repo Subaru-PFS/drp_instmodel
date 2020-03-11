@@ -1,6 +1,6 @@
 from functools import partial
 import numpy as np
-from pfs.datamodel.pfsConfig import PfsDesign, TargetType
+from pfs.datamodel.pfsConfig import PfsDesign, FiberStatus
 from pfs.instmodel.utils.generators import keepOdd, keepEven
 
 
@@ -16,8 +16,8 @@ def keepFibers(design, generator):
         the ``fiberId`` values that will be kept.
     """
     selection = set(generator(design.fiberId))
-    design.targetType = np.array([tt if ff in selection else TargetType.BLOCKED
-                                  for ff, tt in zip(design.fiberId, design.targetType)])
+    design.fiberStatus = np.array([tt if ff in selection else FiberStatus.BLACKSPOT
+                                   for ff, tt in zip(design.fiberId, design.fiberStatus)])
 
 
 def shuffleFibers(design):
@@ -38,6 +38,7 @@ def shuffleFibers(design):
     design.catId = design.catId[indices]
     design.objId = design.objId[indices]
     design.targetType = design.targetType[indices]
+    design.fiberStatus = design.fiberStatus[indices]
     design.fiberMag = [design.fiberMag[ii] for ii in indices]
     design.filterNames = [design.filterNames[ii] for ii in indices]
     design.pfiNominal = design.pfiNominal[indices]
