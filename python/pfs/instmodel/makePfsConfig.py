@@ -174,6 +174,13 @@ def makeScienceDesign(pfsDesignId, fiberIds,
         rng.shuffle(fluxStdObjId)
         objId[targetTypes == TargetType.FLUXSTD] = fluxStdObjId
 
+    if numSky > 0:
+        catId[targetTypes == TargetType.SKY] = 0
+        skyObjId = np.arange(numSky, dtype=int) + objIdStart
+        objIdStart += numSky
+        rng.shuffle(skyObjId)
+        objId[targetTypes == TargetType.SKY] = skyObjId
+
     if numScience > 0:
         if scienceObjId is None:
             scienceObjId = np.arange(numScience, dtype=int)
