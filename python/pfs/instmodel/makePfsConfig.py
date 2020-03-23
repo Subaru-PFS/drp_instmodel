@@ -3,7 +3,7 @@ import numpy as np
 
 import lsst.afw.geom
 
-from pfs.datamodel.pfsConfig import PfsDesign, TargetType, PfsConfig
+from pfs.datamodel.pfsConfig import PfsDesign, TargetType, FiberStatus, PfsConfig
 
 FLUXSTD_MAG = 18.0  # ABmag
 
@@ -34,7 +34,7 @@ def makePfsConfig(pfsDesign, expId, rng=None, pfiErrors=10.0):
     return PfsConfig.fromPfsDesign(pfsDesign, expId, pfiCenter)
 
 
-def makePfsDesign(pfsDesignId, fiberIds, catIds, objIds, targetTypes,
+def makePfsDesign(pfsDesignId, fiberIds, catIds, objIds, targetTypes, fiberStatus,
                   fiberMags=None, filterNames=None, raBoresight=0.0*lsst.afw.geom.degrees,
                   decBoresight=0.0*lsst.afw.geom.degrees, rng=None):
     """Build a ``PfsDesign``
@@ -55,6 +55,8 @@ def makePfsDesign(pfsDesignId, fiberIds, catIds, objIds, targetTypes,
         Array of identifiers for objects, which link to the particular spectra.
     targetTypes : `numpy.ndarray` of `int`
         Array of `pfs.datamodel.TargetType` enumerated values.
+    fiberStatus : `numpy.ndarray` of `int`
+        Array of `pfs.datamodel.FiberStatus` enumerated values.
     fiberMags : `list` of `numpy.ndarray` of `float`
         List of magnitudes for each fiber.
     filterNames : `list` of `list` of `str`
@@ -89,6 +91,7 @@ def makePfsDesign(pfsDesignId, fiberIds, catIds, objIds, targetTypes,
     dec = np.array([cc.getDec().asDegrees() for cc in coords])
     pfiNominal = (PFI_SCALE*np.array([(rr*np.cos(tt), rr*np.sin(tt)) for
                                       rr, tt in zip(radius, theta)])).astype(np.float32)
+    fiberStatus = np.full_like(targetTypes, FiberStatus.GOOD)
 
     if fiberMags is None:
         fiberMags = [[] for _ in fiberIds]
@@ -96,7 +99,7 @@ def makePfsDesign(pfsDesignId, fiberIds, catIds, objIds, targetTypes,
         filterNames = [[] for _ in fiberIds]
 
     return PfsDesign(pfsDesignId, raBoresight.asDegrees(), decBoresight.asDegrees(),
-                     fiberIds, tract, patch, ra, dec, catIds, objIds, targetTypes,
+                     fiberIds, tract, patch, ra, dec, catIds, objIds, targetTypes, fiberStatus,
                      fiberMags, filterNames, pfiNominal)
 
 
@@ -161,6 +164,7 @@ def makeScienceDesign(pfsDesignId, fiberIds,
     targetTypes = np.array([int(TargetType.SKY)]*numSky +
                            [int(TargetType.FLUXSTD)]*numFluxStd +
                            [int(TargetType.SCIENCE)]*numScience)
+    fiberStatus = np.full_like(targetTypes, FiberStatus.GOOD)
     rng.shuffle(targetTypes)
     assert len(targetTypes) == len(fiberIds)
 
@@ -193,14 +197,16 @@ def makeScienceDesign(pfsDesignId, fiberIds,
         objId[targetTypes == TargetType.SCIENCE] = scienceObjId
         catId[targetTypes == TargetType.SCIENCE] = scienceCatId
 
-    noMagTypes = (TargetType.SKY, TargetType.BROKEN, TargetType.BLOCKED)
-    filterNames = [["i"] if tt not in noMagTypes else [] for tt in targetTypes]
+    createMags = [targetTypes[index] in (TargetType.SCIENCE, TargetType.FLUXSTD) and
+                  fiberStatus[index] == FiberStatus.GOOD for index in range(numFibers)]
+
+    filterNames = [["i"] if xx else [] for xx in createMags]
     scienceMags = rng.uniform(minScienceMag, maxScienceMag, numScience)
     mags = np.zeros_like(fiberIds, dtype=float)
     mags[targetTypes == TargetType.SCIENCE] = scienceMags
     mags[targetTypes == TargetType.FLUXSTD] = fluxStdMag
-    fiberMags = [np.array([mm]) if tt not in noMagTypes else [] for tt, mm in zip(targetTypes, mags)]
+    fiberMags = [np.array([mm]) if xx else [] for xx, mm in zip(createMags, mags)]
 
-    return makePfsDesign(pfsDesignId, fiberIds, catId, objId, targetTypes,
+    return makePfsDesign(pfsDesignId, fiberIds, catId, objId, targetTypes, fiberStatus,
                          fiberMags=fiberMags, filterNames=filterNames, raBoresight=raBoresight,
                          decBoresight=decBoresight, rng=rng)

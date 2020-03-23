@@ -7,7 +7,7 @@ import re
 from types import SimpleNamespace
 import numpy as np
 
-from pfs.datamodel.pfsConfig import TargetType
+from pfs.datamodel.pfsConfig import TargetType, FiberStatus
 from pfs.instmodel.arm import Arm
 import pfs.instmodel.simImage as simImage
 import pfs.instmodel.sky as pfsSky
@@ -75,8 +75,10 @@ s
 
     fibers = design.fiberId
     if domeOpen:
-        doSkyForFiber = [tt in set([TargetType.SCIENCE, TargetType.SKY, TargetType.FLUXSTD]) for
-                         tt in design.targetType]
+        skyTargetType = set([TargetType.SCIENCE, TargetType.SKY, TargetType.FLUXSTD])
+        skyFiberStatus = set([FiberStatus.GOOD])
+        doSkyForFiber = [design.targetType[ii] in skyTargetType and design.fiberStatus[ii] in skyFiberStatus
+                         for ii in range(len(design))]
     else:
         doSkyForFiber = np.zeros_like(fibers, dtype=bool)
     source = LightSource(domeOpen, lamps, skyModel, design, spectraDir)

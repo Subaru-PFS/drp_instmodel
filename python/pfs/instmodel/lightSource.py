@@ -3,18 +3,17 @@ import math
 from enum import IntFlag
 from types import SimpleNamespace
 
-from pfs.datamodel.pfsConfig import TargetType
+from pfs.datamodel.pfsConfig import TargetType, FiberStatus
 
 from .spectrum import ArcSpectrum
 from .spectrum import FlatSpectrum
-from .spectrum import SlopeSpectrum
 from .spectrum import ConstantSpectrum
 from .spectrum import NullSpectrum
 from .spectrum import PfsSimSpectrum
 from .spectrum import AmbreSpectrum
 
 
-__all__ = ["fluxForPhotons", "fluxDensityForPhotons", "DomeStatus", "LightSource"]
+__all__ = ["fluxForPhotons", "fluxDensityForPhotons", "LightSource"]
 
 PLANCK = 6.63e-34  # J.s
 SPEED_OF_LIGHT = 3.0e8*1.0e9  # nm/s
@@ -163,7 +162,7 @@ class LightSource:
             Spectrum from fiber.
         """
         target = self.getTargetData(fiberId)
-        if target.targetType in (TargetType.BROKEN, TargetType.BLOCKED):
+        if target.fiberStatus != FiberStatus.GOOD:
             return NullSpectrum()
         if self.domeOpen:
             if target.targetType == TargetType.SKY:
@@ -198,6 +197,8 @@ class LightSource:
             Patch identifier.
         targetType : `pfs.datamodel.TargetType`
             Type of target.
+        fiberStatus : `pfs.datamodel.FiberStatus`
+            Status of fiber.
         fiberMags : array of `float`
             Array of magnitudes.
         """
@@ -209,9 +210,10 @@ class LightSource:
         tract = self.pfsDesign.tract[index]
         patch = self.pfsDesign.patch[index]
         targetType = self.pfsDesign.targetType[index]
+        fiberStatus = self.pfsDesign.fiberStatus[index]
         fiberMags = dict(zip(self.pfsDesign.filterNames[index], self.pfsDesign.fiberMag[index]))
         return SimpleNamespace(index=index, catId=catId, objId=objId, tract=tract, patch=patch,
-                               targetType=targetType, fiberMags=fiberMags)
+                               targetType=targetType, fiberStatus=fiberStatus, fiberMags=fiberMags)
 
     def getSkySpectrum(self):
         """Return a sky spectrum"""
