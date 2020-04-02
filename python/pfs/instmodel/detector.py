@@ -22,7 +22,7 @@ class Detector(object):
         """ Need to work out how to specify & pass in our properties. Use a "struct" for now. """
 
         if (len(detectorName) != 2 or
-            detectorName[0] not in {'b','r','n'} or
+            detectorName[0] not in {'b', 'r', 'n', 'm'} or
             detectorName[1] not in {'1','2','3','4'}):
             raise ValueError('detectorName must be in the form "b2" (%s)' % (detectorName))
 
@@ -40,7 +40,7 @@ class Detector(object):
         return Arm(self.detectorName[0])
     @property
     def armName(self):
-        armNames = {Arm.BLUE: 'Blue', Arm.RED: 'Red', Arm.NIR: 'NIR'}
+        armNames = {Arm.BLUE: 'Blue', Arm.RED: 'Red', Arm.NIR: 'NIR', Arm.MID: 'Mid'}
         return armNames[self.arm]
     @property
     def spectrograph(self):
