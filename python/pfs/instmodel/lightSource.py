@@ -240,9 +240,12 @@ class LightSource:
             return self.getConstantSpectrum(target)
         if self.spectraDir is None:
             raise RuntimeError("No spectraDir specified, so can't load spectrum.")
+        catMenu = {1: "lowz_COSMOS",
+                   }
+        catDir = catMenu.get(target.catId, str(target.catId))
         filename = ("pfsSimObject-%03d-%05d-%s-%016x.fits" %
                     (target.catId, target.tract, target.patch, target.objId))
-        return PfsSimSpectrum(os.path.join(self.spectraDir, str(target.catId), filename))
+        return PfsSimSpectrum(os.path.join(self.spectraDir, catDir, filename))
 
     def getConstantSpectrum(self, target):
         """Return a constant F_nu spectrum
