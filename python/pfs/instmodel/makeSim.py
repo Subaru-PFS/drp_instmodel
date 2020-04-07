@@ -172,6 +172,9 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
         format="%(asctime)s.%(msecs)03dZ %(name)-12s %(levelno)s %(filename)s:%(lineno)d %(message)s"
     )
     logger = logging.getLogger()
+    spectraDir = "."
+    if "DRP_INSTDATA_DIR" in os.environ:
+        spectraDir = os.path.join(os.environ["DRP_INSTDATA_DIR"], "data", "objects")
 
     parser = argparse.ArgumentParser(description="generate a simulated image", 
                                      formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -180,7 +183,7 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
     parser.add_argument('--visit', type=int, action="append", required=True, help="Visit number")
     parser.add_argument('-p', '--pfsDesignId', type=int, required=True, help="pfsDesignId")
     parser.add_argument('--dirName', default=".", help="Directory in which to write")
-    parser.add_argument('--spectraDir', default=".", help="Directory from which to read spectra")
+    parser.add_argument('--spectraDir', default=spectraDir, help="Directory from which to read spectra")
     parser.add_argument('--pfsConfig', default=False, action="store_true", help="Generate pfsConfig?")
     parser.add_argument('--type', required=True, choices=("bias", "dark", "flat", "arc", "object"),
                         help="Type of image")
