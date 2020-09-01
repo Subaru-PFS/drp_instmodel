@@ -999,8 +999,8 @@ class SplinedPsf(psf.Psf):
             self.logger.info("hole %d: xcKnot, xc, wl: %s %s %s" % (holeId,
                                                                     yKnot[midY], xc[midY], lams[midY]))
 
-        detMap = drpStella.DetectorMap(bbox, fiberIds.astype('i4'), xCenterKnots, xCenterValues,
-                                       wavelengthKnots, wavelengthValues)
+        detMap = drpStella.SplinedDetectorMap(bbox, fiberIds.astype('i4'), xCenterKnots, xCenterValues,
+                                              wavelengthKnots, wavelengthValues)
 
         if obsdate is None:
             now = time.gmtime()
