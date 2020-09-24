@@ -972,25 +972,35 @@ class SplinedPsf(psf.Psf):
         dlam = self.spotsInfo['LAMINC']
         lams = np.linspace(lam0, lam0+(nKnots-1)*dlam, nKnots, dtype=np.float32)
 
-        allYKnots = []
-        allXCenters = []
+        xCenterKnots = []
+        xCenterValues = []
+        wavelengthKnots = []
+        wavelengthValues = []
         for holeId in fiberIds:
             coeffs = self.getCoeffs(holeId)
 
             yKnot = self._focalPlaneYToDetectorY(coeffs.ycCoeffs.get_coeffs(), correctToLL=True) / pixelScale
             xc = self._focalPlaneXToDetectorX(coeffs.xcCoeffs.get_coeffs(), correctToLL=True) / pixelScale
-            allYKnots.append(yKnot.astype(np.float32))
-            allXCenters.append(xc.astype(np.float32))
-
             assert len(lams) == len(yKnot)
             assert len(lams) == len(xc)
+
+            xCenterKnots.append(yKnot.astype(np.float32))
+            xCenterValues.append(xc.astype(np.float32))
+
+            # Workaround non-physical features at the ends of the wavelength solution by dropping the
+            # second, third, third-to-last and second-to-last values from the wavelength spline
+            select = np.ones_like(lams, dtype=bool)
+            select[1:3] = False
+            select[-3:-1] = False
+            wavelengthKnots.append(yKnot[select].astype(np.float32))
+            wavelengthValues.append(lams[select])
 
             midY = len(lams)//2
             self.logger.info("hole %d: xcKnot, xc, wl: %s %s %s" % (holeId,
                                                                     yKnot[midY], xc[midY], lams[midY]))
 
-        detMap = drpStella.DetectorMap(bbox, fiberIds.astype('i4'), allYKnots, allXCenters,
-                                       allYKnots, [lams]*len(fiberIds))
+        detMap = drpStella.SplinedDetectorMap(bbox, fiberIds.astype('i4'), xCenterKnots, xCenterValues,
+                                              wavelengthKnots, wavelengthValues)
 
         if obsdate is None:
             now = time.gmtime()
@@ -1000,15 +1010,16 @@ class SplinedPsf(psf.Psf):
             except:
                 now = time.strptime(obsdate, '%Y-%m-%d')
 
-        obsdate = time.strftime('%Y-%m-%dT%H:%M:%S', now)
+        calibTime = time.strftime('%Y-%m-%dT%H:%M:%S', now)
         calibDate = time.strftime('%Y-%m-%d', now)
         ccd = 3*(self.detector.spectrograph - 1) + self.detector.arm.toCcd()
         metadata = detMap.getMetadata()
-        metadata.addString('DATE-OBS', obsdate)
-        metadata.addString('CALIB_ID', 'arm=%s spectrograph=%d ccd=%d filter=%s calibDate=%s visit0=0' %
+        metadata.addString('DATE-OBS', calibTime)
+        metadata.addString('CALIB_ID',
+                           'arm=%s spectrograph=%d ccd=%d filter=%s calibDate=%s calibTime=%s visit0=0' %
                            (self.detector.arm.value, self.detector.spectrograph, ccd,
-                            self.detector.arm.value, calibDate))
+                            self.detector.arm.value, calibDate, calibTime))
 
         detMap.writeFits(fname)
 
-        return detMap, fiberIds, allYKnots, allXCenters
+        return detMap
