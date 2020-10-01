@@ -13,7 +13,7 @@ def parseFibers(fibers):
     ----------
     fibers : `str`
         Whitespace-separated list of fiber IDs, or symbolic name representing a
-        list of fiber IDs (single, double, lam, all, odd, even).
+        list of fiber IDs (single, double, lam, all, odd, even, fifteen).
 
     Returns
     -------
@@ -27,6 +27,7 @@ def parseFibers(fibers):
             "all": allFibers,
             "odd": [ii for ii in keepOdd(allFibers)],
             "even": [ii for ii in keepEven(allFibers)],
+            "fifteen": allFibers[np.linspace(0, len(allFibers), 15, False, dtype=int)],
     }
 
     if fibers.lower() in menu:
@@ -56,7 +57,7 @@ def main():
     from argparse import ArgumentParser
     parser = ArgumentParser(description="Generate a PfsDesign")
     parser.add_argument("--fibers", type=parseFibers, required=True,
-                        help="Fibers to light (single, double, lam, all, odd, even; or "
+                        help="Fibers to light (single, double, lam, all, odd, even, fifteen; or "
                              "space-delimited integers)")
     parser.add_argument("--pfsDesignId", type=int, required=True, help="Top-end design identifier")
     parser.add_argument("--fracSky", type=float, default=0.2, help="Fraction of fibers to use for sky")
