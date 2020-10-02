@@ -47,6 +47,11 @@ class Detector(object):
         return int(self.detectorName[1])
 
     @property
+    def gain(self):
+        """Electronic gain, in e/ADU"""
+        return self.config['gain']
+
+    @property
     def xcPixOffset(self):
         return self.config['ccdSize'][1]/2
     @property
@@ -94,7 +99,10 @@ class Detector(object):
     
     def readout(self, exp, flux, exptime=1.0, ontoBias=None,
                 applyFlat=None):
-        """ 'Readout' an exposure: add bad columns, hot pixels, etc. """
+        """ 'Readout' an exposure: add bad columns, hot pixels, etc.
+
+        Input 'flux' image is in units of electrons.
+        """
 
         if applyFlat:
             flat = exp.loadFlat()
@@ -105,7 +113,7 @@ class Detector(object):
             
         bias = self.addBias(exp, ontoBias=ontoBias)
 
-        rimage = numpy.round(flux) + bias
+        rimage = numpy.round(flux/self.gain) + bias  # in ADU
         saturatedPixels = (rimage > 65535)
         lowPixels = (rimage < 0)
         
