@@ -64,10 +64,10 @@ def main():
     parser.add_argument("--fracFluxStd", type=float, default=0.1,
                         help="Fraction of fibers to use for flux standards")
     parser.add_argument("--minScienceMag", type=float, default=18.0,
-                        help="Minimum magnitude of science objects")
+                        help="Minimum AB magnitude of science objects")
     parser.add_argument("--maxScienceMag", type=float, default=24.0,
-                        help="Maximum magnitude of science objects")
-    parser.add_argument("--fluxStdMag", type=float, default=18.0, help="Magnitude of flux standards")
+                        help="Maximum AB magnitude of science objects")
+    parser.add_argument("--fluxStdMag", type=float, default=18.0, help="AB Magnitude of flux standards")
     parser.add_argument("--scienceCatId", type=int, default=0, help="Catalog ID for science targets")
     parser.add_argument("--scienceObjId", type=parseObjId,
                         help="Object IDs for science targets (space-delimited integers)")

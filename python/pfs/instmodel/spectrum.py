@@ -108,7 +108,7 @@ class Spectrum(object):
     def __imul__(self, value):
         raise NotImplementedError("Method must be defined by subclass")
 
-    def normalize(self, filterName, magnitude):
+    def normalize(self, filterName, flux):
         """Normalize the spectrum to the nominated magnitude
 
         Parameters
@@ -116,8 +116,8 @@ class Spectrum(object):
         filterName : `str`
             Name of filter bandpass. Must be listed in our menu of recognised
             filters.
-        magnitude : `float`
-            AB magnitude in the filter bandpass.
+        flux : `float`
+            AB flux [nJy] in the filter bandpass.
 
         Returns
         -------
@@ -131,7 +131,7 @@ class Spectrum(object):
 
         bandpass = TextSpectrum(os.path.join(os.environ["DRP_INSTDATA_DIR"], "data", "hsc", menu[filterName]),
                                 wavelengthScale=0.1)
-        ab = ConstantSpectrum(10.0**(-0.4*(magnitude + 48.6))*1.0e9*1.0e23)  # ABmag reference spectrum, nJy
+        ab = ConstantSpectrum(flux)  # ABmag reference spectrum, nJy
 
         options = dict(tol=0.0, rtol=2.0e-3, maxiter=100)
         current = ProductSpectrum(self, bandpass, PhotonCounting()).integrate(*bandpass.bounds(), **options)

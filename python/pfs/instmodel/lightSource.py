@@ -199,8 +199,8 @@ class LightSource:
             Type of target.
         fiberStatus : `pfs.datamodel.FiberStatus`
             Status of fiber.
-        fiberMags : array of `float`
-            Array of magnitudes.
+        fiberFlux : array of `float`
+            Array of fluxes.
         """
         index = self.pfsDesign.selectFiber(fiberId)
         assert len(index) == 1
@@ -211,9 +211,12 @@ class LightSource:
         patch = self.pfsDesign.patch[index]
         targetType = self.pfsDesign.targetType[index]
         fiberStatus = self.pfsDesign.fiberStatus[index]
-        fiberMags = dict(zip(self.pfsDesign.filterNames[index], self.pfsDesign.fiberMag[index]))
-        return SimpleNamespace(index=index, catId=catId, objId=objId, tract=tract, patch=patch,
-                               targetType=targetType, fiberStatus=fiberStatus, fiberMags=fiberMags)
+        fiberFlux = dict(zip(self.pfsDesign.filterNames[index],
+                         self.pfsDesign.fiberFlux[index]))
+        return SimpleNamespace(index=index, catId=catId, objId=objId,
+                               tract=tract, patch=patch,
+                               targetType=targetType, fiberStatus=fiberStatus,
+                               fiberFlux=fiberFlux)
 
     def getSkySpectrum(self):
         """Return a sky spectrum"""
@@ -251,7 +254,7 @@ class LightSource:
         """Return a constant F_nu spectrum
 
         This is useful for testing. The spectrum is scaled to match the target
-        fiberMag.
+        fiberFlux.
 
         Parameters
         ----------
@@ -264,12 +267,12 @@ class LightSource:
             Flat F_nu spectrum, scaled appropriately.
         """
         # Flat F_nu spectrum, useful for testing
-        fiberMag = set(target.fiberMags)
-        if len(fiberMag) != 1:
-            raise RuntimeError("Insufficient or differing fiberMags for constant spectrum: %s" %
-                               (fiberMag,))
-        fiberMag = fiberMag.pop()
-        return ConstantSpectrum(3631e9*10**(-0.4*fiberMag))
+        fiberFlux = set(target.fiberFlux)
+        if len(fiberFlux) != 1:
+            raise RuntimeError("Insufficient or differing fiberFlux for constant spectrum: %s" %
+                               (fiberFlux,))
+        fflux = fiberFlux.pop()  # Flux is in nJy
+        return ConstantSpectrum(fflux)
 
     def getFlatSpectrum(self):
         """Return a flat-field spectrum"""
@@ -318,5 +321,5 @@ class LightSource:
         spectrum = AmbreSpectrum(filename)
 
         filterName = "i"
-        spectrum.normalize(filterName, target.fiberMags[filterName])
+        spectrum.normalize(filterName, target.fiberFlux[filterName])
         return spectrum
