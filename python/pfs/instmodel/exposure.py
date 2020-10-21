@@ -200,7 +200,7 @@ class Exposure(object):
             self.addPlane('shotnoise', noise)
         else:
             noisyFlux = self._flux
-            
+
         self.detector.readout(self, noisyFlux, exptime=exptime,
                               ontoBias=realBias, applyFlat=realFlat)
 
