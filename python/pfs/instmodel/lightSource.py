@@ -200,7 +200,7 @@ class LightSource:
         fiberStatus : `pfs.datamodel.FiberStatus`
             Status of fiber.
         fiberFlux : array of `float`
-            Array of fluxes.
+            Array of fluxes in [nJy].
         """
         index = self.pfsDesign.selectFiber(fiberId)
         assert len(index) == 1
