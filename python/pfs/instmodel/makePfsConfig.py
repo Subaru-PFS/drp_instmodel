@@ -1,11 +1,14 @@
-import enum
 import numpy as np
+import astropy.units as u
 
 import lsst.afw.geom
+import lsst.log
 
 from pfs.datamodel.pfsConfig import PfsDesign, TargetType, FiberStatus, PfsConfig
 
 FLUXSTD_MAG = 18.0  # ABmag
+
+logger = lsst.log.Log.getLogger("pfs.instmodel.makePfsConfig")
 
 
 def makePfsConfig(pfsDesign, expId, rng=None, pfiErrors=10.0):
@@ -98,9 +101,17 @@ def makePfsDesign(pfsDesignId, fiberIds, catIds, objIds, targetTypes, fiberStatu
     if filterNames is None:
         filterNames = [[] for _ in fiberIds]
 
-    return PfsDesign(pfsDesignId, raBoresight.asDegrees(), decBoresight.asDegrees(),
-                     fiberIds, tract, patch, ra, dec, catIds, objIds, targetTypes, fiberStatus,
-                     fiberMags, filterNames, pfiNominal)
+    # Convert magnitudes to flux. NOTE: magnitudes are AB
+    logger.infof('fiberMags = {}', fiberMags)
+    fiberFlux = [(mag * u.ABmag).to_value(u.nJy)
+                 if mag else[] for mag in fiberMags]
+    logger.infof('fiberFlux= {}', fiberFlux)
+
+    return PfsDesign(pfsDesignId, raBoresight.asDegrees(),
+                     decBoresight.asDegrees(),
+                     fiberIds, tract, patch, ra, dec, catIds, objIds,
+                     targetTypes, fiberStatus,
+                     fiberFlux, filterNames, pfiNominal)
 
 
 def makeScienceDesign(pfsDesignId, fiberIds,
@@ -131,15 +142,15 @@ def makeScienceDesign(pfsDesignId, fiberIds,
     fracFluxStd : `float`
         Fraction of fibers that will be devoted to flux standards.
     minScienceMag : `float`
-        Minimum magnitude of science targets.
+        Minimum AB magnitude of science targets.
     maxScienceMag : `float`
-        Maximum magnitude of science targets.
+        Maximum AB magnitude of science targets.
     scienceCatId : `int`, optional
         Catalog identifier for science targets.
     scienceObjId : iterable of `int`, optional
         Object identifiers for science targets.
     fluxStdMag : `float`
-        Magnitude of flux standard targets.
+        AB Magnitude of flux standard targets.
     raBoresight : `lsst.afw.geom.Angle`
         Right Ascension of the boresight.
     decBoresight : `lsst.afw.geom.Angle`

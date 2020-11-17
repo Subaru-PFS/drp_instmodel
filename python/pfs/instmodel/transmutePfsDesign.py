@@ -39,7 +39,7 @@ def shuffleFibers(design):
     design.objId = design.objId[indices]
     design.targetType = design.targetType[indices]
     design.fiberStatus = design.fiberStatus[indices]
-    design.fiberMag = [design.fiberMag[ii] for ii in indices]
+    design.fiberFlux = [design.fiberFlux[ii] for ii in indices]
     design.filterNames = [design.filterNames[ii] for ii in indices]
     design.pfiNominal = design.pfiNominal[indices]
 
