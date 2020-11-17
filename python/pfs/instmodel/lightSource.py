@@ -201,6 +201,16 @@ class LightSource:
             Status of fiber.
         fiberFlux : array of `float`
             Array of fluxes in [nJy].
+        psfFlux : array of `float`
+            List of psf fluxes for each fiber [nJy].
+        totalFlux : array of `float`
+            List of total fluxes for each fiber [nJy].
+        fiberFluxErr : array of `float`
+            List of fiber flux errors for each fiber [nJy].
+        psfFluxErr : array of `float`
+            List of psf flux errors for each fiber [nJy].
+        totalFluxErr : array of `float`
+            List of total flux errors for each fiber [nJy].
         """
         index = self.pfsDesign.selectFiber(fiberId)
         assert len(index) == 1
@@ -213,10 +223,26 @@ class LightSource:
         fiberStatus = self.pfsDesign.fiberStatus[index]
         fiberFlux = dict(zip(self.pfsDesign.filterNames[index],
                          self.pfsDesign.fiberFlux[index]))
+        psfFlux = dict(zip(self.pfsDesign.filterNames[index],
+                       self.pfsDesign.psfFlux[index]))
+        totalFlux = dict(zip(self.pfsDesign.filterNames[index],
+                         self.pfsDesign.totalFlux[index]))
+        fiberFluxErr = dict(zip(self.pfsDesign.filterNames[index],
+                            self.pfsDesign.fiberFluxErr[index]))
+        psfFluxErr = dict(zip(self.pfsDesign.filterNames[index],
+                          self.pfsDesign.psfFluxErr[index]))
+        totalFluxErr = dict(zip(self.pfsDesign.filterNames[index],
+                            self.pfsDesign.totalFluxErr[index]))
         return SimpleNamespace(index=index, catId=catId, objId=objId,
                                tract=tract, patch=patch,
                                targetType=targetType, fiberStatus=fiberStatus,
-                               fiberFlux=fiberFlux)
+                               fiberFlux=fiberFlux,
+                               psfFlux=psfFlux,
+                               totalFlux=totalFlux,
+                               fiberFluxErr=fiberFluxErr,
+                               psfFluxErr=psfFluxErr,
+                               totalFluxErr=totalFluxErr
+                               )
 
     def getSkySpectrum(self):
         """Return a sky spectrum"""
