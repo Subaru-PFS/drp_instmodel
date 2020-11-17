@@ -37,8 +37,13 @@ def makePfsConfig(pfsDesign, expId, rng=None, pfiErrors=10.0):
     return PfsConfig.fromPfsDesign(pfsDesign, expId, pfiCenter)
 
 
-def makePfsDesign(pfsDesignId, fiberIds, catIds, objIds, targetTypes, fiberStatus,
-                  fiberMags=None, filterNames=None, raBoresight=0.0*lsst.afw.geom.degrees,
+def makePfsDesign(pfsDesignId, fiberIds, catIds, objIds, targetTypes,
+                  fiberStatus,
+                  fiberFlux=None,
+                  psfFlux=None,
+                  totalFlux=None,
+                  fiberFluxErr=None, psfFluxErr=None, totalFluxErr=None,
+                  filterNames=None, raBoresight=0.0*lsst.afw.geom.degrees,
                   decBoresight=0.0*lsst.afw.geom.degrees, rng=None):
     """Build a ``PfsDesign``
 
@@ -60,8 +65,18 @@ def makePfsDesign(pfsDesignId, fiberIds, catIds, objIds, targetTypes, fiberStatu
         Array of `pfs.datamodel.TargetType` enumerated values.
     fiberStatus : `numpy.ndarray` of `int`
         Array of `pfs.datamodel.FiberStatus` enumerated values.
-    fiberMags : `list` of `numpy.ndarray` of `float`
-        List of magnitudes for each fiber.
+    fiberFlux : `list` of `numpy.ndarray` of `float`
+        List of fiber fluxes for each fiber [nJy].
+    psfFlux : `list` of `numpy.ndarray` of `float`
+        List of psf fluxes for each fiber [nJy].
+    totalFlux : `list` of `numpy.ndarray` of `float`
+        List of total fluxes for each fiber [nJy].
+    fiberFluxErr : `list` of `numpy.ndarray` of `float`
+        List of fiber flux errors for each fiber [nJy].
+    psfFluxErr : `list` of `numpy.ndarray` of `float`
+        List of psf flux errors for each fiber [nJy].
+    totalFluxErr : `list` of `numpy.ndarray` of `float`
+        List of total flux errors for each fiber [nJy].
     filterNames : `list` of `list` of `str`
         List of filter names for each fiber.
     raBoresight : `lsst.afw.geom.Angle`
@@ -96,22 +111,28 @@ def makePfsDesign(pfsDesignId, fiberIds, catIds, objIds, targetTypes, fiberStatu
                                       rr, tt in zip(radius, theta)])).astype(np.float32)
     fiberStatus = np.full_like(targetTypes, FiberStatus.GOOD)
 
-    if fiberMags is None:
-        fiberMags = [[] for _ in fiberIds]
+    if fiberFlux is None:
+        fiberFlux = [[] for _ in fiberIds]
+    if psfFlux is None:
+        psfFlux = [[] for _ in fiberIds]
+    if totalFlux is None:
+        totalFlux = [[] for _ in fiberIds]
+    if fiberFluxErr is None:
+        fiberFluxErr = [[] for _ in fiberIds]
+    if psfFluxErr is None:
+        psfFluxErr = [[] for _ in fiberIds]
+    if totalFluxErr is None:
+        totalFluxErr = [[] for _ in fiberIds]
     if filterNames is None:
         filterNames = [[] for _ in fiberIds]
-
-    # Convert magnitudes to flux. NOTE: magnitudes are AB
-    logger.infof('fiberMags = {}', fiberMags)
-    fiberFlux = [(mag * u.ABmag).to_value(u.nJy)
-                 if mag else[] for mag in fiberMags]
-    logger.infof('fiberFlux= {}', fiberFlux)
 
     return PfsDesign(pfsDesignId, raBoresight.asDegrees(),
                      decBoresight.asDegrees(),
                      fiberIds, tract, patch, ra, dec, catIds, objIds,
                      targetTypes, fiberStatus,
-                     fiberFlux, filterNames, pfiNominal)
+                     fiberFlux, psfFlux, totalFlux,
+                     fiberFluxErr, psfFluxErr, totalFluxErr,
+                     filterNames, pfiNominal)
 
 
 def makeScienceDesign(pfsDesignId, fiberIds,
@@ -216,8 +237,25 @@ def makeScienceDesign(pfsDesignId, fiberIds,
     mags = np.zeros_like(fiberIds, dtype=float)
     mags[targetTypes == TargetType.SCIENCE] = scienceMags
     mags[targetTypes == TargetType.FLUXSTD] = fluxStdMag
-    fiberMags = [np.array([mm]) if xx else [] for xx, mm in zip(createMags, mags)]
 
-    return makePfsDesign(pfsDesignId, fiberIds, catId, objId, targetTypes, fiberStatus,
-                         fiberMags=fiberMags, filterNames=filterNames, raBoresight=raBoresight,
+    fluxes = [(mm*u.ABmag).to_value(u.nJy) for mm in mags]
+    fiberFlux = [np.array([fx]) if xx else[]
+                 for xx, fx in zip(createMags, fluxes)]
+    psfFlux = fiberFlux.copy()
+    totalFlux = fiberFlux.copy()
+
+    # Assigning 1% of flux as error
+    fiberFluxErr = [fFlux * 0.01 if fFlux else [] for fFlux in fiberFlux]
+    psfFluxErr = fiberFluxErr.copy()
+    totalFluxErr = fiberFluxErr.copy()
+
+    return makePfsDesign(pfsDesignId, fiberIds, catId, objId, targetTypes,
+                         fiberStatus,
+                         fiberFlux=fiberFlux,
+                         psfFlux=psfFlux,
+                         totalFlux=totalFlux,
+                         fiberFluxErr=fiberFluxErr,
+                         psfFluxErr=psfFluxErr,
+                         totalFluxErr=totalFluxErr,
+                         filterNames=filterNames, raBoresight=raBoresight,
                          decBoresight=decBoresight, rng=rng)

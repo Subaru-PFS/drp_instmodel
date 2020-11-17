@@ -40,6 +40,11 @@ def shuffleFibers(design):
     design.targetType = design.targetType[indices]
     design.fiberStatus = design.fiberStatus[indices]
     design.fiberFlux = [design.fiberFlux[ii] for ii in indices]
+    design.psfFlux = [design.psfFlux[ii] for ii in indices]
+    design.totalFlux = [design.totalFlux[ii] for ii in indices]
+    design.fiberFluxErr = [design.fiberFluxErr[ii] for ii in indices]
+    design.psfFluxErr = [design.psfFluxErr[ii] for ii in indices]
+    design.totalFluxErr = [design.totalFluxErr[ii] for ii in indices]
     design.filterNames = [design.filterNames[ii] for ii in indices]
     design.pfiNominal = design.pfiNominal[indices]
 
