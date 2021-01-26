@@ -18,10 +18,12 @@ import scipy.ndimage
 import scipy.ndimage.interpolation
 
 from . import spotgames
-from .spectrum import LineSpectrum, ArcSpectrum
+from .slit import Slit
 
 from . import psf
 reload(psf)
+
+NUM_FIBERS = 651  # Number of fibers per spectrograph
 
 
 class SpotCoeffs(object):
@@ -154,13 +156,13 @@ class SplinedPsf(psf.Psf):
     def getCoeffs(self, fibers):
         if self.perFiberCoeffs is None:
             return self.allFiberCoeffs
-        else:
-            try:
-                if len(fibers) != 1:
-                    raise ValueError('only one fiber can be requested for per-fiber models')
-                return self.perFiberCoeffs[fibers[0]]
-            except TypeError:
-                return self.perFiberCoeffs[fibers]
+        fibers = np.array(fibers) % NUM_FIBERS
+        try:
+            if len(fibers) != 1:
+                raise ValueError('only one fiber can be requested for per-fiber models')
+            return self.perFiberCoeffs[fibers[0]]
+        except TypeError:
+            return self.perFiberCoeffs[fibers]
 
     def getCards(self):
         return [('W_ENFCAZ', self.slitOffset[0], 'spatial slit offset, mm'),
@@ -955,7 +957,6 @@ class SplinedPsf(psf.Psf):
 
         """
         import lsst.afw.geom as afwGeom
-        import lsst.daf.base as dafBase
         import pfs.drp.stella as drpStella
 
         pixelScale = self.detector.config['pixelScale']
@@ -964,7 +965,7 @@ class SplinedPsf(psf.Psf):
         # Per RHL, we want the _detector_ geometry here.
         bbox = afwGeom.BoxI(afwGeom.PointI(0,0), afwGeom.PointI(ccdSize[1]-1, ccdSize[0]-1))
 
-        fiberIds = np.unique(self.fiber)
+        fiberIds = Slit(self.detector.spectrograph).scienceFibers
         fiber0_w = np.where(self.fiber == min(self.fiber))
         nKnots = len(fiber0_w[0])
 
@@ -976,8 +977,8 @@ class SplinedPsf(psf.Psf):
         xCenterValues = []
         wavelengthKnots = []
         wavelengthValues = []
-        for holeId in fiberIds:
-            coeffs = self.getCoeffs(holeId)
+        for fiberId in fiberIds:
+            coeffs = self.getCoeffs(fiberId)
 
             yKnot = self._focalPlaneYToDetectorY(coeffs.ycCoeffs.get_coeffs(), correctToLL=True) / pixelScale
             xc = self._focalPlaneXToDetectorX(coeffs.xcCoeffs.get_coeffs(), correctToLL=True) / pixelScale
@@ -996,7 +997,7 @@ class SplinedPsf(psf.Psf):
             wavelengthValues.append(lams[select])
 
             midY = len(lams)//2
-            self.logger.info("hole %d: xcKnot, xc, wl: %s %s %s" % (holeId,
+            self.logger.info("hole %d: xcKnot, xc, wl: %s %s %s" % (fiberId,
                                                                     yKnot[midY], xc[midY], lams[midY]))
 
         detMap = drpStella.SplinedDetectorMap(bbox, fiberIds.astype('i4'), xCenterKnots, xCenterValues,

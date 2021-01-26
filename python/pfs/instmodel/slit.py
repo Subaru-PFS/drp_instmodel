@@ -58,8 +58,9 @@ class Slit(object):
 
     slits = slit1, slit1, slit2, slit2
 
-    def __init__(self, slitId):
-        self.fiber0 = 1
+    def __init__(self, spectrograph):
+        slitId = spectrograph - 1
+        self.fiber0 = 651*slitId + 1
         scienceFibers = []
         engineeringFibers = []
 
