@@ -949,7 +949,7 @@ class SplinedPsf(psf.Psf):
                                          xx, yy, xc)
         self.logger.warn("set constant X")
 
-    def makeDetectorMap(self, fname, obsdate=None):
+    def makeDetectorMap(self, obsdate=None):
         """ Create a DetectorMap file for DRP. 
 
         Why here? We know both about the millimeters from the optical model and
@@ -1020,7 +1020,5 @@ class SplinedPsf(psf.Psf):
                            'arm=%s spectrograph=%d ccd=%d filter=%s calibDate=%s calibTime=%s visit0=0' %
                            (self.detector.arm.value, self.detector.spectrograph, ccd,
                             self.detector.arm.value, calibDate, calibTime))
-
-        detMap.writeFits(fname)
 
         return detMap

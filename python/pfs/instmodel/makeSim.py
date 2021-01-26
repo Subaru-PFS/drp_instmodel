@@ -217,7 +217,6 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
     parser.add_argument('--compress', action='store', default=None,
                         help='fitsio FITS compression type. e.g. RICE')
     parser.add_argument('--pdb', default=False, action='store_true', help="Launch pdb on exception?")
-    parser.add_argument('--detectorMap', help="Name for detectorMap file")
     parser.add_argument('--zenithDistance', type=float, default=45.0, help="Zenith distance (degrees)")
     parser.add_argument('--aerosol', type=float, default=1.0, help="Aerosol power-law index")
     parser.add_argument('--pwv', type=float, default=1.6, help="Precipitable water vapour (mm)")
@@ -294,8 +293,6 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
             if args.pfsConfig:
                 config.write()
 
-    if args.detectorMap:
-        sim.image.psf.makeDetectorMap(args.detectorMap)
     if args.ds9:
         displayImage(sim.image)
     return sim
