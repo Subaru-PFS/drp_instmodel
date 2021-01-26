@@ -45,6 +45,7 @@ def makePfsDesign(pfsDesignId, fiberIds, catIds, objIds, targetTypes,
                   fiberFluxErr=None, psfFluxErr=None, totalFluxErr=None,
                   filterNames=None, raBoresight=0.0*lsst.afw.geom.degrees,
                   decBoresight=0.0*lsst.afw.geom.degrees,
+                  posAng=0.0*lsst.afw.geom.degrees,
                   arms='brn',
                   rng=None):
     """Build a ``PfsDesign``
@@ -85,6 +86,8 @@ def makePfsDesign(pfsDesignId, fiberIds, catIds, objIds, targetTypes,
         Right Ascension of the boresight.
     decBoresight : `lsst.afw.geom.Angle`
         Declination of the boresight.
+    posAng : `lsst.afw.geom.Angle`
+        position angle of the PFI.
     arms : `str`
         arms exposed, eg 'brn'.
     rng : `numpy.random.RandomState`, optional
@@ -131,6 +134,7 @@ def makePfsDesign(pfsDesignId, fiberIds, catIds, objIds, targetTypes,
 
     return PfsDesign(pfsDesignId, raBoresight.asDegrees(),
                      decBoresight.asDegrees(),
+                     posAng.asDegrees(),
                      arms,
                      fiberIds, tract, patch, ra, dec, catIds, objIds,
                      targetTypes, fiberStatus,
@@ -147,6 +151,7 @@ def makeScienceDesign(pfsDesignId, fiberIds,
                       scienceCatId=0, scienceObjId=None,
                       raBoresight=0.0*lsst.afw.geom.degrees,
                       decBoresight=0.0*lsst.afw.geom.degrees,
+                      posAng=0.0*lsst.afw.geom.degrees,
                       rng=None, unlitFiberIds=None):
     """Build a ``PfsDesign`` for a science exposure
 
@@ -181,6 +186,8 @@ def makeScienceDesign(pfsDesignId, fiberIds,
         Right Ascension of the boresight.
     decBoresight : `lsst.afw.geom.Angle`
         Declination of the boresight.
+    posAng : `lsst.afw.geom.Angle`
+        position angle of the PFI.
     arms : `str`
         arms exposed, eg 'brn'.
     rng : `numpy.random.RandomState`, optional
@@ -283,5 +290,6 @@ def makeScienceDesign(pfsDesignId, fiberIds,
                          totalFluxErr=[totalFluxErr[ii] for ii in indices],
                          filterNames=[filterNames[ii] for ii in indices],
                          raBoresight=raBoresight, decBoresight=decBoresight,
+                         posAng=posAng,
                          arms=arms,
                          rng=rng)
