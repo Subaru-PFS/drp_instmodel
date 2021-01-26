@@ -5,8 +5,10 @@ from pfs.instmodel.makePfsConfig import makeScienceDesign
 
 """Generate a PfsDesign"""
 
+SPECTROGRAPHS = [1, 2, 3, 4]  # Spectrograph numbers
 
-def parseFibers(fibers):
+
+def parseFibers(fibers, spectrograph):
     """Parse the list of fibers
 
     Parameters
@@ -14,13 +16,15 @@ def parseFibers(fibers):
     fibers : `str`
         Whitespace-separated list of fiber IDs, or symbolic name representing a
         list of fiber IDs (single, double, lam, all, odd, even, fifteen).
+    spectrograph : `int`
+        Spectrograph identifier (1-4).
 
     Returns
     -------
     fiberIds : `list` of `int`
         Fiber identifiers.
     """
-    allFibers = Slit(1).scienceFibers
+    allFibers = Slit(spectrograph).scienceFibers
     menu = {"single": [315],
             "double": [311, 315],
             "lam": [2, 65, 191, 254, 315, 337, 400, 463, 589, 650],
@@ -56,9 +60,11 @@ def main():
     """Main entrypoint when running as a script"""
     from argparse import ArgumentParser
     parser = ArgumentParser(description="Generate a PfsDesign")
-    parser.add_argument("--fibers", type=parseFibers, required=True,
+    parser.add_argument("--fibers", required=True,
                         help="Fibers to light (single, double, lam, all, odd, even, fifteen; or "
                              "space-delimited integers)")
+    parser.add_argument("--spectrograph", type=int, nargs="+", default=[1, 2, 3, 4],
+                        help="Spectrographs to be illuminated")
     parser.add_argument("--pfsDesignId", type=int, required=True, help="Top-end design identifier")
     parser.add_argument("--fracSky", type=float, default=0.2, help="Fraction of fibers to use for sky")
     parser.add_argument("--fracFluxStd", type=float, default=0.1,
@@ -76,9 +82,15 @@ def main():
     args = parser.parse_args()
 
     rng = np.random.RandomState(args.seed) if args.seed is not None else None
-    pfsDesign = makeScienceDesign(args.pfsDesignId, args.fibers, args.fracSky, args.fracFluxStd,
+    spectrographs = args.spectrograph or SPECTROGRAPHS
+    litFibers = np.concatenate([parseFibers(args.fibers, sp) for sp in spectrographs])
+    allFibers = np.concatenate([Slit(ss).scienceFibers for ss in SPECTROGRAPHS])
+    unlitFibers = np.array(sorted(set(allFibers) - set(litFibers)))
+
+    pfsDesign = makeScienceDesign(args.pfsDesignId, litFibers, args.fracSky, args.fracFluxStd,
                                   args.minScienceMag, args.maxScienceMag, args.fluxStdMag,
-                                  args.scienceCatId, args.scienceObjId, rng=rng)
+                                  args.scienceCatId, args.scienceObjId, rng=rng,
+                                  unlitFiberIds=unlitFibers)
     pfsDesign.write(args.dirName)
 
 

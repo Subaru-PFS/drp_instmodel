@@ -14,6 +14,8 @@ import pfs.instmodel.sky as pfsSky
 from pfs.datamodel import PfsDesign
 from pfs.instmodel.makePfsConfig import makePfsConfig
 from .lightSource import LightSource, Lamps
+from .slit import Slit
+from .detector import Detector
 
 
 @contextmanager
@@ -53,7 +55,6 @@ def makeSim(detector, pfsDesignId=0, fiberFilter=None,
 
     Returns
     -------
-s
     sim : a SimImage object. Notable member is .image
     """
 
@@ -73,7 +74,8 @@ s
                             logger=logger)
     design = PfsDesign.read(pfsDesignId, dirName=dirName)
 
-    fibers = design.fiberId
+    specFibers = set(Slit(Detector(detector).spectrograph).scienceFibers)
+    fibers = np.array(sorted(set(design.fiberId).intersection(specFibers)))
     if domeOpen:
         skyTargetType = set([TargetType.SCIENCE, TargetType.SKY, TargetType.FLUXSTD])
         skyFiberStatus = set([FiberStatus.GOOD])

@@ -5,7 +5,7 @@ from pfs.instmodel.utils.generators import keepOdd, keepEven
 
 
 def keepFibers(design, generator):
-    """Keep a selection of fibers, blocking the remainder
+    """Keep a selection of good fibers, blocking the remainder
 
     Parameters
     ----------
@@ -15,21 +15,24 @@ def keepFibers(design, generator):
         Generator object that operates on an array of ``fiberId`` to provide
         the ``fiberId`` values that will be kept.
     """
-    selection = set(generator(design.fiberId))
-    design.fiberStatus = np.array([tt if ff in selection else FiberStatus.BLACKSPOT
-                                   for ff, tt in zip(design.fiberId, design.fiberStatus)])
+    select = design.fiberStatus == FiberStatus.GOOD
+    indices = np.arange(len(design), dtype=int)
+    keep = [ii for ii in generator(indices[select])]
+    select[keep] = False
+    design.fiberStatus[select] = FiberStatus.BLACKSPOT
 
 
 def shuffleFibers(design):
-    """Shuffle the fibers
+    """Shuffle the good fibers
 
     Parameters
     ----------
     design : `pfs.datamodel.PfsDesign`
         PfsDesign to modify.
     """
+    select = design.fiberStatus == FiberStatus.GOOD
     indices = np.arange(len(design))
-    np.random.shuffle(indices)
+    np.random.shuffle(indices[select])
 
     design.tract = design.tract[indices]
     design.patch = [design.patch[ii] for ii in indices]
