@@ -44,7 +44,9 @@ def makePfsDesign(pfsDesignId, fiberIds, catIds, objIds, targetTypes,
                   totalFlux=None,
                   fiberFluxErr=None, psfFluxErr=None, totalFluxErr=None,
                   filterNames=None, raBoresight=0.0*lsst.afw.geom.degrees,
-                  decBoresight=0.0*lsst.afw.geom.degrees, rng=None):
+                  decBoresight=0.0*lsst.afw.geom.degrees,
+                  posAng=0.0*lsst.afw.geom.degrees,
+                  rng=None):
     """Build a ``PfsDesign``
 
     The top-end settings (``ra``, ``dec``, ``pfiNominal``, ``pfiCenter``) are
@@ -83,6 +85,8 @@ def makePfsDesign(pfsDesignId, fiberIds, catIds, objIds, targetTypes,
         Right Ascension of the boresight.
     decBoresight : `lsst.afw.geom.Angle`
         Declination of the boresight.
+    posAng : `lsst.afw.geom.Angle`
+        position angle of the PFI.
     rng : `numpy.random.RandomState`, optional
         Random number generator. If not specified, we use the default from
         ``numpy``, which has a non-deterministic seed.
@@ -127,6 +131,7 @@ def makePfsDesign(pfsDesignId, fiberIds, catIds, objIds, targetTypes,
 
     return PfsDesign(pfsDesignId, raBoresight.asDegrees(),
                      decBoresight.asDegrees(),
+                     posAng.asDegrees(),
                      fiberIds, tract, patch, ra, dec, catIds, objIds,
                      targetTypes, fiberStatus,
                      fiberFlux, psfFlux, totalFlux,
@@ -141,6 +146,7 @@ def makeScienceDesign(pfsDesignId, fiberIds,
                       scienceCatId=0, scienceObjId=None,
                       raBoresight=0.0*lsst.afw.geom.degrees,
                       decBoresight=0.0*lsst.afw.geom.degrees,
+                      posAng=0.0*lsst.afw.geom.degrees,
                       rng=None, unlitFiberIds=None):
     """Build a ``PfsDesign`` for a science exposure
 
@@ -175,6 +181,8 @@ def makeScienceDesign(pfsDesignId, fiberIds,
         Right Ascension of the boresight.
     decBoresight : `lsst.afw.geom.Angle`
         Declination of the boresight.
+    posAng : `lsst.afw.geom.Angle`
+        position angle of the PFI.
     rng : `numpy.random.RandomState`, optional
         Random number generator. If not specified, we use the default from
         ``numpy``, which has a non-deterministic seed.
@@ -272,4 +280,6 @@ def makeScienceDesign(pfsDesignId, fiberIds,
                          psfFluxErr=[psfFluxErr[ii] for ii in indices],
                          totalFluxErr=[totalFluxErr[ii] for ii in indices],
                          filterNames=[filterNames[ii] for ii in indices],
-                         raBoresight=raBoresight, decBoresight=decBoresight, rng=rng)
+                         raBoresight=raBoresight, decBoresight=decBoresight,
+                         posAng=posAng,
+                         rng=rng)
