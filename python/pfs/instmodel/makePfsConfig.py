@@ -234,9 +234,7 @@ def makeScienceDesign(pfsDesignId, fiberIds,
             if scienceCatId == 0:
                 scienceObjId += objIdStart
                 objIdStart += numScience
-        rng.shuffle(scienceObjId)
-        if len(scienceObjId) > numScience:
-            scienceObjId = scienceObjId[:numScience]
+        scienceObjId = rng.choice(scienceObjId, numScience, len(scienceObjId) < numScience)
         objId[targetTypes == TargetType.SCIENCE] = scienceObjId
         catId[targetTypes == TargetType.SCIENCE] = scienceCatId
 
