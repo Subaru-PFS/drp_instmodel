@@ -18,12 +18,10 @@ import scipy.ndimage
 import scipy.ndimage.interpolation
 
 from . import spotgames
-from .slit import Slit
+from .slit import Slit, NUM_FIBERS
 
 from . import psf
 reload(psf)
-
-NUM_FIBERS = 651  # Number of fibers per spectrograph
 
 
 class SpotCoeffs(object):

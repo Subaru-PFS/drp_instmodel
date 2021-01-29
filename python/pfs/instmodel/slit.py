@@ -1,6 +1,7 @@
 import enum
 import numpy as np
 
+NUM_FIBERS = 651  # Number of fibers per spectrograph
 
 @enum.unique
 class Fiber(enum.Enum):
@@ -60,7 +61,7 @@ class Slit(object):
 
     def __init__(self, spectrograph):
         slitId = spectrograph - 1
-        self.fiber0 = 651*slitId + 1
+        self.fiber0 = NUM_FIBERS*slitId + 1
         scienceFibers = []
         engineeringFibers = []
 
