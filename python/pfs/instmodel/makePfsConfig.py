@@ -109,7 +109,6 @@ def makePfsDesign(pfsDesignId, fiberIds, catIds, objIds, targetTypes,
     dec = np.array([cc.getDec().asDegrees() for cc in coords])
     pfiNominal = (PFI_SCALE*np.array([(rr*np.cos(tt), rr*np.sin(tt)) for
                                       rr, tt in zip(radius, theta)])).astype(np.float32)
-    fiberStatus = np.full_like(targetTypes, FiberStatus.GOOD)
 
     if fiberFlux is None:
         fiberFlux = [[] for _ in fiberIds]
@@ -142,7 +141,7 @@ def makeScienceDesign(pfsDesignId, fiberIds,
                       scienceCatId=0, scienceObjId=None,
                       raBoresight=0.0*lsst.afw.geom.degrees,
                       decBoresight=0.0*lsst.afw.geom.degrees,
-                      rng=None):
+                      rng=None, unlitFiberIds=None):
     """Build a ``PfsDesign`` for a science exposure
 
     Fibers are randomly assigned to sky, flux standards or science targets
@@ -179,6 +178,9 @@ def makeScienceDesign(pfsDesignId, fiberIds,
     rng : `numpy.random.RandomState`, optional
         Random number generator. If not specified, we use the default from
         ``numpy``, which has a non-deterministic seed.
+    unlitFiberIds : `numpy.ndarray` of `int`
+        Array of identifiers for fibers that will not be lit. These will be
+        flagged as blocked.
 
     Returns
     -------
@@ -187,21 +189,30 @@ def makeScienceDesign(pfsDesignId, fiberIds,
     """
     if rng is None:
         rng = np.random
+    if unlitFiberIds is None:
+        unlitFiberIds = np.array([], dtype=int)
 
-    numFibers = len(fiberIds)
-    numSky = int(fracSky*numFibers)
-    numFluxStd = int(fracFluxStd*numFibers)
-    numScience = numFibers - (numSky + numFluxStd)
+    allFiberIds = np.concatenate((fiberIds, unlitFiberIds))
+
+    numLit = len(fiberIds)
+    numUnlit = len(unlitFiberIds)
+    numFibers = numLit + numUnlit
+    numSky = int(fracSky*numLit)
+    numFluxStd = int(fracFluxStd*numLit)
+    numScience = numLit - (numSky + numFluxStd)
 
     targetTypes = np.array([int(TargetType.SKY)]*numSky +
                            [int(TargetType.FLUXSTD)]*numFluxStd +
-                           [int(TargetType.SCIENCE)]*numScience)
-    fiberStatus = np.full_like(targetTypes, FiberStatus.GOOD)
-    rng.shuffle(targetTypes)
-    assert len(targetTypes) == len(fiberIds)
+                           [int(TargetType.SCIENCE)]*numScience +
+                           [int(TargetType.UNASSIGNED)]*numUnlit)
+    fiberStatus = np.array([int(FiberStatus.GOOD)]*numLit +
+                           [int(FiberStatus.UNILLUMINATED)]*numUnlit)
+    rng.shuffle(targetTypes[:numLit])
+    assert len(targetTypes) == numFibers
+    assert len(fiberStatus) == numFibers
 
-    objId = np.zeros_like(fiberIds, dtype=int)  # Object ID for all fibers
-    catId = np.zeros_like(objId)
+    objId = np.zeros(numFibers, dtype=int)  # Object ID for all fibers
+    catId = np.zeros(numFibers, dtype=int)  # Catalog ID for all fibers
     objIdStart = 1
     if numFluxStd > 0:
         catId[targetTypes == TargetType.FLUXSTD] = 0
@@ -223,18 +234,20 @@ def makeScienceDesign(pfsDesignId, fiberIds,
             if scienceCatId == 0:
                 scienceObjId += objIdStart
                 objIdStart += numScience
-        rng.shuffle(scienceObjId)
-        if len(scienceObjId) > numScience:
-            scienceObjId = scienceObjId[:numScience]
+        scienceObjId = rng.choice(scienceObjId, numScience, len(scienceObjId) < numScience)
         objId[targetTypes == TargetType.SCIENCE] = scienceObjId
         catId[targetTypes == TargetType.SCIENCE] = scienceCatId
 
-    createMags = [targetTypes[index] in (TargetType.SCIENCE, TargetType.FLUXSTD) and
-                  fiberStatus[index] == FiberStatus.GOOD for index in range(numFibers)]
+    if numUnlit > 0:
+        catId[fiberStatus == FiberStatus.UNILLUMINATED] = -1
+        objId[fiberStatus == FiberStatus.UNILLUMINATED] = -1
+
+    createMags = (((targetTypes == TargetType.SCIENCE) ^ (targetTypes == TargetType.FLUXSTD)) &
+                  (fiberStatus == FiberStatus.GOOD))
 
     filterNames = [["i"] if xx else [] for xx in createMags]
     scienceMags = rng.uniform(minScienceMag, maxScienceMag, numScience)
-    mags = np.zeros_like(fiberIds, dtype=float)
+    mags = np.zeros(numFibers, dtype=float)
     mags[targetTypes == TargetType.SCIENCE] = scienceMags
     mags[targetTypes == TargetType.FLUXSTD] = fluxStdMag
 
@@ -249,13 +262,14 @@ def makeScienceDesign(pfsDesignId, fiberIds,
     psfFluxErr = fiberFluxErr.copy()
     totalFluxErr = fiberFluxErr.copy()
 
-    return makePfsDesign(pfsDesignId, fiberIds, catId, objId, targetTypes,
-                         fiberStatus,
-                         fiberFlux=fiberFlux,
-                         psfFlux=psfFlux,
-                         totalFlux=totalFlux,
-                         fiberFluxErr=fiberFluxErr,
-                         psfFluxErr=psfFluxErr,
-                         totalFluxErr=totalFluxErr,
-                         filterNames=filterNames, raBoresight=raBoresight,
-                         decBoresight=decBoresight, rng=rng)
+    indices = np.argsort(allFiberIds)
+    return makePfsDesign(pfsDesignId, allFiberIds[indices], catId[indices], objId[indices],
+                         targetTypes[indices], fiberStatus[indices],
+                         fiberFlux=[fiberFlux[ii] for ii in indices],
+                         psfFlux=[psfFlux[ii] for ii in indices],
+                         totalFlux=[totalFlux[ii] for ii in indices],
+                         fiberFluxErr=[fiberFluxErr[ii] for ii in indices],
+                         psfFluxErr=[psfFluxErr[ii] for ii in indices],
+                         totalFluxErr=[totalFluxErr[ii] for ii in indices],
+                         filterNames=[filterNames[ii] for ii in indices],
+                         raBoresight=raBoresight, decBoresight=decBoresight, rng=rng)

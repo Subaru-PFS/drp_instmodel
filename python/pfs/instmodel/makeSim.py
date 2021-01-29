@@ -14,6 +14,8 @@ import pfs.instmodel.sky as pfsSky
 from pfs.datamodel import PfsDesign
 from pfs.instmodel.makePfsConfig import makePfsConfig
 from .lightSource import LightSource, Lamps
+from .slit import Slit
+from .detector import Detector
 
 
 @contextmanager
@@ -53,7 +55,6 @@ def makeSim(detector, pfsDesignId=0, fiberFilter=None,
 
     Returns
     -------
-s
     sim : a SimImage object. Notable member is .image
     """
 
@@ -73,7 +74,8 @@ s
                             logger=logger)
     design = PfsDesign.read(pfsDesignId, dirName=dirName)
 
-    fibers = design.fiberId
+    specFibers = set(Slit(Detector(detector).spectrograph).scienceFibers)
+    fibers = np.array(sorted(set(design.fiberId).intersection(specFibers)))
     if domeOpen:
         skyTargetType = set([TargetType.SCIENCE, TargetType.SKY, TargetType.FLUXSTD])
         skyFiberStatus = set([FiberStatus.GOOD])
@@ -217,7 +219,6 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
     parser.add_argument('--compress', action='store', default=None,
                         help='fitsio FITS compression type. e.g. RICE')
     parser.add_argument('--pdb', default=False, action='store_true', help="Launch pdb on exception?")
-    parser.add_argument('--detectorMap', help="Name for detectorMap file")
     parser.add_argument('--zenithDistance', type=float, default=45.0, help="Zenith distance (degrees)")
     parser.add_argument('--aerosol', type=float, default=1.0, help="Aerosol power-law index")
     parser.add_argument('--pwv', type=float, default=1.6, help="Precipitable water vapour (mm)")
@@ -294,8 +295,6 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
             if args.pfsConfig:
                 config.write()
 
-    if args.detectorMap:
-        sim.image.psf.makeDetectorMap(args.detectorMap)
     if args.ds9:
         displayImage(sim.image)
     return sim
