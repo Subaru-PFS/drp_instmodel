@@ -1002,7 +1002,7 @@ class SplinedPsf(psf.Psf):
                                               wavelengthKnots, wavelengthValues)
 
         if obsdate is None:
-            now = time.gmtime()
+            now = time.gmtime(0)  # the UNIX epoch: before anything else
         else:
             try:
                 now = time.strptime(obsdate, '%Y-%m-%dT%H:%M:%S')
