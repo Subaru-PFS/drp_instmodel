@@ -969,7 +969,7 @@ class SplinedPsf(psf.Psf):
 
         lam0 = self.spotsInfo['LAM0']
         dlam = self.spotsInfo['LAMINC']
-        lams = np.linspace(lam0, lam0+(nKnots-1)*dlam, nKnots, dtype=np.float32)
+        lams = np.linspace(lam0, lam0+(nKnots-1)*dlam, nKnots)
 
         xCenterKnots = []
         xCenterValues = []
@@ -983,15 +983,15 @@ class SplinedPsf(psf.Psf):
             assert len(lams) == len(yKnot)
             assert len(lams) == len(xc)
 
-            xCenterKnots.append(yKnot.astype(np.float32))
-            xCenterValues.append(xc.astype(np.float32))
+            xCenterKnots.append(yKnot)
+            xCenterValues.append(xc)
 
             # Workaround non-physical features at the ends of the wavelength solution by dropping the
             # second, third, third-to-last and second-to-last values from the wavelength spline
             select = np.ones_like(lams, dtype=bool)
             select[1:3] = False
             select[-3:-1] = False
-            wavelengthKnots.append(yKnot[select].astype(np.float32))
+            wavelengthKnots.append(yKnot[select])
             wavelengthValues.append(lams[select])
 
             midY = len(lams)//2
