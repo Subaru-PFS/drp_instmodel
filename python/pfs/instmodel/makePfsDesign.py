@@ -97,6 +97,7 @@ def main():
                         help="Object IDs for science targets (space-delimited integers)")
     parser.add_argument("--seed", type=int, help="RNG seed")
     parser.add_argument("--dirName", default=".", help="Output directory")
+    parser.add_argument("--arms", default="brn", help="Arms to be exposed")
     args = parser.parse_args()
 
     rng = np.random.RandomState(args.seed) if args.seed is not None else None
@@ -105,9 +106,12 @@ def main():
     allFibers = np.concatenate([Slit(ss).scienceFibers for ss in SPECTROGRAPHS])
     unlitFibers = np.array(sorted(set(allFibers) - set(litFibers)))
 
-    pfsDesign = makeScienceDesign(args.pfsDesignId, litFibers, args.fracSky, args.fracFluxStd,
-                                  args.minScienceMag, args.maxScienceMag, args.fluxStdMag,
-                                  args.scienceCatId, args.scienceObjId, rng=rng,
+    pfsDesign = makeScienceDesign(args.pfsDesignId, litFibers, args.arms,
+                                  args.fracSky, args.fracFluxStd,
+                                  args.minScienceMag, args.maxScienceMag,
+                                  args.fluxStdMag,
+                                  args.scienceCatId, args.scienceObjId,
+                                  rng=rng,
                                   unlitFiberIds=unlitFibers)
     pfsDesign.write(args.dirName)
 
