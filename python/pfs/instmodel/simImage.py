@@ -125,7 +125,7 @@ class SimImage(object):
         return waveArr
         
     def writeTo(self, outputFile=None, addNoise=True,
-                exptime=1.0, pfsDesignId=0x0,
+                exptime=1.0, pfsDesignId=0x0, timestamp="2020-01-01T00:00:00.0",
                 compress='RICE', allOutput=False,
                 imagetyp=None, realBias=None, realFlat=None,
                 addCards=None):
@@ -149,7 +149,7 @@ class SimImage(object):
         addCards += self.psf.getCards()
         
         self.exposure.writeto(outputFile, addNoise=addNoise,
-                              exptime=exptime, pfsDesignId=pfsDesignId,
+                              exptime=exptime, pfsDesignId=pfsDesignId, timestamp=timestamp,
                               realBias=realBias, realFlat=realFlat,
                               imagetyp=imagetyp,
                               addCards=addCards,

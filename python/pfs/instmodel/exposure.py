@@ -76,13 +76,8 @@ class Exposure(object):
         outSky = self._sky[outSlice] if outSlice is not None else self._sky
         outSky += skyImage
 
-    def ts(self, t=None):
-        if t is None:
-            t = time.time()
-            return time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime(t))
-                                    
     def writeto(self, outputFile, doCombine=True, doWriteAll=True,
-                exptime=1.0, pfsDesignId=0x0,
+                exptime=1.0, pfsDesignId=0x0, timestamp="2020-01-01T00:00:00.0",
                 addNoise=True, compress='RICE',
                 realBias=None, realFlat=None,
                 addCards=(),
@@ -103,7 +98,7 @@ class Exposure(object):
                                                                          imagetyp, type(outIm), outIm.dtype))
 
         hdr.set('EXPTIME', float(exptime))
-        hdr.set('DATE-OBS', self.ts(), 'Crude sim time')
+        hdr.set('DATE-OBS', timestamp)
         hdr.set('W_SIMBIA', realBias)
         hdr.set('W_SIMFLA', realFlat)
         hdr.set('W_PFDSGN', pfsDesignId)

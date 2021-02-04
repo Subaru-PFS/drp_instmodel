@@ -234,7 +234,9 @@ def makeScienceDesign(pfsDesignId, fiberIds,
             if scienceCatId == 0:
                 scienceObjId += objIdStart
                 objIdStart += numScience
-        scienceObjId = rng.choice(scienceObjId, numScience, len(scienceObjId) < numScience)
+        if len(scienceObjId) < numScience:
+            raise RuntimeError("Insufficient science objIds provided")
+        scienceObjId = np.random.choice(scienceObjId, numFibers, False)
         objId[targetTypes == TargetType.SCIENCE] = scienceObjId
         catId[targetTypes == TargetType.SCIENCE] = scienceCatId
 

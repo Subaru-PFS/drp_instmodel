@@ -6,6 +6,7 @@ import os
 import re
 from types import SimpleNamespace
 import numpy as np
+from datetime import datetime, timedelta
 
 from pfs.datamodel.pfsConfig import TargetType, FiberStatus
 from pfs.instmodel.arm import Arm
@@ -196,7 +197,7 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
     parser.add_argument('--exptime', action='store', default=0.0, type=float)
     parser.add_argument('--focus', action='store', default=0, type=int)
     parser.add_argument('--frd', action='store', default=23, type=int)
-    parser.add_argument('--date', action='store')
+    parser.add_argument('--date', default="2020-01-01T00:00:00", help="Base datetime to use for DATE-OBS")
     parser.add_argument('--dtype', action='store', default='u2')
     parser.add_argument('--everyNth', action='store', default=20, type=int,
                         help='how many (oversampled) pixels to linearly interpolate over.')
@@ -255,7 +256,7 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
                       fiberFilter=fibers,
                       lamps=lamps,
                       spectraDir=args.spectraDir,
-                      frd=args.frd, focus=args.focus, date=args.date,
+                      frd=args.frd, focus=args.focus,
                       dtype=args.dtype,
                       everyNth=args.everyNth,
                       domeOpen=args.type == "object",
@@ -277,18 +278,20 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
     category = 'A'  # Science (as opposed to metrology camera, etc.)
     spectrograph = int(args.detector[1])
     armNum = {'b': 1, 'r': 2, 'n': 3, 'm': 4}[args.detector[0]]
+    date = datetime.fromisoformat(args.date)
 
     for visit in args.visit:
         imageName = "PF%1s%1s%06d%1d%1d.fits" % (site, category, visit, spectrograph, armNum)
         with pdbOnException(args.pdb):
             image = sim.image.clone()
             config = makePfsConfig(sim.design, visit)
+            timestamp = (date + timedelta(minutes=visit)).isoformat()
 
             header = lamps.toFitsCards()
             header.append(("W_VISIT", visit, "Visit identifier"))
             header.append(("IMAGETYP", (args.imagetyp or args.type).upper(), "Image type"))
             image.writeTo(os.path.join(args.dirName, imageName), addNoise=not args.noNoise,
-                          exptime=args.exptime, pfsDesignId=args.pfsDesignId,
+                          exptime=args.exptime, pfsDesignId=args.pfsDesignId, timestamp=timestamp,
                           compress=args.compress, allOutput=args.allOutput,
                           realBias=args.realBias, realFlat=args.realFlat,
                           imagetyp=args.type.upper(), addCards=header)

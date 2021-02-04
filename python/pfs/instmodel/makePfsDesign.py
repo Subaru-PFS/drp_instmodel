@@ -1,11 +1,29 @@
 import numpy as np
-from pfs.instmodel.slit import Slit
+from pfs.instmodel.slit import Slit, NUM_FIBERS
 from pfs.instmodel.utils.generators import keepOdd, keepEven
 from pfs.instmodel.makePfsConfig import makeScienceDesign
 
 """Generate a PfsDesign"""
 
 SPECTROGRAPHS = [1, 2, 3, 4]  # Spectrograph numbers
+
+
+def holeToFiberId(holes, spectrograph):
+    """Convert hole numbers to fiberIds
+
+    Parameters
+    ----------
+    holes : array_like of `int`
+        Hole numbers (1..651).
+    spectrograph : `int`
+        Spectrograph number (1..4).
+
+    Returns
+    -------
+    fiberId : `numpy.ndarray` of `int`
+        Fiber identifiers.
+    """
+    return NUM_FIBERS*(spectrograph - 1) + np.array(holes)
 
 
 def parseFibers(fibers, spectrograph):
@@ -25,9 +43,9 @@ def parseFibers(fibers, spectrograph):
         Fiber identifiers.
     """
     allFibers = Slit(spectrograph).scienceFibers
-    menu = {"single": [315],
-            "double": [311, 315],
-            "lam": [2, 65, 191, 254, 315, 337, 400, 463, 589, 650],
+    menu = {"single": holeToFiberId([315], spectrograph),
+            "double": holeToFiberId([311, 315], spectrograph),
+            "lam": holeToFiberId([2, 65, 191, 254, 315, 337, 400, 463, 589, 650], spectrograph),
             "all": allFibers,
             "odd": [ii for ii in keepOdd(allFibers)],
             "even": [ii for ii in keepEven(allFibers)],
