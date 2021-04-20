@@ -4,7 +4,7 @@ import astropy.units as u
 import lsst.afw.geom
 import lsst.log
 
-from pfs.datamodel.pfsConfig import PfsDesign, TargetType, FiberStatus, PfsConfig
+from pfs.datamodel.pfsConfig import PfsDesign, TargetType, FiberStatus, PfsConfig, GuideStars
 
 FLUXSTD_MAG = 18.0  # ABmag
 
@@ -140,7 +140,8 @@ def makePfsDesign(pfsDesignId, fiberIds, catIds, objIds, targetTypes,
                      targetTypes, fiberStatus,
                      fiberFlux, psfFlux, totalFlux,
                      fiberFluxErr, psfFluxErr, totalFluxErr,
-                     filterNames, pfiNominal)
+                     filterNames, pfiNominal,
+                     GuideStars.empty())
 
 
 def makeScienceDesign(pfsDesignId, fiberIds,
