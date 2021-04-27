@@ -14,6 +14,14 @@ class Slit(object):
     """A definition of a slit.
 
     This structure clarifies some of logic of the slit layout.
+
+    Parameters
+    ----------
+    spectrograph : `int`
+        Spectrograph number, 1..4.
+    allHoles : `bool`, optional
+        Return all holes if ``True``, otherwise only the filled holes for that
+        spectrograph.
     """
 
     block1 = ([Fiber.ENGINEERING] +
@@ -59,13 +67,13 @@ class Slit(object):
 
     slits = slit1, slit2, slit1, slit2
 
-    def __init__(self, spectrograph):
+    def __init__(self, spectrograph, allHoles=False):
         slitId = spectrograph - 1
         self.fiber0 = NUM_FIBERS*slitId + 1
         scienceFibers = []
         engineeringFibers = []
 
-        for i, fiberType in enumerate(self.slits[slitId]):
+        for i, fiberType in enumerate(self.slit1 if allHoles else self.slits[slitId]):
             if fiberType is Fiber.SCIENCE:
                 scienceFibers.append(i)
             elif fiberType is Fiber.ENGINEERING:

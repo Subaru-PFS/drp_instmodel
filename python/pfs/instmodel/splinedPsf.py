@@ -963,7 +963,7 @@ class SplinedPsf(psf.Psf):
         # Per RHL, we want the _detector_ geometry here.
         bbox = afwGeom.BoxI(afwGeom.PointI(0,0), afwGeom.PointI(ccdSize[1]-1, ccdSize[0]-1))
 
-        fiberIds = Slit(self.detector.spectrograph).scienceFibers
+        fiberIds = Slit(self.detector.spectrograph, allHoles=True).scienceFibers
         fiber0_w = np.where(self.fiber == min(self.fiber))
         nKnots = len(fiber0_w[0])
 
