@@ -57,7 +57,7 @@ class Slit(object):
         slit2[f-1] = Fiber.BLANK
     slit2 = tuple(slit2)
 
-    slits = slit1, slit1, slit2, slit2
+    slits = slit1, slit2, slit1, slit2
 
     def __init__(self, spectrograph):
         slitId = spectrograph - 1
