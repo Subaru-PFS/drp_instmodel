@@ -2,6 +2,8 @@ import os
 import math
 from enum import IntFlag
 from types import SimpleNamespace
+import collections
+import numpy as np
 
 from pfs.datamodel.pfsConfig import TargetType, FiberStatus
 
@@ -213,8 +215,9 @@ class LightSource:
             List of total flux errors for each fiber [nJy].
         """
         index = self.pfsDesign.selectFiber(fiberId)
-        assert len(index) == 1
-        index = index[0]
+        if isinstance(index, (collections.Sequence, np.ndarray)):
+            assert len(index) == 1
+            index = index[0]
         catId = self.pfsDesign.catId[index]
         objId = self.pfsDesign.objId[index]
         tract = self.pfsDesign.tract[index]
