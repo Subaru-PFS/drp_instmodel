@@ -4,6 +4,7 @@ from enum import IntFlag
 from types import SimpleNamespace
 import collections
 import numpy as np
+import logging
 
 from pfs.datamodel.pfsConfig import TargetType, FiberStatus
 
@@ -141,7 +142,12 @@ class LightSource:
         Directory for simulated science spectra. Needed only if you're going
         to get a science spectrum.
     """
-    def __init__(self, domeOpen, lamps, skyModel, pfsDesign, spectraDir=None):
+    def __init__(self, domeOpen, lamps, skyModel, pfsDesign, spectraDir=None,
+                 logger=None):
+        if logger is None:
+            logger = logging.getLogger('lightSource')
+        self.logger = logger
+
         self.domeOpen = domeOpen
         self.lamps = lamps
         if domeOpen and lamps != Lamps.NONE:
@@ -268,6 +274,8 @@ class LightSource:
         spectrum : `Spectrum`
             Spectrum of object + sky.
         """
+        self.logger.info('Getting science spectrum for target '
+                         f'catId={target.catId}, objId={target.objId:#0x} ..')
         if target.catId == 0:
             return self.getConstantSpectrum(target)
         if self.spectraDir is None:
