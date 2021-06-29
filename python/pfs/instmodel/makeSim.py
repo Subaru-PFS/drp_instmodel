@@ -179,7 +179,7 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
     if "DRP_INSTDATA_DIR" in os.environ:
         spectraDir = os.path.join(os.environ["DRP_INSTDATA_DIR"], "data", "objects")
 
-    parser = argparse.ArgumentParser(description="generate a simulated image", 
+    parser = argparse.ArgumentParser(description="generate a simulated image",
                                      formatter_class=argparse.RawDescriptionHelpFormatter,
                                      epilog=helpDoc)
     parser.add_argument('-d', '--detector', action='store', required=True, help="Detector name, e.g., r1")
