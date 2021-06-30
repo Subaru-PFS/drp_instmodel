@@ -7,6 +7,7 @@ import re
 from types import SimpleNamespace
 import numpy as np
 from datetime import datetime, timedelta
+import yaml
 
 from pfs.datamodel.pfsConfig import TargetType, FiberStatus
 from pfs.instmodel.arm import Arm
@@ -34,7 +35,8 @@ def pdbOnException(enable=True):
 
 
 def makeSim(detector, pfsDesignId=0, fiberFilter=None,
-            lamps=Lamps.NONE, spectraDir=None,
+            lamps=Lamps.NONE, objSpectraDir=None,
+            catConfig=None,
             frd=None, focus=0, date=None, psf=None, dtype='u2',
             everyNth=20,
             domeOpen=True, combSpacing=50, shiftPsfs=True,
@@ -57,6 +59,10 @@ def makeSim(detector, pfsDesignId=0, fiberFilter=None,
     Returns
     -------
     sim : a SimImage object. Notable member is .image
+
+    Raise:
+    -------
+    yaml.YAMLError: if the catConfig file cannot be loaded.
     """
 
     if logger is None:
@@ -84,7 +90,25 @@ def makeSim(detector, pfsDesignId=0, fiberFilter=None,
                          for ii in range(len(design))]
     else:
         doSkyForFiber = np.zeros_like(fibers, dtype=bool)
-    source = LightSource(domeOpen, lamps, skyModel, design, spectraDir)
+
+    if objSpectraDir:
+        catConfigPath = os.path.join(objSpectraDir, catConfig)
+        with open(catConfigPath, 'r') as stream:
+            catConfigData = yaml.safe_load(stream)
+        # Convert yaml data to a dict indexed by catId,
+        # with values corresponding to the relateive location
+        # of the catalogue data with respect to a root directory
+        # Note: could have designed yaml file such that a load would
+        # return the required dict,
+        # but that would make the yaml file less readable.
+        catDict = dict()
+        for catalogInfo in catConfigData:
+            catDict[catalogInfo['catId']] = catalogInfo['rel_location']
+    else:
+        catDict = None
+
+    source = LightSource(domeOpen, lamps, skyModel, design, objSpectraDir,
+                         catDict)
     spectra = [source.getSpectrum(fiberId) for fiberId in fibers]
     sim.addFibers(fibers,
                   spectra=spectra,
@@ -175,9 +199,9 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
         format="%(asctime)s.%(msecs)03dZ %(name)-12s %(levelno)s %(filename)s:%(lineno)d %(message)s"
     )
     logger = logging.getLogger()
-    spectraDir = "."
+    instDataDir = "."
     if "DRP_INSTDATA_DIR" in os.environ:
-        spectraDir = os.path.join(os.environ["DRP_INSTDATA_DIR"], "data", "objects")
+        instDataDir = os.path.join(os.environ["DRP_INSTDATA_DIR"], "data", "objects")
 
     parser = argparse.ArgumentParser(description="generate a simulated image",
                                      formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -186,7 +210,13 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
     parser.add_argument('--visit', type=int, action="append", required=True, help="Visit number")
     parser.add_argument('-p', '--pfsDesignId', type=int, required=True, help="pfsDesignId")
     parser.add_argument('--dirName', default=".", help="Directory in which to write")
-    parser.add_argument('--spectraDir', default=spectraDir, help="Directory from which to read spectra")
+    parser.add_argument('--instDataDir', default=instDataDir,
+                        help=("Directory from which to read instrumental data (PSFs etc)")),
+    parser.add_argument('--objSpectraDir', nargs='?',
+                        help="Directory from which to read object spectra")
+    parser.add_argument('--catConfig', default='catalog_config.yaml',
+                        help=("Name of catalog config file for object spectra."
+                              "Location of file defined by --objSpectraDir"))
     parser.add_argument('--pfsConfig', default=False, action="store_true", help="Generate pfsConfig?")
     parser.add_argument('--type', required=True, choices=("bias", "dark", "flat", "arc", "object"),
                         help="Type of image")
@@ -249,13 +279,17 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
         raise RuntimeError("Bias requested, but non-zero exposure time specified (%f)" % (args.exptime))
     if args.type == "dark" and lamps != Lamps.NONE:
         raise RuntimeError("Dark requested, but lamps specified (%s)" % (args.lamps,))
+    if args.type == "object" and not args.objSpectraDir:
+        raise RuntimeError("Object type requested, "
+                           "but objSpectraDir is not specified "
+                           f"({args.objSpectraDir})")
 
     with pdbOnException(args.pdb):
         sim = makeSim(args.detector,
                       pfsDesignId=args.pfsDesignId,
                       fiberFilter=fibers,
                       lamps=lamps,
-                      spectraDir=args.spectraDir,
+                      objSpectraDir=args.objSpectraDir,
                       frd=args.frd, focus=args.focus,
                       dtype=args.dtype,
                       everyNth=args.everyNth,
@@ -272,6 +306,7 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
                       yOffset=args.yoffset,
                       realBias=args.realBias,
                       dirName=args.dirName,
+                      catConfig=args.catConfig,
                       logger=logger)
 
     site = 'F'  # Fake
