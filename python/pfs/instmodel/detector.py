@@ -81,11 +81,11 @@ class Detector(object):
                                              self.config['ccdSize'])).astype(dtype)
         return bias
 
-    def addBias(self, exp, ontoBias=None):
+    def addBias(self, exp, ontoBias=None, useDark=False):
         """ Add our bias to the given exposure. """
 
         if ontoBias is not None:
-            bias = exp.loadBias(ontoBias)
+            bias = exp.loadBias(ontoBias, useDark=useDark)
         else:
             bias = self.getBias(exp)
 
@@ -111,7 +111,7 @@ class Detector(object):
             exp.addPlane('flat', flux-flux0)
             del flux0
             
-        bias = self.addBias(exp, ontoBias=ontoBias)
+        bias = self.addBias(exp, ontoBias=ontoBias, useDark=(exptime > 30))
 
         rimage = numpy.round(flux/self.gain) + bias  # in ADU
         saturatedPixels = (rimage > 65535)

@@ -128,7 +128,7 @@ class Exposure(object):
 
         return hdulist
     
-    def loadBias(self, biasID):
+    def loadBias(self, biasID, useDark=False):
         """ Load a real detector bias, return its active image. """
 
         if biasID is None:
@@ -138,12 +138,10 @@ class Exposure(object):
             filepath = biasID
         else:
             dataRoot = os.environ.get('DRP_INSTDATA_DIR', '.')
-            fileglob = os.path.join(dataRoot, 'data', 'pfs', 'biases', 'PF?A0*%d%d%d.fits' %
-                                    (biasID, 1, 2 if self.detector.arm == Arm.RED else 1))
-
-            print("looking for biases %s" % (fileglob))
-            filepaths = glob.glob(fileglob)
-            filepath = filepaths[0]
+            fileglob = os.path.join(dataRoot, 'data', 'pfs', 'darks' if useDark else 'biases',
+                                   'PF?A0*1%d.fits' % (2 if self.detector.arm == Arm.RED else 1))
+            filepaths = sorted(glob.glob(fileglob))
+            filepath = filepaths[biasID % len(filepaths)]
 
         print("loading bias %s" % (filepath))
         self.biasExp = geom.Exposure(obj=filepath)
