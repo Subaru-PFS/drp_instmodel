@@ -3,6 +3,7 @@ import os
 import scipy
 import scipy.integrate
 import astropy.io.fits
+import astropy.wcs
 
 from .utils import blackbody
 
@@ -663,10 +664,8 @@ class PhotonCounting(Spectrum):
 class AmbreSpectrum(TableSpectrum):
     """A spectrum read from an AMBRE FITS file
 
-    The FITS columns are:
-    1- wavelength (in \AA)
-    2- relative flux (normalized to the local continuum)
-    3- absolute flux (in erg/cm^2/s/A)
+    The FITS table contains a single column with the flux in nJy. We extract
+    the wavelength array from the WCS.
 
     Parameters
     ----------
@@ -675,9 +674,10 @@ class AmbreSpectrum(TableSpectrum):
     """
     def __init__(self, filename):
         with astropy.io.fits.open(filename) as ff:
-            wavelength = ff[1].data["wavelength"]  # Angstroms
-            flux = ff[1].data["flux"]  # erg/cm^2/s/A
-        wavelength *= 0.1  # Convert to nm
-        flux *= 10*wavelength*wavelength/SPEED_OF_LIGHT  # Convert to Fnu in erg/cm^2/s/Hz
-        flux *= 1.0e23*1.0e9  # Convert to nJy
+            wcs = astropy.wcs.WCS(ff[1].header)
+            flux = ff[1].data["Flux"]  # nJy
+
+        # astropy treats the WCS as having two axes (because it's in a table with NAXIS=2).
+        # We just ignore the other axis.
+        wavelength = wcs.pixel_to_world(numpy.arange(len(flux)), 0)[0].to("nm").value
         super().__init__(wavelength, flux)
