@@ -161,7 +161,7 @@ class Detector(object):
                 Arm.RED: "red",
                 Arm.NIR: "nir",
                 Arm.MID: "mid"}[self.arm]
-        filepath = os.path.join(dataRoot, 'data', 'throughput', 'pfs_thr_20151204_ext_all_%s.dat' % (name,))
+        filepath = os.path.join(dataRoot, 'data', 'throughput', 'pfs_thr_20201231_ext_all_%s.dat' % (name,))
 
         data = numpy.genfromtxt(filepath, comments='#')
         num = len(data)
