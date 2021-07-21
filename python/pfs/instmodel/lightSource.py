@@ -346,12 +346,12 @@ class LightSource:
         result : `Spectrum`
             Flux standard spectrum
         """
-        menu = ["p6500_g+4.0_m0.0_t01_z+0.00_a+0.00.AMBRE.fits",
-                "p6500_g+4.0_m0.0_t01_z-1.00_a+0.00.AMBRE.fits",
-                "p7000_g+4.0_m0.0_t01_z+0.00_a+0.00.AMBRE.fits",
-                "p7000_g+4.0_m0.0_t01_z-1.00_a+0.00.AMBRE.fits",
-                "p7500_g+4.0_m0.0_t01_z+0.00_a+0.00.AMBRE.fits",
-                "p7500_g+4.0_m0.0_t01_z-1.00_a+0.00.AMBRE.fits",
+        menu = ["p6500_g+4.0_m0.0_t01_z+0.00_a+0.00.AMBRE_Extp.fits",
+                "p6500_g+4.0_m0.0_t01_z-1.00_a+0.00.AMBRE_Extp.fits",
+                "p7000_g+4.0_m0.0_t01_z+0.00_a+0.00.AMBRE_Extp.fits",
+                "p7000_g+4.0_m0.0_t01_z-1.00_a+0.00.AMBRE_Extp.fits",
+                "p7500_g+4.0_m0.0_t01_z+0.00_a+0.00.AMBRE_Extp.fits",
+                "p7500_g+4.0_m0.0_t01_z-1.00_a+0.00.AMBRE_Extp.fits",
                 ]
         filename = os.path.join(os.environ["DRP_INSTDATA_DIR"], "data", "objects", "fluxCal",
                                 menu[target.objId % len(menu)])
