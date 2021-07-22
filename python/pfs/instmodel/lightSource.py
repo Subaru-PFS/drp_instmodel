@@ -283,7 +283,7 @@ class LightSource:
         catMenu = {1: "lowz_COSMOS",
                    }
         catDir = catMenu.get(target.catId, str(target.catId))
-        filename = ("pfsSimObject-%03d-%05d-%s-%016x.fits" %
+        filename = ("pfsSimObject-%05d-%05d-%s-%016x.fits" %
                     (target.catId, target.tract, target.patch, target.objId))
         return PfsSimSpectrum(os.path.join(self.spectraDir, catDir, filename))
 
