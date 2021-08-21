@@ -141,8 +141,12 @@ class LightSource:
     spectraDir : `str`, optional
         Directory for simulated science spectra. Needed only if you're going
         to get a science spectrum.
+    catDict : `dict` [`int`: `str`], optional
+        Mapping of catId to catalog name. Used to locate data below spectraDir.
     """
-    def __init__(self, domeOpen, lamps, skyModel, pfsDesign, spectraDir=None,
+    def __init__(self, domeOpen, lamps, skyModel, pfsDesign,
+                 spectraDir=None,
+                 catDict=None,
                  logger=None):
         if logger is None:
             logger = logging.getLogger('lightSource')
@@ -155,6 +159,7 @@ class LightSource:
         self.skyModel = skyModel
         self.pfsDesign = pfsDesign
         self.spectraDir = spectraDir
+        self.catDict = catDict
 
     def getSpectrum(self, fiberId):
         """Get the spectrum for a fiber
@@ -280,9 +285,9 @@ class LightSource:
             return self.getConstantSpectrum(target)
         if self.spectraDir is None:
             raise RuntimeError("No spectraDir specified, so can't load spectrum.")
-        catMenu = {1: "lowz_COSMOS",
-                   }
-        catDir = catMenu.get(target.catId, str(target.catId))
+        if self.catDict is None:
+            raise RuntimeError("No catalog config file specified, so can't load spectrum.")
+        catDir = self.catDict[target.catId]
         filename = ("pfsSimObject-%05d-%05d-%s-%016x.fits" %
                     (target.catId, target.tract, target.patch, target.objId))
         return PfsSimSpectrum(os.path.join(self.spectraDir, catDir, filename))

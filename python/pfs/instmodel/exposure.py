@@ -144,7 +144,7 @@ class Exposure(object):
             filepath = filepaths[biasID % len(filepaths)]
 
         print("loading bias %s" % (filepath))
-        self.biasExp = geom.Exposure(obj=filepath)
+        self.biasExp = geom.Exposure(obj=filepath, dtype="uint16")
         print("  bias geom: %s" % (self.biasExp))
 
         # Paper over a temporary geometry botch in the DA
