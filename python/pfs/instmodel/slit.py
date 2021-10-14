@@ -80,10 +80,15 @@ class Slit(object):
                 engineeringFibers.append(i)
 
         self._scienceFibers = np.array(scienceFibers, dtype='i4')
+        self._engineeringFibers = np.array(engineeringFibers, dtype='i4')
 
     @property
     def scienceFibers(self):
         return self._scienceFibers + self.fiber0
+
+    @property
+    def engineeringFibers(self):
+        return self._engineeringFibers + self.fiber0
 
     def scienceFiberToSlitPos(self, scienceFiberNum):
         """ Return the slit position for the given science fiber.
