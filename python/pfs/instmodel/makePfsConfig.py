@@ -100,7 +100,7 @@ def makePfsDesign(pfsDesignId, fiberIds, catIds, objIds, targetTypes,
         Design of the top-end.
     """
     FIELD_OF_VIEW = 1.5*lsst.afw.geom.degrees
-    PFI_SCALE = 800000.0/FIELD_OF_VIEW.asDegrees()  # microns/degree; guess, but not currently important
+    PFI_SCALE = 800.0/FIELD_OF_VIEW.asDegrees()  # millimeters/degree; guess, but not currently important
     if rng is None:
         rng = np.random
     tract = np.zeros_like(fiberIds, dtype=int)
