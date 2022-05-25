@@ -329,7 +329,12 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
 
             header = lamps.toFitsCards()
             header.append(("W_VISIT", visit, "Visit identifier"))
+            header.append(("W_SITE", "F", "PFS DAQ location: F=fake/simulator"))
+            header.append(("W_ARM", args.detector[0], "Spectrograph arm: 1=b, 2=r, 3=n, 4=medRed"))
+            header.append(("W_SPMOD", spectrograph, "Spectrograph module: 1-4"))
             header.append(("IMAGETYP", (args.imagetyp or args.type).upper(), "Image type"))
+            header.append(("RA2000", "00:00:00.00", "Right Ascension, J2000"))
+            header.append(("DEC2000", "+00:00:00.0", "Declination, J2000"))
             image.writeTo(os.path.join(args.dirName, imageName), addNoise=not args.noNoise,
                           exptime=args.exptime, pfsDesignId=args.pfsDesignId, timestamp=timestamp,
                           compress=args.compress, allOutput=args.allOutput,

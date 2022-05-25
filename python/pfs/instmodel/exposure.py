@@ -97,7 +97,9 @@ class Exposure(object):
         print("writing to %s, addNoise=%s, imagetyp=%s, %s, dtype=%s" % (outputFile, addNoise,
                                                                          imagetyp, type(outIm), outIm.dtype))
 
+        hdr.set('INSTRUME', "PFS")
         hdr.set('EXPTIME', float(exptime))
+        hdr.set('DARKTIME', float(exptime))
         hdr.set('DATE-OBS', timestamp)
         hdr.set('W_SIMBIA', realBias)
         hdr.set('W_SIMFLA', realFlat)
