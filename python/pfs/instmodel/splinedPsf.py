@@ -954,14 +954,14 @@ class SplinedPsf(psf.Psf):
         about the pixels of the detector. 
 
         """
-        import lsst.afw.geom as afwGeom
+        import lsst.geom as lsstGeom
         import pfs.drp.stella as drpStella
 
         pixelScale = self.detector.config['pixelScale']
         ccdSize = self.detector.config['ccdSize']
 
         # Per RHL, we want the _detector_ geometry here.
-        bbox = afwGeom.BoxI(afwGeom.PointI(0,0), afwGeom.PointI(ccdSize[1]-1, ccdSize[0]-1))
+        bbox = lsstGeom.BoxI(lsstGeom.PointI(0,0), lsstGeom.PointI(ccdSize[1]-1, ccdSize[0]-1))
 
         fiberIds = Slit(self.detector.spectrograph, allHoles=True).scienceFibers
         fiber0_w = np.where(self.fiber == min(self.fiber))
