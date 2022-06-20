@@ -1,7 +1,7 @@
 import numpy as np
 import astropy.units as u
 
-import lsst.afw.geom
+import lsst.geom
 import lsst.log
 
 from pfs.datamodel.pfsConfig import PfsDesign, TargetType, FiberStatus, PfsConfig, GuideStars
@@ -43,9 +43,9 @@ def makePfsDesign(pfsDesignId, fiberIds, catIds, objIds, targetTypes,
                   psfFlux=None,
                   totalFlux=None,
                   fiberFluxErr=None, psfFluxErr=None, totalFluxErr=None,
-                  filterNames=None, raBoresight=0.0*lsst.afw.geom.degrees,
-                  decBoresight=0.0*lsst.afw.geom.degrees,
-                  posAng=0.0*lsst.afw.geom.degrees,
+                  filterNames=None, raBoresight=0.0*lsst.geom.degrees,
+                  decBoresight=0.0*lsst.geom.degrees,
+                  posAng=0.0*lsst.geom.degrees,
                   arms='brn',
                   rng=None):
     """Build a ``PfsDesign``
@@ -82,11 +82,11 @@ def makePfsDesign(pfsDesignId, fiberIds, catIds, objIds, targetTypes,
         List of total flux errors for each fiber [nJy].
     filterNames : `list` of `list` of `str`
         List of filter names for each fiber.
-    raBoresight : `lsst.afw.geom.Angle`
+    raBoresight : `lsst.geom.Angle`
         Right Ascension of the boresight.
-    decBoresight : `lsst.afw.geom.Angle`
+    decBoresight : `lsst.geom.Angle`
         Declination of the boresight.
-    posAng : `lsst.afw.geom.Angle`
+    posAng : `lsst.geom.Angle`
         position angle of the PFI.
     arms : `str`
         arms exposed, eg 'brn'.
@@ -99,7 +99,7 @@ def makePfsDesign(pfsDesignId, fiberIds, catIds, objIds, targetTypes,
     design : `pfs.datamodel.PfsDesign`
         Design of the top-end.
     """
-    FIELD_OF_VIEW = 1.5*lsst.afw.geom.degrees
+    FIELD_OF_VIEW = 1.5*lsst.geom.degrees
     PFI_SCALE = 800.0/FIELD_OF_VIEW.asDegrees()  # millimeters/degree; guess, but not currently important
     if rng is None:
         rng = np.random
@@ -107,10 +107,10 @@ def makePfsDesign(pfsDesignId, fiberIds, catIds, objIds, targetTypes,
     patch = ["0,0" for _ in fiberIds]
 
     num = len(fiberIds)
-    boresight = lsst.afw.geom.SpherePoint(raBoresight, decBoresight)
+    boresight = lsst.geom.SpherePoint(raBoresight, decBoresight)
     radius = np.sqrt(rng.uniform(size=num))*0.5*FIELD_OF_VIEW.asDegrees()  # degrees
     theta = rng.uniform(size=num)*2*np.pi  # radians
-    coords = [boresight.offset(tt*lsst.afw.geom.radians, rr*lsst.afw.geom.degrees) for
+    coords = [boresight.offset(tt*lsst.geom.radians, rr*lsst.geom.degrees) for
               rr, tt in zip(radius, theta)]
     ra = np.array([cc.getRa().asDegrees() for cc in coords])
     dec = np.array([cc.getDec().asDegrees() for cc in coords])
@@ -150,9 +150,9 @@ def makeScienceDesign(pfsDesignId, fiberIds,
                       minScienceMag=18.0, maxScienceMag=24.0,
                       fluxStdMag=18.0,
                       scienceCatId=0, scienceObjId=None,
-                      raBoresight=0.0*lsst.afw.geom.degrees,
-                      decBoresight=0.0*lsst.afw.geom.degrees,
-                      posAng=0.0*lsst.afw.geom.degrees,
+                      raBoresight=0.0*lsst.geom.degrees,
+                      decBoresight=0.0*lsst.geom.degrees,
+                      posAng=0.0*lsst.geom.degrees,
                       rng=None, unlitFiberIds=None):
     """Build a ``PfsDesign`` for a science exposure
 
@@ -183,11 +183,11 @@ def makeScienceDesign(pfsDesignId, fiberIds,
         Object identifiers for science targets.
     fluxStdMag : `float`
         AB Magnitude of flux standard targets.
-    raBoresight : `lsst.afw.geom.Angle`
+    raBoresight : `lsst.geom.Angle`
         Right Ascension of the boresight.
-    decBoresight : `lsst.afw.geom.Angle`
+    decBoresight : `lsst.geom.Angle`
         Declination of the boresight.
-    posAng : `lsst.afw.geom.Angle`
+    posAng : `lsst.geom.Angle`
         position angle of the PFI.
     arms : `str`
         arms exposed, eg 'brn'.
