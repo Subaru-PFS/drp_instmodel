@@ -87,7 +87,8 @@ class Exposure(object):
 
         self.readout(addNoise=addNoise,
                      realBias=realBias, realFlat=realFlat, exptime=exptime)
-        if realBias is not None:
+        if self.detector.arm != Arm.NIR and realBias is not None:
+            # Divide into amplifiers and add overscan
             outIm = self.biasExp.replaceActiveFlux(self.pixelImage, leadingRows=True)
             hdr = self.biasExp.header
         else:
@@ -108,14 +109,48 @@ class Exposure(object):
         for c in addCards:
             hdr.set(*c)
 
-        hdu0 = pyfits.CompImageHDU(outIm, name='image')
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", pyfits.verify.VerifyWarning)  # creating HIERARCH keys
-            hdu0.header.extend(hdr)
+        if self.detector.arm == Arm.NIR:
+            nRead = 2  # Fake NIR data
+            phdu = pyfits.PrimaryHDU(header=hdr)
+            phdu.header["W_H4FFMT"] = 3
+            phdu.header["W_4FMTVR"] = 3  # FIXME: this is wrong, but fix later
+            phdu.header['W_FRMTIM'] = int(exptime/nRead)
+            phdu.header['W_H4NRED'] = nRead
+            phdu.header["W_H4NRST"] = 1
+            phdu.header["W_H4IRP"] = False
+            phdu.header['W_H4GAIN'] = self.detector.gain
+            # Serial numbers, in case we need them in ISR
+            phdu.header["W_SRH4"] = 1
+            phdu.header["W_SRSAM"] = 1
+            phdu.header["W_SRASIC"] = 1
+            hdulist.append(phdu)
 
-        # hdu0.data = outIm
-        hdulist.append(hdu0)
-            
+            def makeImageHdu(name: str, data: numpy.ndarray) -> pyfits.ImageHDU:
+                """Make an ImageHDU with the appropriate header keywords"""
+                hdu = pyfits.CompImageHDU(name=name, data=data)
+                hdu.header["INHERIT"] = True
+                hdu.header["W_H4GRUP"] = 1
+                return hdu
+
+            zeroArray = numpy.zeros_like(outIm, dtype=numpy.int16)
+            hdulist.append(makeImageHdu(name="RESET_IMAGE_1", data=zeroArray))
+            hdulist.append(makeImageHdu(name="RESET_REF_1", data=zeroArray))
+            hdulist.append(makeImageHdu(name="IMAGE_1", data=zeroArray))
+            hdulist.append(makeImageHdu(name="REF_1", data=zeroArray))
+            hdulist.append(makeImageHdu(name="IMAGE_2", data=numpy.rot90(outIm, -1)))
+            hdulist.append(
+                makeImageHdu(
+                    name="REF_2", data=numpy.full_like(outIm, self.detector.config["bias"], dtype=numpy.int16)
+                )
+            )
+        else:
+            # CCD
+            hdu0 = pyfits.CompImageHDU(outIm, name='image')
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", pyfits.verify.VerifyWarning)  # creating HIERARCH keys
+                hdu0.header.extend(hdr)
+            hdulist.append(hdu0)
+
         if allOutput:
             hdulist.append(pyfits.CompImageHDU(self.planes['mask'], name='mask'))
             hdulist.append(pyfits.CompImageHDU(self.planes['bias'], name='bias'))
