@@ -118,7 +118,12 @@ class Exposure(object):
             phdu.header['W_H4NRED'] = nRead
             phdu.header["W_H4NRST"] = 1
             phdu.header["W_H4IRP"] = False
-            phdu.header['W_H4GAIN'] = self.detector.gain
+            # In the real data, the pixel values have had an initial gain from the ASIC applied,
+            # which is recorded in the W_H4GAIN header keyword (typically around 2.8), and
+            # this gain is removed from the system gain on read.
+            # Here, we set W_H4GAIN=1. This avoids having to change the pixel values, but should
+            # have the correct effect.
+            phdu.header['W_H4GAIN'] = 1.0
             # Serial numbers, in case we need them in ISR
             phdu.header["W_SRH4"] = 1
             phdu.header["W_SRSAM"] = 1
