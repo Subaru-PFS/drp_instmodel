@@ -13,7 +13,6 @@ from .spectrum import FlatSpectrum
 from .spectrum import ConstantSpectrum
 from .spectrum import NullSpectrum
 from .spectrum import PfsSimSpectrum
-from .spectrum import AmbreSpectrum
 
 
 __all__ = ["fluxForPhotons", "fluxDensityForPhotons", "LightSource"]
@@ -181,8 +180,6 @@ class LightSource:
             if target.targetType == TargetType.SKY:
                 # Sky is added separately
                 return NullSpectrum()
-            if target.targetType == TargetType.FLUXSTD:
-                return self.getFluxStdSpectrum(target)
             return self.getScienceSpectrum(target)
         if self.lamps == Lamps.QUARTZ:
             return self.getFlatSpectrum()
@@ -337,31 +334,3 @@ class LightSource:
         if self.lamps & Lamps.KR:
             lamps.append("KrI")
         return ArcSpectrum(lamps, scale=fluxForPhotons(10000.0))
-
-    def getFluxStdSpectrum(self, target):
-        """Return a flux standard spectrum
-
-        Parameters
-        ----------
-        target : struct
-            Target data; output from ``getTargetData``.
-
-        Returns
-        -------
-        result : `Spectrum`
-            Flux standard spectrum
-        """
-        menu = ["p6500_g+4.0_m0.0_t01_z+0.00_a+0.00.AMBRE_Extp.fits",
-                "p6500_g+4.0_m0.0_t01_z-1.00_a+0.00.AMBRE_Extp.fits",
-                "p7000_g+4.0_m0.0_t01_z+0.00_a+0.00.AMBRE_Extp.fits",
-                "p7000_g+4.0_m0.0_t01_z-1.00_a+0.00.AMBRE_Extp.fits",
-                "p7500_g+4.0_m0.0_t01_z+0.00_a+0.00.AMBRE_Extp.fits",
-                "p7500_g+4.0_m0.0_t01_z-1.00_a+0.00.AMBRE_Extp.fits",
-                ]
-        filename = os.path.join(os.environ["DRP_INSTDATA_DIR"], "data", "objects", "fluxCal",
-                                menu[target.objId % len(menu)])
-        spectrum = AmbreSpectrum(filename)
-
-        filterName = "i"
-        spectrum.normalize(filterName, target.fiberFlux[filterName])
-        return spectrum

@@ -659,25 +659,3 @@ class PhotonCounting(Spectrum):
             Vector of flux densities at the provided ``frequency``s.
         """
         return 1.0/frequency
-
-
-class AmbreSpectrum(TableSpectrum):
-    """A spectrum read from an AMBRE FITS file
-
-    The FITS table contains a single column with the flux in nJy. We extract
-    the wavelength array from the WCS.
-
-    Parameters
-    ----------
-    filename : `str`
-        Path to file to read.
-    """
-    def __init__(self, filename):
-        with astropy.io.fits.open(filename) as ff:
-            wcs = astropy.wcs.WCS(ff[1].header)
-            flux = ff[1].data["Flux"]  # nJy
-
-        # astropy treats the WCS as having two axes (because it's in a table with NAXIS=2).
-        # We just ignore the other axis.
-        wavelength = wcs.pixel_to_world(numpy.arange(len(flux)), 0)[0].to("nm").value
-        super().__init__(wavelength, flux)

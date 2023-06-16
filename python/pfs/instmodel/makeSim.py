@@ -315,7 +315,7 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
                       logger=logger)
 
     site = 'F'  # Fake
-    category = 'A'  # Science (as opposed to metrology camera, etc.)
+    category = 'A' if args.detector[0] != "n" else 'B'  # Science (as opposed to metrology camera, etc.)
     spectrograph = int(args.detector[1])
     armNum = {'b': 1, 'r': 2, 'n': 3, 'm': 4}[args.detector[0]]
     date = datetime.fromisoformat(args.date)

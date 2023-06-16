@@ -84,7 +84,7 @@ class Detector(object):
     def addBias(self, exp, ontoBias=None, useDark=False):
         """ Add our bias to the given exposure. """
 
-        if ontoBias is not None:
+        if ontoBias is not None and self.arm != Arm.NIR:
             bias = exp.loadBias(ontoBias, useDark=useDark)
         else:
             bias = self.getBias(exp)
