@@ -49,16 +49,17 @@ def makeDetectorMap(detectorName, date="2020-01-01T00:00:00"):
 
     # The engineering fibers don't have spots that would allow us to include them in the detectorMap
     # directly, so we will attempt to guess where they should be based on where the other fibers are.
-    numFibers = len(detMap)
     engineeringFibers = Slit(detector.spectrograph, allHoles=True).engineeringFibers
     xCenterKnots = {ff: detMap.getXCenterSpline(ff).getX() for ff in detMap.fiberId}
     xCenterValues = {ff: detMap.getXCenterSpline(ff).getY() for ff in detMap.fiberId}
     wavelengthKnots = {ff: detMap.getWavelengthSpline(ff).getX() for ff in detMap.fiberId}
     wavelengthValues = {ff: detMap.getWavelengthSpline(ff).getY() for ff in detMap.fiberId}
     for fiberId in engineeringFibers:
-        index = min(np.searchsorted(detMap.fiberId, fiberId), numFibers - 2)
-        low = detMap.fiberId[index]
-        high = detMap.fiberId[index + 1]
+        # Get the closest two fibers (bracketing the fiber can give incorrect results due to the chip gap)
+        lowIndex, highIndex = np.argpartition(np.abs(detMap.fiberId - fiberId), [0, 1])[:2]
+        low = detMap.fiberId[lowIndex]
+        high = detMap.fiberId[highIndex]
+
         xCenterKnots[fiberId] = interpolate(fiberId, low, high, detMap.getXCenterSpline(low).getX(),
                                             detMap.getXCenterSpline(high).getX())
         xCenterValues[fiberId] = interpolate(fiberId, low, high, detMap.getXCenterSpline(low).getY(),
