@@ -73,16 +73,22 @@ class Detector(object):
         return exp
 
     def getBias(self, exp=None):
-        """ Return a bias plane. """
+        """ Return a bias plane.
+
+        Units are ADU.
+        """
 
         dtype = 'u2'
         bias = numpy.fix(numpy.random.normal(self.config['bias'],
                                              self.config['readNoise'],
-                                             self.config['ccdSize'])).astype(dtype)
+                                             self.config['ccdSize'])).astype(dtype)/self.config['gain']
         return bias
 
     def addBias(self, exp, ontoBias=None, useDark=False):
-        """ Add our bias to the given exposure. """
+        """ Add our bias to the given exposure.
+
+        Units are ADU.
+        """
 
         if ontoBias is not None and self.arm != Arm.NIR:
             bias = exp.loadBias(ontoBias, useDark=useDark)
