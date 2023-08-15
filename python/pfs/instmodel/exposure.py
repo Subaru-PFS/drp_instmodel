@@ -138,15 +138,14 @@ class Exposure(object):
                 return hdu
 
             zeroArray = numpy.zeros_like(outIm, dtype=numpy.int16)
+            biasLevel = self.detector.config["bias"]
             hdulist.append(makeImageHdu(name="RESET_IMAGE_1", data=zeroArray))
             hdulist.append(makeImageHdu(name="RESET_REF_1", data=zeroArray))
             hdulist.append(makeImageHdu(name="IMAGE_1", data=zeroArray))
             hdulist.append(makeImageHdu(name="REF_1", data=zeroArray))
-            hdulist.append(makeImageHdu(name="IMAGE_2", data=numpy.rot90(outIm, -1)))
+            hdulist.append(makeImageHdu(name="IMAGE_2", data=numpy.rot90(outIm + biasLevel, -1)))
             hdulist.append(
-                makeImageHdu(
-                    name="REF_2", data=numpy.full_like(outIm, self.detector.config["bias"], dtype=numpy.int16)
-                )
+                makeImageHdu(name="REF_2", data=numpy.full_like(outIm, biasLevel, dtype=numpy.int16))
             )
         else:
             # CCD
