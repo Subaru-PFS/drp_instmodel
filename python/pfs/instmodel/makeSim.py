@@ -335,6 +335,7 @@ currently as defined in :download:`examples/sampleField/py <../../examples/sampl
             header.append(("IMAGETYP", (args.imagetyp or args.type).upper(), "Image type"))
             header.append(("RA2000", "00:00:00.00", "Right Ascension, J2000"))
             header.append(("DEC2000", "+00:00:00.0", "Declination, J2000"))
+            header.append(("INSROT", "0.0", "Instrument rotation angle (degrees)"))
             image.writeTo(os.path.join(args.dirName, imageName), addNoise=not args.noNoise,
                           exptime=args.exptime, pfsDesignId=args.pfsDesignId, timestamp=timestamp,
                           compress=args.compress, allOutput=args.allOutput,
